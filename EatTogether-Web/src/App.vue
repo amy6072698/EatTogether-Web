@@ -1,7 +1,10 @@
-<script setup>
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
-  <HelloWorld />
+  <Navbar />
+  <RouterView />
+  <Footer />
 </template>
+
+<script setup>
+import Navbar from '@/components/common/Navbar.vue'
+import Footer from '@/components/common/Footer.vue'
+</script>
