@@ -18,4 +18,13 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Models\DTOs\" />
+    <Folder Include="Models\Extensions\" />
+    <Folder Include="Models\Infra\" />
+    <Folder Include="Models\ViewModels\" />
+    <Folder Include="Models\Services\" />
+    <Folder Include="Models\Repositories\" />
+  </ItemGroup>
+
 </Project>
