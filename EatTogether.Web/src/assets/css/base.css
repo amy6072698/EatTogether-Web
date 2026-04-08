@@ -1,0 +1,10 @@
+/* Google Fonts  */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Newsreader:ital,wght@0,400;0,600;1,400&family=Work+Sans:wght@300;400&display=swap');
+
+/* 全域基礎樣式 */
+body {
+  background-color: var(--eat-surface);
+  color: var(--eat-on-surface);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
