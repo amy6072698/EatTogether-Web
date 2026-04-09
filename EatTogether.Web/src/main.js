@@ -8,13 +8,11 @@ import 'bootstrap'
 import 'bootstrap/dist/css/bootstrap.min.css'
 
 // Vue Datepicker
-import VueDatePicker from '@vuepic/vue-datepicker'
+import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
 
 // Design System css (順序必須在 bootstrap 之後)
-import './assets/css/variables.css'
-import './assets/css/base.css'
-import './assets/css/components.css'
+import './assets/css/main.css'
 
 const app = createApp(App)
 app.use(createPinia())

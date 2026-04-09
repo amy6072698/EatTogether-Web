@@ -1,66 +1,70 @@
-/* ─── CSS Variables ─────────────── */
+/* =====================================================
+   義起吃 EatTogether — CSS Variables
+   Design System: "The Candlelit Manuscript"
+   ===================================================== */
+
 :root {
-  /* Surface 層級 */
-  --eat-surface:               #1e100b;
-  --eat-surface-dim:           #1e100b;
-  --eat-surface-lowest:        #180b06;
-  --eat-surface-low:           #271813;
-  --eat-surface-container:     #2b1c16;
-  --eat-surface-high:          #362620;
-  --eat-surface-highest:       #42312b;
-  --eat-surface-bright:        #47352f;
+    /* ── Surface 層級 ───────────────────────────────── */
+    --eat-surface: #1e100b;
+    --eat-surface-dim: #1e100b;
+    --eat-surface-lowest: #180b06;
+    --eat-surface-low: #271813;
+    --eat-surface-container: #2b1c16;
+    --eat-surface-high: #362620;
+    --eat-surface-highest: #42312b;
+    --eat-surface-bright: #47352f;
 
-  /* Primary (金色) */
-  --eat-primary:               #e3c76b;
-  --eat-primary-container:     #c6ab53;
-  --eat-primary-fixed:         #fee182;
-  --eat-primary-fixed-dim:     #e0c569;
-  --eat-on-primary:            #3b2f00;
+    /* ── Primary（金色）───────────────────────────────── */
+    --eat-primary: #e3c76b;
+    --eat-primary-container: #c6ab53;
+    --eat-primary-fixed: #fee182;
+    --eat-primary-fixed-dim: #e0c569;
+    --eat-on-primary: #3b2f00;
 
-  /* Secondary (琥珀) */
-  --eat-secondary:             #e4c285;
-  --eat-secondary-container:   #5d4514;
-  --eat-on-secondary:          #412d00;
+    /* ── Secondary（琥珀）─────────────────────────────── */
+    --eat-secondary: #e4c285;
+    --eat-secondary-container: #5d4514;
+    --eat-on-secondary: #412d00;
 
-  /* On-Surface (文字色) */
-  --eat-on-surface:            #f9ddd3;
-  --eat-on-surface-variant:    #d0c5b5;
-  --eat-on-bg:                 #f9ddd3;
+    /* ── On-Surface（文字色）──────────────────────────── */
+    --eat-on-surface: #f9ddd3;
+    --eat-on-surface-variant: #d0c5b5;
+    --eat-on-bg: #f9ddd3;
 
-  /* Outline */
-  --eat-outline:               #998f81;
-  --eat-outline-variant:       #4d463a;
+    /* ── Outline ────────────────────────────────────── */
+    --eat-outline: #998f81;
+    --eat-outline-variant: #4d463a;
 
-  /* Error */
-  --eat-error:                 #ffb4ab;
-  --eat-error-container:       #93000a;
+    /* ── Error ──────────────────────────────────────── */
+    --eat-error: #ffb4ab;
+    --eat-error-container: #93000a;
 
-  /* Typography */
-  --font-headline: 'Noto Serif TC', serif;
-  --font-body:     'Newsreader', serif;
-  --font-label:    'Work Sans', sans-serif;
+    /* ── Typography ─────────────────────────────────── */
+    --font-headline: 'Noto Serif TC', serif;
+    --font-body: 'Newsreader', serif;
+    --font-label: 'Work Sans', sans-serif;
 
-  /* Radius (架構風格：Sharp) */
-  --eat-radius-sm:   0.125rem;
-  --eat-radius:      0.25rem;
-  --eat-radius-lg:   0.5rem;
-  --eat-radius-full: 0.75rem;
+    /* ── Border Radius（Sharp 風格）────────────────────── */
+    --eat-radius-sm: 0.125rem;
+    --eat-radius: 0.25rem;
+    --eat-radius-lg: 0.5rem;
+    --eat-radius-full: 0.75rem;
 
-  /* Transition */
-  --eat-transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
-}
+    /* ── Transition ─────────────────────────────────── */
+    --eat-transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
 
-/* ─── Bootstrap 覆寫變數 ──────────────────────────── */
-:root {
-  --bs-body-bg:           var(--eat-surface);
-  --bs-body-color:        var(--eat-on-surface);
-  --bs-body-font-family:  var(--font-body);
-  --bs-border-radius:     var(--eat-radius);
-  --bs-border-radius-sm:  var(--eat-radius-sm);
-  --bs-border-radius-lg:  var(--eat-radius-lg);
-  --bs-border-color:      var(--eat-outline-variant);
-  --bs-link-color:        var(--eat-primary);
-  --bs-link-hover-color:  var(--eat-primary-fixed);
-  --bs-primary:           var(--eat-primary);
-  --bs-primary-rgb:       227, 199, 107;
+    /* ── Bootstrap 5 變數覆寫 ────────────────────────── */
+    /* 須在 Bootstrap CDN link 之後載入才會生效          */
+    /* index.html 的引入順序：Bootstrap CDN → main.js   */
+    --bs-body-bg: var(--eat-surface);
+    --bs-body-color: var(--eat-on-surface);
+    --bs-body-font-family: var(--font-body);
+    --bs-border-radius: var(--eat-radius);
+    --bs-border-radius-sm: var(--eat-radius-sm);
+    --bs-border-radius-lg: var(--eat-radius-lg);
+    --bs-border-color: var(--eat-outline-variant);
+    --bs-link-color: var(--eat-primary);
+    --bs-link-hover-color: var(--eat-primary-fixed);
+    --bs-primary: var(--eat-primary);
+    --bs-primary-rgb: 227, 199, 107;
 }

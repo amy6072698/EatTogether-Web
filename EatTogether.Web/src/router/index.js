@@ -1,31 +1,31 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from "vue-router";
 
 const routes = [
-  {
-    path: '/',
-    component: () => import('@/views/Home.vue')
-  },
-  {
-    path: '/login',
-    component: () => import('@/views/auth/Login.vue'),
-    meta: { guestOnly: true }
-  },
-  {
-    path: '/register',
-    component: () => import('@/views/auth/Register.vue'),
-    meta: { guestOnly: true }
-  },
-  {
-    path: '/member',
-    component: () => import('@/views/member/Member.vue'),
-    meta: { requiresAuth: true }
-  }
-]
+    {
+        path: "/",
+        component: () => import("@/views/Home.vue"),
+    },
+    // {
+    //     path: "/login",
+    //     component: () => import("@/views/auth/Login.vue"),
+    //     meta: { guestOnly: true },
+    // },
+    // {
+    //     path: "/register",
+    //     component: () => import("@/views/auth/Register.vue"),
+    //     meta: { guestOnly: true },
+    // },
+    // {
+    //     path: "/member",
+    //     component: () => import("@/views/member/Member.vue"),
+    //     meta: { requiresAuth: true },
+    // },
+];
 
 const router = createRouter({
-  history: createWebHistory(),
-  routes
-})
+    history: createWebHistory(),
+    routes,
+});
 
 // ── 登入驗證完成後取消以下註解 ──────────────────────────
 // import { useAuthStore } from '@/stores/auth'
@@ -38,4 +38,4 @@ const router = createRouter({
 //     return { path: '/' }
 // })
 
-export default router
+export default router;

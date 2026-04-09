@@ -1,0 +1,21 @@
+/* =====================================================
+   義起吃 EatTogether — CSS 入口
+   Design System: "The Candlelit Manuscript"
+   =====================================================
+   引入順序很重要：
+   1. variables  — 定義所有 token，其他檔案都依賴它
+   2. base       — 全域 reset / body
+   3. typography — 標題、內文 class
+   4. buttons    — 按鈕 class
+   5. badges     — badge、chip class
+   6. utilities  — 背景色、分隔線等 helper
+   7. animations — keyframes、spinner
+   ===================================================== */
+
+@import './variables.css';
+@import './base.css';
+@import './typography.css';
+@import './buttons.css';
+@import './badges.css';
+@import './utilities.css';
+@import './animations.css';

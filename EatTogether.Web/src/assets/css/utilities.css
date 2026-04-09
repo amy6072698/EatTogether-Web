@@ -1,0 +1,82 @@
+/* =====================================================
+   義起吃 EatTogether — Utilities
+   ===================================================== */
+
+/* ── Section 背景色 ──────────────────────────────────── */
+/* 搭配 Bootstrap 的 container / section 使用           */
+.bg-eat-surface {
+    background-color: var(--eat-surface);
+}
+.bg-eat-surface-dim {
+    background-color: var(--eat-surface-dim);
+}
+.bg-eat-surface-lowest {
+    background-color: var(--eat-surface-lowest);
+}
+.bg-eat-surface-low {
+    background-color: var(--eat-surface-low);
+}
+.bg-eat-surface-container {
+    background-color: var(--eat-surface-container);
+}
+.bg-eat-surface-high {
+    background-color: var(--eat-surface-high);
+}
+.bg-eat-surface-highest {
+    background-color: var(--eat-surface-highest);
+}
+.bg-eat-surface-bright {
+    background-color: var(--eat-surface-bright);
+}
+
+/* ── Feather Divider（羽毛紋分隔線）────────────────── */
+/* 用法：<div class="feather-divider"></div>            */
+/* 在深色 container 內用：加上 .on-container            */
+.feather-divider {
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--eat-secondary),
+        transparent
+    );
+    position: relative;
+    margin: 2.5rem 0;
+}
+.feather-divider::after {
+    content: '◈';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--eat-secondary);
+    font-size: 0.75rem;
+    background: var(--eat-surface);
+    padding: 0 0.75rem;
+}
+/* 在 surface-container 等深色 section 內使用時 */
+.feather-divider.on-container::after {
+    background: var(--eat-surface-container);
+}
+
+/* ── Candle Glow（燭光背景光暈，裝飾用）────────────── */
+/* 用法：<div class="candle-glow"></div>                */
+/* 通常搭配 position: relative 的父層使用              */
+.candle-glow {
+    background: radial-gradient(
+        circle at center,
+        rgba(227, 199, 107, 0.12) 0%,
+        rgba(30, 16, 11, 0) 70%
+    );
+    pointer-events: none;
+}
+
+/* ── Border 輔助 ─────────────────────────────────────── */
+.border-eat {
+    border-color: var(--eat-outline-variant) !important;
+}
+
+/* ── Shadow 輔助 ─────────────────────────────────────── */
+.shadow-eat {
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}

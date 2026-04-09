@@ -1,0 +1,133 @@
+/* =====================================================
+   義起吃 EatTogether — Animations & Spinners
+   ===================================================== */
+
+/* ── Keyframes ───────────────────────────────────────── */
+@keyframes spin-eat {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse-eat {
+    0%,
+    100% {
+        opacity: 0.25;
+        transform: scale(0.8);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+}
+
+@keyframes flicker-eat {
+    0% {
+        transform: scaleX(1) scaleY(1) rotate(-1deg);
+        opacity: 0.9;
+    }
+    50% {
+        transform: scaleX(0.9) scaleY(1.1) rotate(1deg);
+        opacity: 1;
+    }
+    100% {
+        transform: scaleX(1.1) scaleY(0.95) rotate(-2deg);
+        opacity: 0.85;
+    }
+}
+
+@keyframes fade-eat {
+    from {
+        opacity: 0.45;
+    }
+    to {
+        opacity: 0.9;
+    }
+}
+
+/* ── Border Spinner（圓環旋轉）──────────────────────── */
+/* 用法：<div class="spinner-border-eat"></div>         */
+.spinner-border-eat {
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+    border: 2px solid rgba(227, 199, 107, 0.2);
+    border-top-color: var(--eat-primary);
+    border-radius: 50%;
+    animation: spin-eat 0.85s linear infinite;
+}
+.spinner-border-eat.spinner-sm {
+    width: 1.1rem;
+    height: 1.1rem;
+    border-width: 2px;
+}
+.spinner-border-eat.spinner-lg {
+    width: 3rem;
+    height: 3rem;
+    border-width: 3px;
+}
+
+/* ── Grow Spinner（脈衝光點，三點連用）─────────────── */
+/* 用法：
+   <div class="spinner-grow-eat"></div>
+   <div class="spinner-grow-eat"></div>
+   <div class="spinner-grow-eat"></div>              */
+.spinner-grow-eat {
+    display: inline-block;
+    width: 0.65rem;
+    height: 0.65rem;
+    background: var(--eat-primary);
+    border-radius: 50%;
+    animation: pulse-eat 1.2s ease-in-out infinite;
+}
+.spinner-grow-eat:nth-child(2) {
+    animation-delay: 0.2s;
+}
+.spinner-grow-eat:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+/* ── Candlelight Spinner（品牌全頁 Loader）──────────── */
+/* 用法：
+   <div class="spinner-candle">
+     <div class="candle-flame"></div>
+     <span class="candle-text">稍候片刻</span>
+   </div>                                             */
+.spinner-candle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+.spinner-candle .candle-flame {
+    width: 12px;
+    height: 18px;
+    background: radial-gradient(
+        ellipse at 50% 80%,
+        var(--eat-primary) 0%,
+        var(--eat-primary-container) 40%,
+        transparent 100%
+    );
+    border-radius: 50% 50% 30% 30%;
+    animation: flicker-eat 1.4s ease-in-out infinite alternate;
+    box-shadow: 0 0 12px 4px rgba(227, 199, 107, 0.35);
+    position: relative;
+}
+.spinner-candle .candle-flame::after {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 20px;
+    background: linear-gradient(to bottom, var(--eat-outline), transparent);
+}
+.spinner-candle .candle-text {
+    font-family: var(--font-headline);
+    font-style: italic;
+    font-size: 0.85rem;
+    color: var(--eat-on-surface-variant);
+    letter-spacing: 0.2em;
+    animation: fade-eat 1.4s ease-in-out infinite alternate;
+}

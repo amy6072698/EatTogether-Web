@@ -1,0 +1,182 @@
+/* =====================================================
+   義起吃 EatTogether — Buttons
+   ===================================================== */
+
+/* ── Primary（金色填滿，主要 CTA）──────────────────── */
+.btn-eat-primary {
+    background: linear-gradient(
+        135deg,
+        var(--eat-primary) 0%,
+        var(--eat-primary-container) 100%
+    );
+    color: var(--eat-on-primary);
+    font-family: var(--font-label);
+    font-size: 0.8rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: var(--eat-radius-sm);
+    padding: 0.85rem 2.5rem;
+    transition: var(--eat-transition);
+    box-shadow: 0 4px 20px rgba(227, 199, 107, 0.2);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    text-decoration: none;
+}
+.btn-eat-primary:hover {
+    filter: brightness(1.12);
+    box-shadow: 0 6px 28px rgba(227, 199, 107, 0.35);
+    color: var(--eat-on-primary);
+}
+.btn-eat-primary:active {
+    transform: scale(0.97);
+    color: var(--eat-on-primary);
+}
+
+/* ── Secondary（金色外框 Ghost，Hero 次要 CTA）──────── */
+.btn-eat-secondary {
+    background: transparent;
+    color: var(--eat-primary);
+    font-family: var(--font-label);
+    font-size: 0.8rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    border: 1px solid var(--eat-primary);
+    border-radius: var(--eat-radius-sm);
+    padding: 0.85rem 2.5rem;
+    transition: var(--eat-transition);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    text-decoration: none;
+}
+.btn-eat-secondary:hover {
+    background: rgba(227, 199, 107, 0.1);
+    box-shadow: 0 0 16px rgba(227, 199, 107, 0.2);
+    color: var(--eat-primary);
+}
+.btn-eat-secondary:active {
+    transform: scale(0.97);
+}
+
+/* ── Tertiary（暗色細線外框斜體，段落 CTA 用）─────── */
+.btn-eat-tertiary {
+    background: transparent;
+    color: var(--eat-on-surface);
+    font-family: var(--font-body);
+    font-style: italic;
+    font-size: 0.9rem;
+    letter-spacing: 0.2em;
+    border: 1px solid var(--eat-outline-variant);
+    border-radius: var(--eat-radius-sm);
+    padding: 0.85rem 2.5rem;
+    transition: var(--eat-transition);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    text-decoration: none;
+}
+.btn-eat-tertiary:hover {
+    border-color: var(--eat-primary);
+    color: var(--eat-primary);
+    background: transparent;
+}
+.btn-eat-tertiary:active {
+    transform: scale(0.97);
+}
+
+/* ── Danger（錯誤 / 刪除操作）──────────────────────── */
+.btn-eat-danger {
+    background: var(--eat-error-container);
+    color: var(--eat-error);
+    font-family: var(--font-label);
+    font-size: 0.8rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: var(--eat-radius-sm);
+    padding: 0.85rem 2.5rem;
+    transition: var(--eat-transition);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    text-decoration: none;
+}
+.btn-eat-danger:hover {
+    filter: brightness(1.15);
+    color: var(--eat-error);
+}
+
+/* ── Cart（加入購物車，卡片全寬版）─────────────────── */
+.btn-eat-cart {
+    width: 100%;
+    background: linear-gradient(
+        135deg,
+        var(--eat-primary) 0%,
+        var(--eat-primary-container) 100%
+    );
+    color: var(--eat-on-primary);
+    font-family: var(--font-label);
+    font-size: 0.78rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    border: none;
+    border-radius: var(--eat-radius-sm);
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: var(--eat-transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    box-shadow: 0 4px 16px rgba(227, 199, 107, 0.18);
+    text-decoration: none;
+}
+.btn-eat-cart:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 6px 24px rgba(227, 199, 107, 0.32);
+    color: var(--eat-on-primary);
+}
+.btn-eat-cart:active {
+    transform: scale(0.98);
+}
+
+/* ── Disabled（所有按鈕通用）───────────────────────── */
+.btn-eat-primary:disabled,
+.btn-eat-primary[disabled],
+.btn-eat-secondary:disabled,
+.btn-eat-secondary[disabled],
+.btn-eat-tertiary:disabled,
+.btn-eat-tertiary[disabled],
+.btn-eat-danger:disabled,
+.btn-eat-danger[disabled],
+.btn-eat-cart:disabled,
+.btn-eat-cart[disabled] {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+    filter: none;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ── Button 內嵌 Spinner 色系修正 ─────────────────── */
+/* primary 按鈕內的 spinner 用深色（底色為金色）        */
+.btn-eat-primary .spinner-border-eat {
+    border-color: rgba(59, 47, 0, 0.25);
+    border-top-color: var(--eat-on-primary);
+}
+/* secondary 按鈕內的 spinner 用金色                   */
+.btn-eat-secondary .spinner-border-eat {
+    border-color: rgba(227, 199, 107, 0.2);
+    border-top-color: var(--eat-primary);
+}

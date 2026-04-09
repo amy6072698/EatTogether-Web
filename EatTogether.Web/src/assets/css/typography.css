@@ -1,0 +1,87 @@
+/* =====================================================
+   義起吃 EatTogether — Typography
+   ===================================================== */
+
+/* ── Display（Hero 大標）────────────────────────────── */
+.eat-display {
+    font-family: var(--font-headline);
+    font-size: clamp(3.5rem, 8vw, 6rem);
+    color: var(--eat-primary);
+    font-style: italic;
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+    text-shadow: 0 4px 32px rgba(227, 199, 107, 0.18);
+}
+
+/* ── H1（頁面主標）──────────────────────────────────── */
+.eat-h1 {
+    font-family: var(--font-headline);
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    color: var(--eat-primary);
+    font-style: italic;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+}
+
+/* ── H2（Section 標題）──────────────────────────────── */
+.eat-h2 {
+    font-family: var(--font-headline);
+    font-size: clamp(1.5rem, 3vw, 2.25rem);
+    color: var(--eat-primary);
+    font-style: italic;
+    line-height: 1.3;
+}
+
+/* ── H3（卡片標題、子區塊）──────────────────────────── */
+.eat-h3 {
+    font-family: var(--font-headline);
+    font-size: 1.5rem;
+    color: var(--eat-primary);
+    font-style: italic;
+    line-height: 1.4;
+}
+
+/* ── Body（一般內文）────────────────────────────────── */
+.eat-body {
+    font-family: var(--font-body);
+    font-size: 1rem;
+    color: var(--eat-on-surface);
+    line-height: 1.75;
+}
+
+/* ── Body Muted（次要說明文字，斜體）───────────────── */
+.eat-body-muted {
+    font-family: var(--font-body);
+    font-size: 1rem;
+    color: rgba(249, 221, 211, 0.65);
+    font-style: italic;
+    line-height: 1.75;
+}
+
+/* ── Label（小標籤、全大寫、間距字）───────────────── */
+.eat-label {
+    font-family: var(--font-label);
+    font-size: 0.8rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--eat-on-surface-variant);
+}
+
+/* ── Price（價格標示）──────────────────────────────── */
+.eat-price {
+    font-family: var(--font-label);
+    font-size: 0.875rem;
+    letter-spacing: 0.08em;
+    color: var(--eat-secondary);
+}
+
+/* ── 輔助色彩 class（搭配以上 class 使用）──────────── */
+.text-eat-primary {
+    color: var(--eat-primary);
+}
+.text-eat-secondary {
+    color: var(--eat-secondary);
+}
+.text-eat-muted {
+    color: rgba(208, 197, 181, 0.55);
+}

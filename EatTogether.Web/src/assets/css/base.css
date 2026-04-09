@@ -1,10 +1,72 @@
-/* Google Fonts  */
+/* =====================================================
+   義起吃 EatTogether — Base / Reset
+   ===================================================== */
+
+/* ── Google Fonts 引入 ──────────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Newsreader:ital,wght@0,400;0,600;1,400&family=Work+Sans:wght@300;400&display=swap');
 
-/* 全域基礎樣式 */
+/* ── Box Model ──────────────────────────────────────── */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+/* ── Body ───────────────────────────────────────────── */
 body {
-  background-color: var(--eat-surface);
-  color: var(--eat-on-surface);
-  font-family: var(--font-body);
-  -webkit-font-smoothing: antialiased;
+    padding-top: 80px; /* 配合 navbar 高度 */
+    background-color: var(--eat-surface);
+    color: var(--eat-on-surface);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── 標題重設（Bootstrap 預設會改色，統一交給 .eat-* class 控制）── */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-headline);
+    color: var(--eat-on-surface);
+    margin-bottom: 0.5rem;
+}
+
+/* ── 連結 ────────────────────────────────────────────── */
+a {
+    color: var(--eat-primary);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+a:hover {
+    color: var(--eat-primary-fixed);
+}
+
+/* ── 圖片 ────────────────────────────────────────────── */
+img {
+    max-width: 100%;
+    display: block;
+}
+
+/* ── 滾軸樣式（Webkit）──────────────────────────────── */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: var(--eat-surface-low);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--eat-outline-variant);
+    border-radius: var(--eat-radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--eat-outline);
+}
+
+/* ── 選取文字顏色 ────────────────────────────────────── */
+::selection {
+    background: rgba(227, 199, 107, 0.25);
+    color: var(--eat-primary-fixed);
 }
