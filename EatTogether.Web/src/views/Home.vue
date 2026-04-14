@@ -117,7 +117,7 @@
                     <div
                         class="swiper-slide"
                         v-for="dish in dishes"
-                        :key="dish.name"
+                        :key="dish.id"
                     >
                         <div class="card-eat">
                             <div class="card-img-wrap">
@@ -149,14 +149,6 @@
                                     >
                                 </div>
                                 <p class="card-text">{{ dish.desc }}</p>
-                            </div>
-                            <div class="card-footer-action">
-                                <button
-                                    class="btn-eat-cart"
-                                    @click="handleAddToCart(dish.name)"
-                                >
-                                    加入購物車
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -208,7 +200,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { RouterLink } from 'vue-router'
 import Swiper from 'swiper'
 import { Navigation, Pagination } from 'swiper/modules'
@@ -218,50 +210,95 @@ import Button from '@/components/Button.vue'
 
 // ── Hero 背景圖漸入 ──────────────────────────────────
 const heroBgLoaded = ref(false)
-onMounted(() => {
-    heroBgLoaded.value = true
-})
 
-// ── 餐點資料 ─────────────────────────────────────────
-const dishes = [
-    {
-        name: '黑松露手工細麵',
-        badge: '新品',
-        badgeStyle: '',
-        price: '680',
-        img: 'https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?w=600&q=80',
-        desc: '嚴選阿爾巴當季黑松露，搭配每日鮮製雞蛋手工麵，香氣濃郁迷人。',
-    },
-    {
-        name: '佛羅倫斯丁骨牛排',
-        badge: '微辣',
-        badgeStyle:
-            'background:rgba(147,0,10,0.25);border-color:rgba(255,180,171,0.3);color:var(--eat-error)',
-        price: '1,880',
-        img: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&q=80',
-        desc: '厚切 35 盎司 Prime 等級牛肉，炭烤鎖住肉汁，感受最狂野的義式經典。',
-    },
-    {
-        name: '經典威尼斯提拉米蘇',
-        badge: '蛋奶素',
-        badgeStyle:
-            'background:rgba(66,49,43,0.5);border-color:rgba(152,143,129,0.25);color:rgba(208,197,181,0.85)',
-        price: '320',
-        img: 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=600&q=80',
-        desc: '選用馬斯卡彭起司與濃縮咖啡酒浸潤的手指餅乾，入口即化的苦甜平衡。',
-    },
-    {
-        name: '海鮮番紅花燉飯',
-        badge: '新品',
-        badgeStyle: '',
-        price: '620',
-        img: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?w=600&q=80',
-        desc: '以珍貴番紅花染色的金黃米飯，盛載鮮蝦、扇貝與淡菜的海洋滋味。',
-    },
-]
+// ── 動態資料與 API 串接 ──────────────────────────────
+// 1. 準備一個空的陣列，等後台把資料倒進來
+const dishes = ref([])
+
+// 2. 去後台抓資料的函式
+async function fetchDishes() {
+    const API_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+    const endpoint = `${API_URL}/Dishes/GetAllJson`
+    const ORIGIN = 'https://localhost:7119'
+    
+    try {
+        const response = await fetch(endpoint)
+
+        if (!response.ok) {
+            throw new Error(`伺服器回應錯誤：${response.status} (路徑：${endpoint})`)
+        }
+
+        const data = await response.json()
+
+        // 分類過濾邏輯：每個分類只取前 3 筆，並保持原始順序
+        const filteredData = []
+        const categoryCount = {}
+        data.forEach(item => {
+            const cid = item.categoryId
+            if (!categoryCount[cid]) categoryCount[cid] = 0
+            if (categoryCount[cid] < 3) {
+                filteredData.push(item)
+                categoryCount[cid]++
+            }
+        })
+
+        // 對齊資料格式
+        dishes.value = filteredData.map((item, index) => {
+            if (index === 0) console.log('第一筆完整資料物件 (請檢查裡面的欄位名稱):', item);
+
+            // 1. 優先從回傳資料抓路徑 (嘗試不同可能的大小寫)
+            let rawPath = item.imageUrl || item.ImageUrl || item.imagePath || '';
+            
+            // 2. 如果都沒有路徑 (null)，嘗試用菜名匹配 (例如 images/菜名.jpg)
+            if (!rawPath && item.dishName) {
+                rawPath = `images/${item.dishName}.jpg`;
+            }
+
+            // 強化圖片路徑處理
+            let imgPath = rawPath.replace(/\\/g, '/').replace(/^~\//, '');
+            const wwwrootMatch = /\/wwwroot\/(.*)/i.exec('/' + imgPath);
+            if (wwwrootMatch && wwwrootMatch[1]) {
+                imgPath = wwwrootMatch[1];
+            }
+            imgPath = imgPath.replace(/^\//, '');
+            
+            const finalImg = imgPath 
+                ? `/api/${imgPath}` 
+                : 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80';
+
+            return {
+                id: item.id,
+                name: item.dishName,
+                price: item.price.toLocaleString(),
+                img: finalImg,
+                desc: '道地義式風味，主廚嚴選推薦。',
+                badge: item.price > 300 ? '熱銷' : '推薦'
+            };
+        })
+
+        await nextTick()
+        initSwiper()
+    } catch (error) {
+        console.error('抓取失敗：', error)
+        // 防呆機制：如果連不到後台，塞一筆提示資料讓畫面不空
+        dishes.value = [
+            {
+                id: 999,
+                name: '後台連線失敗',
+                price: '0',
+                img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80',
+                desc: `請檢查 API 路徑是否正確：${endpoint}`,
+                badge: '錯誤'
+            }
+        ]
+        await nextTick()
+        initSwiper()
+    }
+}
+    
 
 // ── Swiper 初始化 ─────────────────────────────────────
-onMounted(() => {
+function initSwiper() {
     new Swiper('.swiper-dishes', {
         modules: [Navigation, Pagination],
         slidesPerView: 1.15,
@@ -282,17 +319,13 @@ onMounted(() => {
             1200: { slidesPerView: 3, spaceBetween: 28 },
         },
     })
-})
-
-// ── 加入購物車 ────────────────────────────────────────
-// 接上 ToastContainer 的方式，視各組使用的 store 結構調整
-// 範例：import { useToastStore } from '@/stores/toast'
-//       const toast = useToastStore()
-//       toast.show({ title: '已加入購物車', message: `${name} 已成功加入購物車。` })
-function handleAddToCart(name) {
-    console.log(`已加入購物車：${name}`)
-    // TODO: 替換為 toast store 呼叫
 }
+
+// ── 生命週期：網頁載入時執行 ──────────────────────────
+onMounted(() => {
+    heroBgLoaded.value = true
+    fetchDishes() // 網頁一開，就去抓資料
+})
 </script>
 
 <style scoped>
