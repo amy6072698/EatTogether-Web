@@ -31,6 +31,10 @@
 
   <ItemGroup>
     <None Include="efpt.config.json.user" />
+    <Folder Include="Models\Services\" />
+    <Folder Include="Models\Repositories\" />
+  <ItemGroup>
+    <None Include="efpt.config.json.user" />
   </ItemGroup>
 
 </Project>
