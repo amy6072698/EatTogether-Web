@@ -20,6 +20,11 @@ const routes = [
     //     component: () => import("@/views/member/Member.vue"),
     //     meta: { requiresAuth: true },
     // },
+    {
+        path: "/menu",
+        name: "menu",
+        component: () => import("@/views/Menu.vue"),
+    },
 ];
 
 const router = createRouter({
