@@ -20,15 +20,20 @@ namespace EatTogether.API.Controllers
 		/// <summary>查看文章列表</summary>
 		// GET: api/News
 		[HttpGet]
-		public async Task<ActionResult<NewsPagedResultDto<NewsListDto>>> GetNewsList(int page = 1,
-	int pageSize = 10)  //預設每頁10筆，頁碼從1開始
+		public async Task<ActionResult<NewsPagedResultDto<NewsListDto>>> GetNewsList(int page = 1, int pageSize = 5,	string? categoryName = null)  
 		{
 			var now = DateTime.Now;
 
 			IQueryable<Article> query = _context.Articles
 				.Where(n => n.Status == 1 && n.PublishDate <= now); // 只顯示已發佈、日期已到發佈日期的文章
 
-			int totalCount = await query.CountAsync();   //計算總數量
+			//有傳分類才過濾
+			if (!string.IsNullOrEmpty(categoryName))
+			{
+				query = query.Where(n => n.Category.Name == categoryName);
+			}
+
+			int totalCount = await query.CountAsync();   //篩選後才算數量
 
 			List<NewsListDto> newsList = await query
 				.OrderByDescending(n => n.IsPinned)
