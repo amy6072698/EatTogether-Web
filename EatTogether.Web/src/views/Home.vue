@@ -206,7 +206,7 @@ import Swiper from 'swiper'
 import { Navigation, Pagination } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/pagination'
-import Button from '@/components/Button.vue'
+import Button from '@/components/common/Button.vue'
 
 // ── Hero 背景圖漸入 ──────────────────────────────────
 const heroBgLoaded = ref(false)
