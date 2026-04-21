@@ -140,14 +140,7 @@
                                 </button>
                             </div>
                             <div class="card-body">
-                                <div
-                                    class="d-flex justify-content-between align-items-start"
-                                >
-                                    <h3 class="card-title">{{ dish.name }}</h3>
-                                    <span class="card-price"
-                                        >NT$ {{ dish.price }}</span
-                                    >
-                                </div>
+                                <h3 class="card-title">{{ dish.name }}</h3>
                                 <p class="card-text">{{ dish.desc }}</p>
                             </div>
                         </div>
@@ -200,12 +193,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { RouterLink } from 'vue-router'
 import Swiper from 'swiper'
-import { Navigation, Pagination } from 'swiper/modules'
+import { Navigation, Pagination, Autoplay, EffectCoverflow } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/pagination'
+import 'swiper/css/effect-coverflow'
 import Button from '@/components/Button.vue'
 
 // ── Hero 背景圖漸入 ──────────────────────────────────
@@ -214,11 +208,12 @@ const heroBgLoaded = ref(false)
 // ── 動態資料與 API 串接 ──────────────────────────────
 // 1. 準備一個空的陣列，等後台把資料倒進來
 const dishes = ref([])
+let _refreshTimer = null
 
 // 2. 去後台抓資料的函式
 async function fetchDishes() {
     const API_URL = import.meta.env.VITE_API_BASE_URL || '/api'
-    const endpoint = `${API_URL}/Dishes/GetAllJson`
+    const endpoint = `${API_URL}/Dishes/active`
     const ORIGIN = 'https://localhost:7119'
     
     try {
@@ -243,56 +238,62 @@ async function fetchDishes() {
         })
 
         // 對齊資料格式
+        const isFirstLoad = dishes.value.length === 0
+
         dishes.value = filteredData.map((item, index) => {
             if (index === 0) console.log('第一筆完整資料物件 (請檢查裡面的欄位名稱):', item);
 
-            // 1. 優先從回傳資料抓路徑 (嘗試不同可能的大小寫)
-            let rawPath = item.imageUrl || item.ImageUrl || item.imagePath || '';
-            
-            // 2. 如果都沒有路徑 (null)，嘗試用菜名匹配 (例如 images/菜名.jpg)
-            if (!rawPath && item.dishName) {
-                rawPath = `images/${item.dishName}.jpg`;
-            }
-
-            // 強化圖片路徑處理
-            let imgPath = rawPath.replace(/\\/g, '/').replace(/^~\//, '');
-            const wwwrootMatch = /\/wwwroot\/(.*)/i.exec('/' + imgPath);
-            if (wwwrootMatch && wwwrootMatch[1]) {
-                imgPath = wwwrootMatch[1];
-            }
-            imgPath = imgPath.replace(/^\//, '');
-            
-            const finalImg = imgPath 
-                ? `/api/${imgPath}` 
+            const rawPath = item.imageUrl || item.ImageUrl || '';
+            const finalImg = rawPath.startsWith('/images/')
+                ? rawPath
                 : 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80';
+
+            let badge = null
+            let badgeStyle = {}
+            if (item.isRecommended) {
+                badge = '推薦'
+                badgeStyle = { background: 'rgba(212,175,55,0.22)', borderColor: 'rgba(212,175,55,0.55)', color: '#e3c76b' }
+            } else if (item.isPopular) {
+                badge = '人氣'
+                badgeStyle = { background: 'rgba(210,100,30,0.22)', borderColor: 'rgba(210,100,30,0.55)', color: '#e8854a' }
+            } else if (item.isLimited) {
+                badge = '限定'
+                badgeStyle = {}
+            }
 
             return {
                 id: item.id,
                 name: item.dishName,
                 price: item.price.toLocaleString(),
                 img: finalImg,
-                desc: '道地義式風味，主廚嚴選推薦。',
-                badge: item.price > 300 ? '熱銷' : '推薦'
+                desc: item.description || '道地義式風味，主廚嚴選推薦。',
+                badge,
+                badgeStyle
             };
         })
 
-        await nextTick()
-        initSwiper()
+        // 首次載入才初始化 Swiper；背景輪詢只更新資料，不重建輪播
+        if (isFirstLoad) {
+            await nextTick()
+            initSwiper()
+        }
     } catch (error) {
         console.error('抓取失敗：', error)
-        // 防呆機制：如果連不到後台，塞一筆提示資料讓畫面不空
-        dishes.value = [
-            {
-                id: 999,
-                name: '後台連線失敗',
-                price: '0',
-                img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80',
-                desc: `請檢查 API 路徑是否正確：${endpoint}`,
-                badge: '錯誤'
-            }
-        ]
-        await nextTick()
-        initSwiper()
+        // 防呆機制：僅首次失敗時塞提示資料，背景輪詢失敗則保留現有畫面
+        if (dishes.value.length === 0) {
+            dishes.value = [
+                {
+                    id: 999,
+                    name: '後台連線失敗',
+                    price: '0',
+                    img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80',
+                    desc: `請檢查 API 路徑是否正確：${endpoint}`,
+                    badge: '錯誤'
+                }
+            ]
+            await nextTick()
+            initSwiper()
+        }
     }
 }
     
@@ -300,10 +301,23 @@ async function fetchDishes() {
 // ── Swiper 初始化 ─────────────────────────────────────
 function initSwiper() {
     new Swiper('.swiper-dishes', {
-        modules: [Navigation, Pagination],
-        slidesPerView: 1.15,
-        spaceBetween: 20,
+        modules: [Navigation, Pagination, Autoplay, EffectCoverflow],
+        effect: 'coverflow',
         grabCursor: true,
+        centeredSlides: true,
+        slidesPerView: 'auto',
+        coverflowEffect: {
+            rotate: 0,
+            stretch: 0,
+            depth: 100,
+            modifier: 2.5,
+            slideShadows: false,
+        },
+        autoplay: {
+            delay: 3000,
+            disableOnInteraction: false,
+        },
+        loop: true,
         pagination: {
             el: '.swiper-pagination',
             clickable: true,
@@ -312,12 +326,6 @@ function initSwiper() {
             prevEl: '#dishesPrev',
             nextEl: '#dishesNext',
         },
-        breakpoints: {
-            576: { slidesPerView: 1.5, spaceBetween: 20 },
-            768: { slidesPerView: 2, spaceBetween: 24 },
-            992: { slidesPerView: 2.5, spaceBetween: 24 },
-            1200: { slidesPerView: 3, spaceBetween: 28 },
-        },
     })
 }
 
@@ -325,6 +333,10 @@ function initSwiper() {
 onMounted(() => {
     heroBgLoaded.value = true
     fetchDishes() // 網頁一開，就去抓資料
+    _refreshTimer = setInterval(fetchDishes, 5_000)
+})
+onUnmounted(() => {
+    clearInterval(_refreshTimer)
 })
 </script>
 
@@ -541,16 +553,17 @@ onMounted(() => {
     height: auto;
 }
 :deep(.swiper-pagination-bullet) {
-    background: rgba(208, 197, 181, 0.2);
+    background: rgba(208, 197, 181, 0.3);
     opacity: 1;
-    width: 22px;
-    height: 2px;
-    border-radius: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
     transition: var(--eat-transition);
 }
 :deep(.swiper-pagination-bullet-active) {
     background: var(--eat-primary);
-    width: 36px;
+    width: 8px;
+    height: 8px;
 }
 .swiper-nav-wrap {
     display: flex;
@@ -583,20 +596,28 @@ onMounted(() => {
 
 /* Dish Card */
 .card-eat {
-    background: var(--eat-surface-high);
+    background: transparent;
     border: none;
     border-radius: var(--eat-radius);
-    overflow: hidden;
+    overflow: visible;
     transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
     height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 1rem;
 }
 .card-eat:hover {
     transform: translateY(-8px);
 }
 .card-img-wrap {
     position: relative;
-    height: 280px;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
     overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid rgba(227, 199, 107, 0.3);
 }
 .card-img-wrap img {
     width: 100%;
@@ -605,7 +626,7 @@ onMounted(() => {
     transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .card-eat:hover .card-img-wrap img {
-    transform: scale(1.08);
+    transform: scale(1.12);
 }
 .card-img-overlay-gradient {
     position: absolute;
@@ -648,30 +669,31 @@ onMounted(() => {
     color: var(--eat-primary);
 }
 .card-body {
-    padding: 1.75rem 2rem;
-    background: var(--eat-surface-high);
+    padding: 1.25rem 1.5rem;
+    background: transparent;
+    text-align: center;
 }
 .card-title {
     font-family: var(--font-headline);
-    font-size: 1.35rem;
+    font-size: 1.6rem;
     color: var(--eat-primary);
     font-style: italic;
     margin-bottom: 0.25rem;
 }
 .card-price {
     font-family: var(--font-label);
-    font-size: 0.85rem;
+    font-size: 1rem;
     color: var(--eat-secondary);
     letter-spacing: 0.08em;
     white-space: nowrap;
 }
 .card-text {
     font-family: var(--font-body);
-    font-size: 0.9rem;
+    font-size: 1rem;
     color: rgba(249, 221, 211, 0.65);
     font-style: italic;
     line-height: 1.7;
-    margin-top: 0.75rem;
+    margin-top: 0.5rem;
     margin-bottom: 0;
 }
 .card-footer-action {

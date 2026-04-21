@@ -99,9 +99,6 @@
           class="dish-card"
           :class="{ 'is-soldout': dish.stockStatus === 2 }"
           @click="openModal(dish)"
-          @mousemove="handleMouseMove($event, dish.id)"
-          @mouseleave="handleMouseLeave(dish.id)"
-          :style="tiltStyles[dish.id]"
         >
           <div class="dish-img-wrap">
             <img
@@ -114,7 +111,7 @@
               <span>{{ dish.dishName.charAt(0) }}</span>
             </div>
             <div v-if="dish.stockStatus === 2" class="soldout-overlay">
-              <span class="soldout-text">售完</span>
+              <span class="soldout-text">已售完</span>
             </div>
             <button
               class="fav-btn"
@@ -125,7 +122,7 @@
               <span v-if="dish.isRecommended" class="badge badge-rec">推薦</span>
               <span v-if="dish.isPopular" class="badge badge-pop">熱銷</span>
               <span v-if="dish.isVegetarian" class="badge badge-veg">素食</span>
-              <span v-if="dish.stockStatus === 1" class="badge badge-low-stock">剩餘不多</span>
+              <span v-if="dish.stockStatus === 1" class="badge badge-low-stock">即將售完</span>
               <template v-if="dish.isLimited">
                 <span v-if="getCountdown(dish.endDate, dish.startDate) === '尚未供應'"
                   class="badge badge-pending">尚未供應</span>
@@ -416,25 +413,29 @@ const spicyLabel = (level) => {
 
 const formatImageUrl = (url) => {
   if (!url) return null;
-  let path = url.replace(/\\/g, '/').replace(/^~\//, '');
-  const match = /\/wwwroot\/(.*)/i.exec('/' + path);
-  if (match?.[1]) path = match[1];
-  path = path.replace(/^\//, '');
-  return `/api/${path}`;
+  return url.startsWith('/images/') ? url : null;
 };
 
 // ── API ──────────────────────────────────────────────
+let _refreshTimer = null;
+
 const fetchMenu = async () => {
-  loading.value = true;
-  error.value = null;
+  // 首次載入時才顯示 loading，背景輪詢時保留現有資料避免閃白
+  if (dishes.value.length === 0) {
+    loading.value = true;
+  }
   const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
   try {
-    const res = await fetch(`${API_BASE}/Dishes/GetActiveJson`);
+    const res = await fetch(`${API_BASE}/Dishes/active`);
     if (!res.ok) throw new Error(`抓取失敗 (${res.status})`);
     dishes.value = await res.json();
+    error.value = null;
   } catch (err) {
     console.error('Menu Fetch Error:', err);
-    error.value = '無法載入菜單資料，請確認 API 伺服器狀態。';
+    // 背景輪詢失敗時不覆蓋現有資料，只在首次失敗時顯示錯誤
+    if (dishes.value.length === 0) {
+      error.value = '無法載入菜單資料，請確認 API 伺服器狀態。';
+    }
   } finally {
     loading.value = false;
   }
@@ -476,7 +477,13 @@ const filteredDishes = computed(() => {
   }
 });
 
-onMounted(fetchMenu);
+onMounted(() => {
+  fetchMenu();
+  _refreshTimer = setInterval(fetchMenu, 5_000);
+});
+onUnmounted(() => {
+  clearInterval(_refreshTimer);
+});
 </script>
 
 <style scoped>
@@ -712,7 +719,6 @@ onMounted(fetchMenu);
   overflow: hidden;
   /* 3D 傾斜基礎；overflow:hidden 在部分瀏覽器會拍平 preserve-3d，
      但卡片自身的 rotateX/Y 不受影響，::after glare 以純 2D overlay 實現 */
-  transform-style: preserve-3d;
   will-change: transform;
   transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
               box-shadow 0.3s ease,
@@ -727,7 +733,16 @@ onMounted(fetchMenu);
   border-color: rgba(227, 199, 107, 0.2);
 }
 .dish-card.is-soldout {
-  opacity: 0.6;
+  opacity: 0.75;
+}
+.dish-card.is-soldout::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(30, 28, 26, 0.52);
+  border-radius: inherit;
+  z-index: 4;
+  pointer-events: none;
 }
 
 /* ── 售完遮罩 ── */
