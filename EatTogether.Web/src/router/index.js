@@ -25,6 +25,11 @@ const routes = [
         name: "menu",
         component: () => import("@/views/Menu.vue"),
     },
+    {
+        path: "/setmeal",
+        name: "SetMeal",
+        component: () => import("@/views/SetMeal.vue"),
+    },
 ];
 
 const router = createRouter({

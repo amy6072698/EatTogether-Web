@@ -28,4 +28,8 @@
     <Folder Include="Models\Repositories\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\EatTogether\EatTogether\EatTogether\EatTogether.csproj" />
+  </ItemGroup>
+
 </Project>
