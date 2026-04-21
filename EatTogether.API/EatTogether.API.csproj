@@ -24,7 +24,6 @@
     <Folder Include="Controllers\" />
     <Folder Include="Models\DTOs\" />
     <Folder Include="Models\Extensions\" />
-    <Folder Include="Models\Infra\" />
     <Folder Include="Models\ViewModels\" />
     <Folder Include="Models\Services\" />
     <Folder Include="Models\Repositories\" />
