@@ -1,6 +1,8 @@
 
 using EatTogether.API.Models.EfModels;
 using EatTogether.API.Models.Infra;
+using EatTogether.API.Models.EfModels;
+using EatTogether.API.Models.Infra;
 using EatTogether.Models.Repositories;
 using EatTogether.Models.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -94,6 +96,7 @@ namespace EatTogether.API
 			});
 
             // 註冊 DbContext
+            // 註冊 DbContext
             builder.Services.AddDbContext<EatTogetherDBContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -119,9 +122,6 @@ namespace EatTogether.API
             builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
             builder.Services.AddScoped<IPreOrderRepository, PreOrderRepository>();
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
-            builder.Services.AddScoped<IRoleFunctionRepository, RoleFunctionRepository>();
-            builder.Services.AddScoped<IRoleRepository, RoleRepository>();
-            builder.Services.AddScoped<IUserRepository, UserRepository>();
 			builder.Services.AddScoped<IMemberRepository, MemberRepository>();
 
             // 註冊Service
@@ -132,6 +132,12 @@ namespace EatTogether.API
 			// 結帳相關
 			builder.Services.AddMemoryCache();
 			builder.Services.AddHttpClient();
+			builder.Services.AddSingleton<EcPayService>();
+			builder.Services.AddScoped<IOrderService, OrderService>();
+			builder.Services.AddScoped<IReportService, ReportService>();
+			builder.Services.AddScoped<EventService>();
+			builder.Services.AddScoped<ArticleCategoryService>();
+			builder.Services.AddScoped<ArticleService>();
 
             // 前台寄信服務
             builder.Services.AddScoped<IEmailService, EmailService>();
