@@ -95,8 +95,8 @@ namespace EatTogether.API
 				options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 			});
 
-			// 註冊 DbContext
-			builder.Services.AddDbContext<EatTogetherDBContext>(options =>
+            // 註冊 DbContext
+            builder.Services.AddDbContext<EatTogetherDBContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             // 設定 Services
