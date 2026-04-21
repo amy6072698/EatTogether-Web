@@ -1,0 +1,121 @@
+﻿using System.Net;
+using System.Net.Mail;
+
+namespace EatTogether.API.Models.Infra
+{
+	public interface IEmailService
+	{
+		Task SendVerifyEmailAsync(string toEmail, string verifyUrl);
+		Task SendPasswordResetEmailAsync(string toEmail, string resetUrl);
+		Task SendSecurityNoticeAsync(string toEmail, string action);
+	}
+
+	public class EmailService : IEmailService
+	{
+		private readonly string _host;
+		private readonly int _port;
+		private readonly bool _enableSsl;
+		private readonly string _userName;
+		private readonly string _password;
+		private readonly string _fromName;
+		private readonly string _fromAddress;
+
+		public EmailService(IConfiguration configuration)
+		{
+			_host = configuration["Smtp:Host"]!;
+			_port = int.Parse(configuration["Smtp:Port"]!);
+			_enableSsl = bool.Parse(configuration["Smtp:EnableSsl"]!);
+			_userName = configuration["Smtp:UserName"]!;
+			_password = configuration["Smtp:Password"]!;
+			_fromName = configuration["Smtp:FromName"]!;
+			_fromAddress = configuration["Smtp:FromAddress"]!;
+		}
+
+		// 建立 SMTP 連線物件的私有方法
+		private SmtpClient BuildSmtpClient()
+		{
+			return new SmtpClient(_host, _port)
+			{
+				EnableSsl = _enableSsl,
+				Credentials = new NetworkCredential(_userName, _password)
+			};
+		}
+
+		// 建立郵件物件的私有方法，設定寄件人、主旨、HTML 內文、收件人
+		private MailMessage BuildMailMessage(string toEmail, string subject, string htmlBody)
+		{
+			var message = new MailMessage
+			{
+				From = new MailAddress(_fromAddress, _fromName),
+				Subject = subject,
+				Body = htmlBody,
+				IsBodyHtml = true // 設定郵件內容為 HTML 格式
+			};
+			message.To.Add(toEmail);
+			return message;
+		}
+
+		// 寄出 Email 驗證信
+		public async Task SendVerifyEmailAsync(string toEmail, string verifyUrl)
+		{
+			const string subject = "義起吃 - 請驗證您的 Email";
+			var body = $@"
+<div style=""font-family:sans-serif;max-width:600px;margin:auto;"">
+    <h2 style=""color:#c0392b;"">義起吃 | 義式料理</h2>
+    <p>您好，感謝您註冊義起吃！</p>
+    <p>請點擊下方按鈕完成 Email 驗證，連結有效期限為 24 小時：</p>
+    <a href=""{verifyUrl}""
+       style=""display:inline-block;padding:12px 24px;background:#c0392b;color:#fff;
+              text-decoration:none;border-radius:4px;margin:16px 0;"">
+        驗證我的 Email
+    </a>
+    <p style=""color:#888;font-size:13px;"">若您未曾註冊，請忽略此封信件。</p>
+</div>";
+
+			using var smtp = BuildSmtpClient();
+			using var message = BuildMailMessage(toEmail, subject, body);
+			await smtp.SendMailAsync(message);
+		}
+
+		// 寄出重設密碼通知信
+		public async Task SendPasswordResetEmailAsync(string toEmail, string resetUrl)
+		{
+			const string subject = "義起吃 - 重設密碼通知";
+			var body = $@"
+<div style=""font-family:sans-serif;max-width:600px;margin:auto;"">
+    <h2 style=""color:#c0392b;"">義起吃 | 義式料理</h2>
+    <p>您好，我們收到了您的密碼重設請求。</p>
+    <p>請點擊下方按鈕重設密碼，連結有效期限為 30 分鐘：</p>
+    <a href=""{resetUrl}""
+       style=""display:inline-block;padding:12px 24px;background:#c0392b;color:#fff;
+              text-decoration:none;border-radius:4px;margin:16px 0;"">
+        重設我的密碼
+    </a>
+    <p style=""color:#888;font-size:13px;"">若您並未提出此請求，請忽略此封信件，您的帳號密碼不會有任何變更。</p>
+</div>";
+
+			using var smtp = BuildSmtpClient();
+			using var message = BuildMailMessage(toEmail, subject, body);
+			await smtp.SendMailAsync(message);
+		}
+
+		// 寄出帳號安全通知信
+		public async Task SendSecurityNoticeAsync(string toEmail, string action)
+		{
+			const string subject = "義起吃 - 帳號安全通知";
+			var body = $@"
+<div style=""font-family:sans-serif;max-width:600px;margin:auto;"">
+    <h2 style=""color:#c0392b;"">義起吃 | 義式料理</h2>
+    <p>您好，您的帳號發生了以下安全事件：</p>
+    <p style=""padding:12px;background:#f9f9f9;border-left:4px solid #c0392b;"">
+        {action}
+    </p>
+    <p style=""color:#888;font-size:13px;"">若此操作並非您本人執行，請立即登入並修改密碼，或聯繫客服。</p>
+</div>";
+
+			using var smtp = BuildSmtpClient();
+			using var message = BuildMailMessage(toEmail, subject, body);
+			await smtp.SendMailAsync(message);
+		}
+	}
+}

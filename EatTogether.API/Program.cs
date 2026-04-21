@@ -1,4 +1,6 @@
 
+using EatTogether.API.Models.EfModels;
+using EatTogether.API.Models.Infra;
 using EatTogether.Models.EfModels;
 using EatTogether.Models.Infra;
 using EatTogether.Models.Repositories;
@@ -79,7 +81,7 @@ namespace EatTogether.API
                 options.RejectionStatusCode = 429; // Too Many Requests
 			});
 
-            // �w�w DbContext �w�w�w�w�w�w�w�w�w�w�w
+            // 註冊 DbContext
             builder.Services.AddDbContext<EatTogetherDBContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -147,6 +149,8 @@ namespace EatTogether.API
 			builder.Services.AddScoped<ArticleCategoryService>();
 			builder.Services.AddScoped<ArticleService>();
 
+            // 前台寄信服務
+            builder.Services.AddScoped<IEmailService, EmailService>();
 
 
 			// Add services to the container.
@@ -203,15 +207,15 @@ namespace EatTogether.API
             {
                 app.UseStaticFiles();
             }
-            app.UseCors("FrontendPolicy");   // ���ǡGCORS �� RateLimit �� Auth
-            app.UseRateLimiter();
+            app.UseCors("FrontendPolicy");   // 順序：CORS → RateLimit → Auth
+			app.UseRateLimiter();
             app.UseAuthentication();
 			app.UseAuthorization();
 
 
             app.MapControllers();
 
-            app.Run();
+            app.Run(); 
         }
     }
 }
