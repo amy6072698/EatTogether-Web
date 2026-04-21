@@ -25,6 +25,17 @@ const routes = [
         name: "menu",
         component: () => import("@/views/Menu.vue"),
     },
+    {
+        path: "/setmeal",
+        name: "SetMeal",
+        component: () => import("@/views/SetMeal.vue"),
+    },
+    {
+        path: "/In",
+        name: "DineIn",
+        component: () => import("@/views/Order/In.vue"),
+        meta: { hideChrome: true },
+    },
 ];
 
 const router = createRouter({

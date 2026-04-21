@@ -74,14 +74,3 @@
     letter-spacing: 0.08em;
     color: var(--eat-secondary);
 }
-
-/* ── 輔助色彩 class（搭配以上 class 使用）──────────── */
-.text-eat-primary {
-    color: var(--eat-primary);
-}
-.text-eat-secondary {
-    color: var(--eat-secondary);
-}
-.text-eat-muted {
-    color: rgba(208, 197, 181, 0.55);
-}
