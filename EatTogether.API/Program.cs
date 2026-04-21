@@ -1,8 +1,12 @@
-
-using EatTogether.API.Models.EfModels;
+ï»¿using EatTogether.Models.EfModels;
+using EatTogether.Models.Infra;
+using EatTogether.Models.Repositories;
+using EatTogether.Models.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -14,7 +18,7 @@ namespace EatTogether.API
         {
             var builder = WebApplication.CreateBuilder(args);
 
-			// ¢w¢w CORS ¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w 
+			// â”€â”€ CORS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ 
 			builder.Services.AddCors(options =>
             {
                 options.AddPolicy("FrontendPolicy", policy =>
@@ -27,7 +31,7 @@ namespace EatTogether.API
                 });
             });
 
-            // ¢w¢w JWT ÅçÃÒ ¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w
+            // â”€â”€ JWT é©—è­‰ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             var jwtKey = builder.Configuration["Jwt:SecretKey"]!;
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
@@ -41,10 +45,10 @@ namespace EatTogether.API
                         ValidIssuer = builder.Configuration["Jwt:Issuer"],
                         ValidAudience = builder.Configuration["Jwt:Audience"],
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-                        ClockSkew = TimeSpan.Zero  // Token ¨ì´Á®É¶¡¤£®e³\»~®t
+                        ClockSkew = TimeSpan.Zero  // Token åˆ°æœŸæ™‚é–“ä¸å®¹è¨±èª¤å·®
 					};
 
-                    // ±q HttpOnly Cookie Åª¨ú Token
+                    // å¾ HttpOnly Cookie è®€å– Token
                     options.Events = new JwtBearerEvents
                     {
                         OnMessageReceived = context =>
@@ -57,7 +61,7 @@ namespace EatTogether.API
 
             builder.Services.AddAuthorization();
 
-            // ¢w¢w Rate Limiting ¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w
+            // â”€â”€ Rate Limiting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             builder.Services.AddRateLimiter(options =>
             {
                 options.AddFixedWindowLimiter("auth", opt =>
@@ -76,28 +80,94 @@ namespace EatTogether.API
                 options.RejectionStatusCode = 429; // Too Many Requests
 			});
 
-            // ¢w¢w DbContext ¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w
+            // â”€â”€ DbContext â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             builder.Services.AddDbContext<EatTogetherDBContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            // ¢w¢w Services ¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w
+            // â”€â”€ Services â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             builder.Services.AddHttpContextAccessor();
-			//builder.Services.AddScoped<ITokenService, TokenService>();
-			//builder.Services.AddScoped<IAuthService, AuthService>();
-			//builder.Services.AddScoped<IMemberService, MemberService>();
+            //builder.Services.AddScoped<ITokenService, TokenService>();
+            //builder.Services.AddScoped<IAuthService, AuthService>();
+            //builder.Services.AddScoped<IMemberService, MemberService>();
 
-			// ¢w¢w 6. Repositories ¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w
-			//builder.Services.AddScoped<IAuthRepository, AuthRepository>();
-			//builder.Services.AddScoped<IMemberRepository, MemberRepository>();
-			//builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+            // â”€â”€ 6. Repositories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            //builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+            //builder.Services.AddScoped<IMemberRepository, MemberRepository>();
+            //builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
+            // è¨»å†ŠRepository
+            builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+            builder.Services.AddScoped<IDishRepository, DishRepository>();
+            builder.Services.AddScoped<ISetMealRepository, SetMealRepository>();
+            builder.Services.AddScoped<IProductRepository, ProductRepository>();
+            builder.Services.AddScoped<ITableRepository, TableRepository>();
+            builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
+            builder.Services.AddScoped<ICouponRepository, CouponRepository>();
+            builder.Services.AddScoped<IMemberCouponRepository, MemberCouponRepository>();
+            builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+            builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+            builder.Services.AddScoped<IFunctionRepository, FunctionRepository>();
+            builder.Services.AddScoped<IRoleFunctionRepository, RoleFunctionRepository>();
+            builder.Services.AddScoped<IMemberRepository, MemberRepository>();
+            builder.Services.AddScoped<IPreOrderRepository, PreOrderRepository>();
+            builder.Services.AddScoped<IProductRepository, ProductRepository>();
+            builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+            builder.Services.AddScoped<IReportRepository, ReportRepository>();
+            builder.Services.AddScoped<IEventRepository, EventRepository>();
+            builder.Services.AddScoped<IArticleCategoryRepository, ArticleCategoryRepository>();
+            builder.Services.AddScoped<IArticleRepository, ArticleRepository>();
+
+            // è¨»å†ŠService
+            builder.Services.AddScoped<CategoryService>();
+            builder.Services.AddScoped<DishService>();
+            builder.Services.AddScoped<SetMealService>();
+            builder.Services.AddScoped<ProductService>();
+            builder.Services.AddScoped<TableService>();
+            builder.Services.AddScoped<ReservationService>();
+            builder.Services.AddScoped<CouponService>();
+            builder.Services.AddScoped<ReservationEmailService>();
+            builder.Services.AddScoped<BirthdayCouponService>();
+            builder.Services.AddHostedService<BirthdayCouponBackgroundService>();
+            builder.Services.AddHostedService<CouponNotifyBackgroundService>();
+            builder.Services.AddSingleton<DishSchedulerService>();
+            builder.Services.AddHostedService(sp => sp.GetRequiredService<DishSchedulerService>());
+            builder.Services.AddScoped<IAuthService, AuthService>();
+            // ğŸ’¡ è¨»å†Šä½¿ç”¨è€…ç·¨è™Ÿç”¢ç”Ÿå™¨ï¼Œè§£æ±º UserService ç„¡æ³•å•Ÿå‹•çš„å•é¡Œ
+            builder.Services.AddScoped<UserNumberGenerator>();
+            builder.Services.AddScoped<IUserService, UserService>();
+            builder.Services.AddScoped<IRoleService, RoleService>();
+            builder.Services.AddScoped<IMemberService, MemberService>();
+            builder.Services.AddScoped<IPasswordResetEmailService, PasswordResetEmailService>();
+            // çµå¸³ç›¸é—œ
+            builder.Services.AddMemoryCache();
+            builder.Services.AddHttpClient();
+            builder.Services.AddSingleton<EcPayService>();
+            builder.Services.AddScoped<IOrderService, OrderService>();
+            builder.Services.AddScoped<IReportService, ReportService>();
+            builder.Services.AddScoped<EventService>();
+            builder.Services.AddScoped<ArticleCategoryService>();
+            builder.Services.AddScoped<ArticleService>();
 
 
-			// Add services to the container.
+            // Add services to the container.
 
-			builder.Services.AddControllers();
+            builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            // --- åŠ å…¥ä»¥ä¸‹é€™æ®µ ---
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.WithOrigins("http://localhost:5173") // ğŸ’¡ å¡«å¯«ä½ å‰ç«¯çš„ç¶²å€
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
+                });
+            });
+            // ------------------
 
             var app = builder.Build();
 
@@ -108,11 +178,25 @@ namespace EatTogether.API
                 app.UseSwaggerUI();
             }
 
+            // ğŸ’¡ å¿…é ˆæ”¾åœ¨ UseRouting ä¹‹å¾Œï¼ŒMapControllers ä¹‹å‰
+            app.UseCors("AllowAll");
+
             app.UseHttpsRedirection();
-            app.UseCors("FrontendPolicy");   // ¶¶§Ç¡GCORS ¡÷ RateLimit ¡÷ Auth
+            app.UseCors("FrontendPolicy");   // é †åºï¼šCORS â†’ RateLimit â†’ Auth
             app.UseRateLimiter();
             app.UseAuthentication();
 			app.UseAuthorization();
+
+            // â”€â”€ éœæ…‹åœ–ç‰‡ï¼ˆå¾ MVC å°ˆæ¡ˆ wwwroot ç›®éŒ„ serveï¼‰ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            var mvcWwwroot = builder.Configuration["MvcWwwroot"];
+            if (!string.IsNullOrEmpty(mvcWwwroot) && Directory.Exists(mvcWwwroot))
+            {
+                app.UseStaticFiles(new StaticFileOptions
+                {
+                    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(mvcWwwroot),
+                    RequestPath  = ""
+                });
+            }
 
 
             app.MapControllers();

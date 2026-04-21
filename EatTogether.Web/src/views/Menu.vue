@@ -420,7 +420,7 @@ const formatImageUrl = (url) => {
   const match = /\/wwwroot\/(.*)/i.exec('/' + path);
   if (match?.[1]) path = match[1];
   path = path.replace(/^\//, '');
-  return `/api/${path}`;
+  return `/${path}`;
 };
 
 // ── API ──────────────────────────────────────────────
