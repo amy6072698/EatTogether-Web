@@ -29,6 +29,11 @@
     background-color: var(--eat-surface-bright);
 }
 
+/* 文字顏色 */
+.text-eat-primary   { color: var(--eat-primary); }
+.text-eat-secondary { color: var(--eat-secondary); }
+.text-eat-muted     { color: rgba(208,197,181,0.55); }
+
 /* ── Feather Divider（羽毛紋分隔線）────────────────── */
 /* 用法：<div class="feather-divider"></div>            */
 /* 在深色 container 內用：加上 .on-container            */
