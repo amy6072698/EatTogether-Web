@@ -117,7 +117,7 @@ namespace EatTogether.API
 
             app.MapControllers();
 
-            app.Run();
+            app.Run(); 
         }
     }
 }
