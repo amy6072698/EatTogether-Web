@@ -1,6 +1,6 @@
 ﻿namespace EatTogether.API.Models.Infra
 {
-	public class HashUtility
+	public static class HashUtility
 	{
 		// 純 Google 帳號在資料庫 Members.HashedPassword 欄位儲存此佔位字串，代表「此帳號沒有一般密碼」
 		public const string EXTERNAL_LOGIN_NO_PASSWORD = "EXTERNAL_LOGIN_NO_PASSWORD";
