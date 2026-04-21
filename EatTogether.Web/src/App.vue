@@ -1,13 +1,10 @@
 <template>
-    <Navbar v-if="!route.meta.hideChrome" />
+    <Navbar />
     <RouterView />
-    <Footer v-if="!route.meta.hideChrome" />
+    <Footer />
 </template>
 
 <script setup>
-import { useRoute } from 'vue-router';
-import Navbar from "@/components/Navbar.vue";
-import Footer from "@/components/Footer.vue";
-
-const route = useRoute();
+import Navbar from "@/components/common/Navbar.vue";
+import Footer from "@/components/common/Footer.vue";
 </script>

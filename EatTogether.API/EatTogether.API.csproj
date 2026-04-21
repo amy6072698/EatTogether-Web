@@ -22,4 +22,8 @@
     <ProjectReference Include="..\..\..\期末專題\EatTogether\EatTogether\EatTogether.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\EatTogether\EatTogether\EatTogether\EatTogether.csproj" />
+  </ItemGroup>
+
 </Project>

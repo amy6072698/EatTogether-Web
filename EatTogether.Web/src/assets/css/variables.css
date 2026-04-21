@@ -67,4 +67,12 @@
     --bs-link-hover-color: var(--eat-primary-fixed);
     --bs-primary: var(--eat-primary);
     --bs-primary-rgb: 227, 199, 107;
+
+    /* VueDatePicker 樣式整合 */
+    --dp-background-color: var(--eat-surface-high);
+    --dp-text-color: var(--eat-on-surface);
+    --dp-primary-color: var(--eat-primary);
+    --dp-border-color: var(--eat-outline-variant);
+    --dp-border-radius: var(--eat-radius-lg);
+    --dp-font-family: var(--font-body);
 }

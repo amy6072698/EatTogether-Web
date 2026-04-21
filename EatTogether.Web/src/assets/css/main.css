@@ -3,15 +3,17 @@
    Design System: "The Candlelit Manuscript"
    =====================================================
    引入順序很重要：
-   1. variables  — 定義所有 token，其他檔案都依賴它
-   2. base       — 全域 reset / body
-   3. typography — 標題、內文 class
-   4. buttons    — 按鈕 class
-   5. badges     — badge、chip class
-   6. utilities  — 背景色、分隔線等 helper
-   7. animations — keyframes、spinner
+   1. Google Fonts — 字體載入（最先引入）
+   2. variables  — 定義所有 token，其他檔案都依賴它
+   3. base       — 全域 reset / body
+   4. typography — 標題、內文 class
+   5. buttons    — 按鈕 class
+   6. badges     — badge、chip class
+   7. utilities  — 背景色、分隔線等 helper
+   8. animations — keyframes、spinner
    ===================================================== */
 
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Newsreader:ital,wght@0,400;0,600;1,400&family=Work+Sans:wght@300;400&display=swap');
 @import './variables.css';
 @import './base.css';
 @import './typography.css';

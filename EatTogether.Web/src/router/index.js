@@ -26,10 +26,9 @@ const routes = [
         component: () => import("@/views/Menu.vue"),
     },
     {
-        path: "/In",
-        name: "DineIn",
-        component: () => import("@/views/Order/In.vue"),
-        meta: { hideChrome: true },
+        path: "/setmeal",
+        name: "SetMeal",
+        component: () => import("@/views/SetMeal.vue"),
     },
 ];
 
