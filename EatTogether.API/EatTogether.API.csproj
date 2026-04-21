@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
+    <PackageReference Include="Google.Apis.Auth" Version="1.73.0" />
     <PackageReference Include="MailKit" Version="4.16.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.25" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
@@ -19,11 +20,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\期末專題\EatTogether\EatTogether\EatTogether.csproj" />
+    <Folder Include="Controllers\" />
+    <Folder Include="Models\DTOs\" />
+    <Folder Include="Models\Extensions\" />
+    <Folder Include="Models\Infra\" />
+    <Folder Include="Models\ViewModels\" />
+    <Folder Include="Models\Services\" />
+    <Folder Include="Models\Repositories\" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\EatTogether\EatTogether\EatTogether\EatTogether.csproj" />
+    <None Include="efpt.config.json.user" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="efpt.config.json.user" />
   </ItemGroup>
 
 </Project>
