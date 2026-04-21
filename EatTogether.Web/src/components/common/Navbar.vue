@@ -71,6 +71,7 @@ const navLinks = [
   { label: '訂位',   to: '/reservation' },
   { label: '會員',   to: '/member' },
   { label: '外帶點餐', to: '/takeout' },
+  { label: '內用', to: '/In' },
 ]
 
 // 判斷目前路由是否 active（首頁特別處理）

@@ -1,0 +1,1447 @@
+<template>
+  <div class="root-wrap">
+
+    <!-- ══ 全寬頂部 Header ══ -->
+    <header class="dine-header">
+      <!-- 左：品牌 -->
+      <div class="dh-brand">
+        <p class="font-label dh-sub">內用點餐</p>
+        <h1 class="font-headline dh-title">今日菜單</h1>
+      </div>
+
+      <!-- 中：桌號 + 用餐人數 -->
+      <div class="dh-center">
+        <div class="dh-group">
+          <span class="dh-label">桌號</span>
+          <select v-model="tableId" class="table-id-select font-headline dh-select">
+            <option value="" disabled>請選擇</option>
+            <option v-for="t in tables" :key="t.id" :value="t.id">{{ t.tableName }}</option>
+          </select>
+        </div>
+        <div class="dh-divider"></div>
+        <div class="dh-group">
+          <span class="dh-label">用餐人數</span>
+          <button @click="store.pax = Math.max(1, store.pax - 1)" class="qty-btn dh-qty-btn">−</button>
+          <input
+            type="number"
+            class="font-label dh-qty-num"
+            :value="store.pax"
+            min="1"
+            max="99"
+            @change="store.pax = Math.max(1, Math.min(99, parseInt($event.target.value) || 1))"
+          />
+          <button @click="store.pax++" class="qty-btn dh-qty-btn">+</button>
+        </div>
+      </div>
+
+      <!-- 右：會員 -->
+      <div class="dh-member">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" style="color:rgba(208,197,181,0.45);flex-shrink:0;" viewBox="0 0 16 16"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.03 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>
+        <div class="dh-member-text">
+          <span class="dh-member-label">會員</span>
+          <span class="dh-member-name">{{ memberName }}</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ══ 手機分類捲動列 ══ -->
+    <header class="mobile-header">
+      <nav class="mobile-cat-tabs">
+        <button
+          v-for="cat in sidebarCategories"
+          :key="cat.key"
+          @click="scrollToSection(cat.key)"
+          :class="['mobile-cat-btn', { active: activeSidebarCat === cat.key }]"
+        >{{ cat.key === '今日推薦' ? '今日推薦' : cat.key === '主廚特選' ? '主廚特選' : cat.label }}<span class="cat-badge">{{ cat.count }}</span></button>
+      </nav>
+    </header>
+
+    <div class="page-layout">
+
+      <!-- ── LEFT Sidebar（桌機） ── -->
+      <aside class="sidebar-left flex flex-col">
+        <div class="px-4 py-4" style="border-bottom:1px solid rgba(77,70,58,0.2)">
+          <div class="relative w-full gap-1" style="display: flex; align-items: center;">
+            <svg class="absolute left-4 top-1/2 -translate-y-1/2" style="color:rgba(208,197,181,0.4)" xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>
+            <input v-model="searchQuery" type="text" class="input-line w-full" style="padding-left: 0.8rem;font-size:0.85rem;" placeholder="搜尋料理名稱…"/>
+          </div>
+        </div>
+        <nav class="flex-1 py-3 overflow-y-auto">
+          <template v-for="(cat, idx) in sidebarCategories" :key="cat.key">
+            <!-- 特殊分類(今日推薦/主廚特選)與一般分類(全部/套餐…)之間的分隔線 -->
+            <div
+              v-if="idx > 0 && !['今日推薦','主廚特選'].includes(cat.key) && ['今日推薦','主廚特選'].includes(sidebarCategories[idx-1].key)"
+              class="cat-divider"
+            ></div>
+            <button
+              @click="scrollToSection(cat.key)"
+              :class="['cat-link w-full text-left',
+                { active: activeSidebarCat === cat.key },
+                { 'cat-special': ['今日推薦','主廚特選'].includes(cat.key) }
+              ]"
+            >
+              <span>{{
+                cat.key === '今日推薦' ? '今日推薦' :
+                cat.key === '主廚特選' ? '主廚特選' :
+                cat.label
+              }}</span>
+              <span class="cat-count">{{ cat.count }}</span>
+            </button>
+          </template>
+        </nav>
+      </aside>
+
+      <!-- ── CENTRE: Menu ── -->
+      <main class="menu-main min-w-0" id="menuMain">
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <div class="mobile-search-wrap">
+            <svg style="color:rgba(208,197,181,0.4);flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>
+            <input v-model="searchQuery" type="text" class="input-line" style="font-size:0.85rem;" placeholder="搜尋料理名稱…"/>
+          </div>
+          <div class="toolbar-row">
+            <div class="chips-wrap">
+              <span class="chip-label">篩選條件：</span>
+              <button @click="toggleChip('veg')"   :class="['chip-btn', { active: activeChip === 'veg' }]">素食</button>
+              <button @click="toggleChip('spicy')" :class="['chip-btn', { active: activeChip === 'spicy' }]">辣味</button>
+            </div>
+            <div class="view-toggle">
+              <button @click="curView = 'list'" :class="['view-btn', { active: curView === 'list' }]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>
+              </button>
+              <button @click="curView = 'grid'" :class="['view-btn', { active: curView === 'grid' }]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm8 0A1.5 1.5 0 0 1 10.5 9h3A1.5 1.5 0 0 1 15 10.5v3A1.5 1.5 0 0 1 13.5 15h-3A1.5 1.5 0 0 1 9 13.5v-3z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="loading" class="status-msg">菜單載入中…</div>
+        <div v-else-if="loadError" class="status-msg" style="color:#ffb4ab;">{{ loadError }}</div>
+
+        <div v-else class="menu-sections">
+          <template v-for="section in displaySections" :key="section.key">
+            <div v-show="section.dishes.length > 0" :id="'sec-' + section.key">
+              <h2 class="section-title">{{ section.label }}</h2>
+              <div class="dishes-wrap" :class="{ 'grid-view': curView === 'grid' }">
+                <div
+                  v-for="dish in section.dishes"
+                  :key="dish.productId"
+                  class="dish-row mb-3 overflow-hidden"
+                  :class="{ 'dish-row-grid': curView === 'grid' }"
+                  @click="openDetail(dish)"
+                >
+                  <img
+                    v-if="dish.imageUrl"
+                    class="dish-img"
+                    :src="resolveImage(dish.imageUrl)"
+                    :alt="dish.productName"
+                    @error="onImgError"
+                  />
+                  <div class="dish-img dish-img-placeholder" :style="dish.imageUrl ? 'display:none' : 'display:flex'">🍽️</div>
+                  <div class="dish-content min-w-0" :class="{ 'dish-content-grid': curView === 'grid' }">
+                    <!-- 餐點名稱 -->
+                    <h3 class="font-headline dish-name italic mt-1" style="color:#e3c76b">{{ dish.productName }}</h3>
+                    <!-- 描述 -->
+                    <p class="font-body text-xs italic leading-relaxed" style="color:rgba(249,221,211,0.5)">{{ dish.description }}</p>
+                    <!-- 列表視圖：badge + 價格 & 按鈕並排 -->
+                    <template v-if="curView !== 'grid'">
+                      <div class="dish-badges">
+                        <span v-if="dish.isRecommended" class="badge badge-new">推薦</span>
+                        <span v-if="dish.isPopular"     class="badge badge-chef">主廚特選</span>
+                        <span v-if="dish.isVegetarian"  class="badge badge-veg">素</span>
+                        <span v-if="dish.spicyLevel > 0" class="badge badge-spicy">辣</span>
+                      </div>
+                      <!-- 價格 ＋ 數量按鈕同一列 -->
+                      <div class="list-footer" @click.stop="">
+                        <p class="font-label text-xs tracking-wider" style="color:#d5b478">NT$ {{ dish.unitPrice?.toLocaleString() }}</p>
+                        <div class="qty-col">
+                          <button class="qty-btn" @click.stop="handleRemove(dish)">−</button>
+                          <span class="font-label text-xs qty-num" :class="{ active: (store.cart[dish.productId] || 0) > 0 }" style="font-size:20px;">{{ store.cart[dish.productId] || 0 }}</span>
+                          <button class="qty-btn" @click.stop="handleAdd(dish)">+</button>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                  <!-- 網格視圖：badge → 價格 → 按鈕，全部固定在底部置中 -->
+                  <div v-if="curView === 'grid'" class="grid-footer" @click.stop="">
+                    <div class="dish-badges" style="justify-content:center;">
+                      <span v-if="dish.isRecommended" class="badge badge-new">推薦</span>
+                      <span v-if="dish.isPopular"     class="badge badge-chef">主廚特選</span>
+                      <span v-if="dish.isVegetarian"  class="badge badge-veg">素</span>
+                      <span v-if="dish.spicyLevel > 0" class="badge badge-spicy">辣</span>
+                    </div>
+                    <p class="font-label grid-price mb-2">NT$ {{ dish.unitPrice?.toLocaleString() }}</p>
+                    <div class="qty-row">
+                      <button class="qty-btn" @click.stop="handleAdd(dish)">+</button>
+                      <span class="font-label text-xs qty-num" :class="{ active: (store.cart[dish.productId] || 0) > 0 }" style="font-size:20px;">{{ store.cart[dish.productId] || 0 }}</span>
+                      <button class="qty-btn" @click.stop="handleRemove(dish)">−</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="feather-divider my-5"></div>
+            </div>
+          </template>
+        </div>
+      </main>
+
+      <!-- ── RIGHT: Order Panel ── -->
+      <aside class="order-panel" :class="{ 'panel-open': orderPanelOpen }">
+
+        <!-- 標題列 -->
+        <div class="panel-header candle-glow">
+          <span class="font-headline" style="color:#e3c76b;font-size:1.1rem;font-style:italic;">我的訂單</span>
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <span class="font-label" style="color:rgba(208,197,181,0.5);font-size:0.75rem;letter-spacing:0.12em;">共 {{ store.totalItems }} 項</span>
+            <button @click="orderPanelOpen = false" class="panel-close-btn">✕</button>
+          </div>
+        </div>
+
+        <!-- 餐點清單（可捲動） -->
+        <div class="panel-items">
+          <div v-if="store.totalItems === 0" style="text-align:center;padding:3rem 1rem;">
+            <p style="font-size:2.5rem;opacity:0.15;margin-bottom:0.75rem;">🍽️</p>
+            <p class="font-body" style="color:rgba(249,221,211,0.4);font-style:italic;">尚未點選任何餐點</p>
+            <p class="font-label" style="color:rgba(208,197,181,0.35);font-size:0.7rem;letter-spacing:0.18em;text-transform:uppercase;margin-top:0.5rem;">點擊料理即可加入</p>
+          </div>
+          <div v-for="item in cartItemsWithDetails" :key="item.productId" class="order-item">
+            <p class="font-headline order-item-name italic" style="color:#e3c76b">{{ item.productName }}</p>
+            <div class="order-item-right">
+              <span class="font-label order-item-price">NT$ {{ (item.unitPrice * item.qty).toLocaleString() }}</span>
+              <button class="qty-btn" @click="store.removeItem(item.productId)">−</button>
+              <span class="font-label order-item-qty" style="color:#f9ddd3">{{ item.qty }}</span>
+              <button class="qty-btn" @click="store.addItem(item.productId)">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 固定底部：備註 + 合計 + 按鈕 -->
+        <div class="panel-footer">
+          <div style="padding:0.75rem 1rem;border-bottom:1px solid rgba(77,70,58,0.2);">
+            <textarea v-model="store.specialRequest" class="note-textarea font-body resize-none" rows="2" placeholder="備註：過敏食材、特殊需求…"></textarea>
+          </div>
+          <div style="padding:0.75rem 1rem;display:flex;flex-direction:column;gap:0.5rem;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;">
+              <span class="font-headline" style="color:#e3c76b;font-size:1.1rem;font-style:italic;">合計</span>
+              <span class="font-label" style="color:#e3c76b;font-size:1.1rem;letter-spacing:0.08em;">NT$ {{ total.toLocaleString() }}</span>
+            </div>
+            <button @click="submitOrder" :disabled="store.totalItems === 0 || submitting" class="submit-btn font-label" style="display:block;width:100%;padding:0.875rem 0;font-size:1rem;letter-spacing:0.28em;text-transform:uppercase;">
+              {{ submitting ? '送出中…' : '送出點餐' }}
+            </button>
+            <button @click="store.clearOrder" class="clear-btn font-label" style="display:block;width:100%;padding:0.625rem 0;font-size:1rem;letter-spacing:0.1em;text-transform:uppercase;">清空訂單</button>
+          </div>
+        </div>
+
+      </aside>
+
+    </div>
+
+    <!-- ── 手機底部列 ── -->
+    <div class="mobile-bottom-bar" @click="orderPanelOpen = true">
+      <div class="flex items-center gap-3">
+        <span class="bottom-badge">{{ store.totalItems }}</span>
+        <span class="font-label text-xs tracking-widest uppercase" style="color:rgba(208,197,181,0.7)">查看訂單</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="font-label text-sm tracking-wide" style="color:#e3c76b">NT$ {{ total.toLocaleString() }}</span>
+        <span class="bottom-cta font-label text-xs tracking-[0.2em] uppercase">送出點餐</span>
+      </div>
+    </div>
+
+    <!-- 手機 overlay -->
+    <div v-if="orderPanelOpen" @click="orderPanelOpen = false" class="mobile-overlay"></div>
+
+    <!-- Detail Modal -->
+    <DishDetailModal
+      :dish="activeDetail"
+      :qty="activeDetail ? (store.cart[activeDetail.productId] || 0) : 0"
+      @close="activeDetail = null"
+      @add="handleAdd"
+      @remove="handleRemove"
+      @confirm="onDetailConfirm"
+    />
+
+    <!-- Success Modal -->
+    <OrderSuccessModal
+      :visible="successModalOpen"
+      :order-number="orderNumber"
+      :table-label="String(tableId)"
+      @close="onSuccessClose"
+    />
+
+    <!-- Toast -->
+    <div class="toast-wrap" :style="toastVisible ? 'opacity:1;transform:translateX(-50%) translateY(0)' : 'opacity:0;pointer-events:none;transform:translateX(-50%) translateY(10px)'">
+      <div class="px-5 py-3 shadow-xl flex items-center gap-3" style="background:#362620;border:1px solid rgba(77,70,58,0.4)">
+        <span style="color:#e3c76b">+</span>
+        <span class="font-label text-xs tracking-widest uppercase" style="color:#f9ddd3">{{ toastMsg }}</span>
+      </div>
+    </div>
+
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useOrderStore } from '@/stores/order';
+import apiFetch from '@/utils/apiFetch';
+import DishDetailModal from '@/components/DishDetailModal.vue';
+import OrderSuccessModal from '@/components/OrderSuccessModal.vue';
+
+const store = useOrderStore();
+const tableId  = ref('');
+const memberName = ref('訪客');   // TODO: 串接登入資訊後替換
+
+const products    = ref([]);
+const tables      = ref([]);   // 桌位清單
+const loading     = ref(true);
+const loadError   = ref('');
+const searchQuery = ref('');
+const activeChip  = ref('all');
+const activeSidebarCat = ref('');
+const curView     = ref('list');
+const orderPanelOpen  = ref(false);
+const activeDetail    = ref(null);
+const successModalOpen = ref(false);
+const orderNumber = ref('');
+const submitting  = ref(false);
+const toastVisible = ref(false);
+const toastMsg    = ref('');
+let toastTimer = null;
+
+// ── 此頁為全螢幕版面，移除全域 body padding（Navbar 已隱藏）──
+onMounted(async () => {
+  document.body.style.paddingTop = '0';
+  try {
+    const [menuRes, tablesRes] = await Promise.all([
+      apiFetch('/Orders/MenuItems'),
+      apiFetch('/Orders/Tables'),
+    ]);
+    if (!menuRes.ok) throw new Error(`HTTP ${menuRes.status}`);
+    products.value = await menuRes.json();
+    if (tablesRes.ok) tables.value = await tablesRes.json();
+
+    // 預設選第一個 sidebar 分類（優先今日推薦，否則第一個一般分類）
+    activeSidebarCat.value = sidebarCategories.value[0]?.key ?? '';
+  } catch (err) {
+    loadError.value = '菜單載入失敗，請稍後再試。';
+    console.error(err);
+  } finally {
+    loading.value = false;
+  }
+});
+
+onUnmounted(() => {
+  document.body.style.paddingTop = ''; // 離開頁面時還原
+});
+
+function resolveImage(url) {
+  if (!url) return '';
+  let path = url.replace(/\\/g, '/').replace(/^~\//, '');
+  const match = /\/wwwroot\/(.*)/i.exec('/' + path);
+  if (match?.[1]) path = match[1];
+  return `/${path.replace(/^\//, '')}`;
+}
+
+function onImgError(e) {
+  const img = e.target;
+  const src = img.src;
+  // jpg 失敗 → 嘗試 png
+  if (src.endsWith('.jpg')) {
+    img.src = src.replace(/\.jpg$/, '.png');
+    return;
+  }
+  // png 也失敗 → 顯示 placeholder
+  img.style.display = 'none';
+  img.nextElementSibling.style.display = 'flex';
+}
+
+// 一般分類排序（特殊的今日推薦/主廚特選不在此列）
+const CATEGORY_ORDER = ['套餐', '主餐', '湯品', '甜點', '附餐', '飲料'];
+
+const sidebarCategories = computed(() => {
+  // ── 特殊分類（依資料有無顯示）──
+  const specials = [
+    { key: '今日推薦', label: '今日推薦', count: products.value.filter(p => p.isRecommended).length },
+    { key: '主廚特選', label: '主廚特選', count: products.value.filter(p => p.isPopular).length },
+  ].filter(s => s.count > 0);
+
+  // ── 一般分類 ──
+  const map = new Map();
+  products.value.forEach(p => {
+    const cat = p.categoryName;
+    if (!cat) return;
+    if (!map.has(cat)) map.set(cat, { key: cat, label: cat, count: 0 });
+    map.get(cat).count++;
+  });
+  const cats = Array.from(map.values()).sort((a, b) => {
+    const ai = CATEGORY_ORDER.indexOf(a.key), bi = CATEGORY_ORDER.indexOf(b.key);
+    return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+  });
+
+  // 全部：放在分隔線後、一般分類前
+  const allEntry = { key: '全部', label: '全部', count: products.value.length };
+
+  return [...specials, allEntry, ...cats];
+});
+
+const filteredProducts = computed(() => {
+  let r = products.value;
+  if (searchQuery.value) {
+    const t = searchQuery.value.toLowerCase();
+    r = r.filter(p => p.productName?.toLowerCase().includes(t));
+  }
+  // 只剩素食/辣味 chip 篩選
+  if (activeChip.value === 'veg')   r = r.filter(p => p.isVegetarian);
+  if (activeChip.value === 'spicy') r = r.filter(p => p.spicyLevel > 0);
+  return r;
+});
+
+const displaySections = computed(() => {
+  // 搜尋模式：跨所有分類
+  if (searchQuery.value.trim()) {
+    const dishes = filteredProducts.value;
+    if (!dishes.length) return [];
+    return [{ key: 'search', label: `搜尋：${searchQuery.value}`, dishes }];
+  }
+  // 特殊分類
+  if (activeSidebarCat.value === '今日推薦') {
+    const dishes = filteredProducts.value.filter(p => p.isRecommended);
+    if (!dishes.length) return [];
+    return [{ key: '今日推薦', label: '今日推薦', dishes }];
+  }
+  if (activeSidebarCat.value === '主廚特選') {
+    const dishes = filteredProducts.value.filter(p => p.isPopular);
+    if (!dishes.length) return [];
+    return [{ key: '主廚特選', label: '主廚特選', dishes }];
+  }
+  // 全部：按分類順序分組顯示
+  if (activeSidebarCat.value === '全部') {
+    return CATEGORY_ORDER
+      .map(cat => ({
+        key: cat,
+        label: cat,
+        dishes: filteredProducts.value.filter(p => p.categoryName === cat),
+      }))
+      .filter(s => s.dishes.length > 0);
+  }
+  // 一般分類
+  const dishes = filteredProducts.value.filter(p => p.categoryName === activeSidebarCat.value);
+  if (!dishes.length) return [];
+  return [{ key: activeSidebarCat.value, label: activeSidebarCat.value, dishes }];
+});
+
+const cartItemsWithDetails = computed(() =>
+  store.cartItems.map(({ productId, qty }) => {
+    const d = products.value.find(p => p.productId === productId);
+    return d ? { ...d, qty } : null;
+  }).filter(Boolean)
+);
+
+const subtotal      = computed(() => cartItemsWithDetails.value.reduce((s, i) => s + i.unitPrice * i.qty, 0));
+const serviceCharge = computed(() => Math.round(subtotal.value * 0.1));
+const total         = computed(() => subtotal.value + serviceCharge.value);
+
+function handleAdd(dish) {
+  store.addItem(dish.productId);
+  showToast(`「${dish.productName}」已加入訂單`);
+}
+function handleRemove(dish) { store.removeItem(dish.productId); }
+// 素食/辣味 chip 點同一個再點可取消
+function toggleChip(c) { activeChip.value = activeChip.value === c ? 'all' : c; }
+
+function scrollToSection(cat) {
+  activeSidebarCat.value = cat;
+  searchQuery.value = '';
+  // 切換分類後捲回頂端
+  document.getElementById('menuMain')?.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function openDetail(dish) { activeDetail.value = dish; }
+function onDetailConfirm(dish) {
+  if (!store.cart[dish.productId]) handleAdd(dish);
+  activeDetail.value = null;
+}
+
+async function submitOrder() {
+  if (store.totalItems === 0 || submitting.value) return;
+  if (!tableId.value) { showToast('請先輸入桌號'); return; }
+  submitting.value = true;
+  try {
+    const body = {
+      tableId:        Number(tableId.value),
+      inOrOut:        true,
+      peopleNum:      store.pax,
+      isAddOrder:     false,
+      payMethod:      'Cash',
+      note:           store.specialRequest || null,
+      discountAmount: 0,
+      items: cartItemsWithDetails.value.map(i => ({
+        productId: i.productId, productName: i.productName,
+        qty: i.qty, unitPrice: i.unitPrice, isSetMeal: i.isSetMeal ?? false,
+      })),
+    };
+    const res = await apiFetch('/Orders/CreatePreOrder', { method: 'POST', body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    orderNumber.value = data.orderNumber;
+    successModalOpen.value = true;
+    orderPanelOpen.value = false;
+  } catch (err) {
+    console.error(err);
+    showToast('送出失敗，請稍後再試');
+  } finally {
+    submitting.value = false;
+  }
+}
+
+function onSuccessClose() { successModalOpen.value = false; store.clearOrder(); }
+
+function showToast(msg) {
+  toastMsg.value = msg;
+  toastVisible.value = true;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastVisible.value = false; }, 2500);
+}
+</script>
+
+<style>
+/* 內用點餐頁面：清除全域 padding，鎖死頁面高度（不讓 body 出捲軸）*/
+html:has(.root-wrap),
+body:has(.root-wrap) {
+  padding-top: 0 !important;
+  overflow: hidden !important;
+  height: 100% !important;
+}
+</style>
+
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Newsreader:ital,wght@0,400;0,600;1,400&family=Work+Sans:wght@300;400&family=Cormorant+Garamond:ital,wght@1,400;1,600&display=swap');
+
+.root-wrap {
+    background: #1e100b;
+    color: #f9ddd3;
+    font-family: 'Newsreader', serif;
+    /* 鎖死整頁：flex 直欄，不讓 body 出捲軸 */
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ════════════════════════════════════════════
+   全寬頂部 Header
+   ════════════════════════════════════════════ */
+:root { --dine-header-h: 56px; }
+
+.dine-header {
+  flex-shrink: 0;          /* flex 子項，不壓縮 */
+  z-index: 60;
+  height: 5rem;
+  background: #180b06;
+  border-bottom: 1px solid rgba(77,70,58,0.35);
+  display: flex; align-items: center;
+  padding: 0 1.25rem;
+  gap: 1rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+}
+
+/* 左：品牌 */
+.dh-brand { 
+    flex-shrink: 0; 
+    line-height: 1.1; 
+}
+.dh-sub   { 
+    font-size: 0.8rem; 
+    letter-spacing: 0.28em; 
+    text-transform: uppercase; 
+    color: rgba(208,197,181,0.45); 
+    margin: 0; 
+}
+.dh-title { 
+    font-size: 2.5rem; 
+    color: #e3c76b; 
+    font-style: italic; 
+    margin: 0; 
+    line-height: 1; 
+}
+
+/* 中：桌號 + 人數 */
+.dh-center {
+  flex: 1; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  gap: 1rem;
+}
+.dh-group   { 
+    display: flex; 
+    align-items: center; 
+    gap: 0.5rem; 
+}
+.dh-label{ 
+    font-family:'Work Sans',sans-serif; 
+    font-size: 1.2rem; 
+    letter-spacing: 0.18em; 
+    text-transform: uppercase; 
+    color: rgba(208,197,181,0.55); 
+    white-space: nowrap; 
+}
+.dh-select  { 
+    font-size: 0.9rem !important; 
+    padding: 0.05rem 0.3rem !important; 
+    min-width: 5rem !important; 
+}
+.dh-divider { 
+    width: 1px; 
+    height: 20px; 
+    background: rgba(77,70,58,0.5); 
+}
+.dh-qty-btn { 
+    width: 24px !important; 
+    height: 24px !important; 
+    font-size: 1rem !important; 
+}
+.dh-qty-num {
+  color: #f9ddd3;
+  font-size: 0.95rem;
+  width: 2.2rem;
+  text-align: center;
+  /* input reset */
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(227,199,107,0.4);
+  outline: none;
+  padding: 0 0.1rem;
+  -moz-appearance: textfield;
+}
+.dh-qty-num::-webkit-outer-spin-button,
+.dh-qty-num::-webkit-inner-spin-button { 
+    -webkit-appearance: none; 
+}
+.dh-qty-num:focus { 
+    border-bottom-color: #e3c76b; 
+}
+
+/* 右：會員 */
+.dh-member { 
+    flex-shrink: 0;
+    display: flex; 
+    align-items: center; 
+    gap: 0.5rem; 
+    width: 6rem;
+}
+.dh-member-text { 
+    display: flex; 
+    flex-direction: column; 
+    line-height: 1.2; 
+}
+.dh-member-label { 
+    font-family:'Work Sans',sans-serif; 
+    font-size: 0.8rem; 
+    letter-spacing: 0.2em; 
+    text-transform: uppercase; 
+    color: rgba(208,197,181,0.4); 
+}
+.dh-member-name  { 
+    font-family:'Work Sans',sans-serif; 
+    font-size: 1rem; 
+    color: #f9ddd3; 
+}
+
+/* ═══ 手機分類捲動列 ═══ */
+.mobile-header {
+  display: none;
+  position: sticky; 
+  top: var(--dine-header-h); 
+  z-index: 50;
+  background: #180b06;
+  border-bottom: 1px solid rgba(77,70,58,0.3);
+}
+.mobile-cat-tabs {
+  display: flex;
+  overflow-x: auto;
+  padding: 0.4rem 0.75rem 0.55rem;
+  scrollbar-width: none;
+  gap: 0;
+}
+.mobile-cat-tabs::-webkit-scrollbar { 
+    display: none; 
+}
+.mobile-cat-btn {
+  white-space: nowrap;
+  padding: 0.3rem 0.85rem;
+  font-family:'Work Sans',sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(208,197,181,0.5);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.25s;
+  display: flex; 
+  align-items: center; 
+  gap: 0.3rem;
+}
+.mobile-cat-btn.active { 
+    color:#e3c76b; 
+    border-bottom-color:#e3c76b; 
+}
+.cat-badge { 
+    font-size:0.55rem; 
+    background:rgba(77,70,58,0.5); 
+    color:rgba(208,197,181,0.5); 
+    border-radius:99px; 
+    padding:0.05rem 0.35rem; 
+}
+
+/* ═══ 三欄佈局 ═══ */
+.page-layout {
+    display: grid;
+    grid-template-columns: 210px 1fr 400px;
+    flex: 1;          /* 填滿 root-wrap 剩餘高度 */
+    min-height: 0;    /* flex 子項必須，否則 grid 不縮小 */
+    overflow: hidden; /* 整個版面不捲動 */
+}
+
+/* ═══ Sidebar ═══ */
+.sidebar-left { 
+    background:#180b06; 
+    border-right:1px solid rgba(77,70,58,0.2); 
+}
+@media (min-width:1101px) {
+    .sidebar-left {
+        height: 100%;   /* 撐滿 grid 格 */
+        overflow-y: auto;
+    }
+}
+.cat-link { 
+    display:flex; 
+    align-items:center; 
+    justify-content: space-between;
+    gap:.75rem; 
+    padding:.7rem 1.5rem; 
+    font-family:'Work Sans',sans-serif; 
+    font-size:1.2rem; 
+    letter-spacing:.18em; 
+    text-transform:uppercase; 
+    color:rgba(208,197,181,.6); 
+    border-left:2px solid transparent; 
+    border-right:none; 
+    border-top:none; 
+    border-bottom:none; 
+    background:transparent; 
+    cursor:pointer; 
+    transition:all .3s; 
+    width: 100%;
+}
+.cat-link:hover { 
+    color:#e3c76b; 
+    background:rgba(227,199,107,.04); 
+}
+.cat-link.active { 
+    color:#e3c76b; 
+    border-left-color:#e3c76b; 
+    background:rgba(227,199,107,.06); 
+}
+.cat-count {
+    margin-left:auto;
+    font-size:1rem;
+    color:rgba(208,197,181,.35);
+}
+/* 今日推薦 / 主廚特選 特殊分類的分隔線 */
+.cat-link.cat-special {
+    color: rgba(227,199,107,.75);
+    font-size: 1rem;
+}
+.cat-link.cat-special.active { 
+    color: #e3c76b; 
+}
+.cat-link.cat-special .cat-count { 
+    color: rgba(227,199,107,.4); 
+}
+.cat-divider {
+    height: 1px;
+    background: linear-gradient(90deg, rgba(77,70,58,.5), transparent);
+    margin: 0.35rem 1.5rem;
+}
+
+/* ═══ Menu main ═══ */
+.menu-main { 
+    background:#1e100b; 
+}
+@media (min-width:1101px) {
+    .menu-main {
+        height: 100%;   /* 撐滿 grid 格，只有這欄捲動 */
+        overflow-y: auto;
+    }
+}
+.menu-sections { 
+    padding: 0 1.25rem 7rem; 
+}
+@media (min-width:1101px) { 
+    .menu-sections { 
+        padding: 0 1.5rem 2.5rem; 
+    } 
+}
+
+/* ═══ Toolbar ═══ */
+.toolbar { 
+    position:sticky; 
+    top:0; 
+    z-index:20; 
+    background:#1e100b; 
+    border-bottom:1px solid rgba(77,70,58,0.25); 
+    padding:1rem 1rem; 
+}
+.mobile-search-wrap { 
+    display:none; 
+    align-items:center; 
+    gap:0.5rem; 
+    margin-bottom:0.5rem; 
+}
+.toolbar-row { 
+    display:flex; 
+    align-items:center; 
+    gap:0.75rem; 
+    flex-wrap:nowrap; 
+}
+.chips-wrap { 
+    display:flex; 
+    gap:0.4rem; 
+    overflow-x:auto; 
+    flex:1 1 0; 
+    min-width:0; 
+    scrollbar-width:none; 
+}
+.chips-wrap::-webkit-scrollbar { 
+    display:none; 
+}
+.view-toggle { 
+    display:flex; 
+    flex-shrink:0; 
+}
+
+/* ═══ Order Panel ═══ */
+.order-panel {
+    pointer-events: auto !important;
+    z-index: 50 !important;
+    background: #180b06;
+    border-left: 1px solid rgba(77,70,58,0.2);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+.panel-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(77,70,58,0.2);
+}
+/* 餐點清單：可捲動，撐滿剩餘空間 */
+.panel-items {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0.25rem 1rem;
+}
+/* 底部：備註 + 合計 + 按鈕，固定不捲 */
+.panel-footer {
+    flex-shrink: 0;
+    border-top: 1px solid rgba(77,70,58,0.2);
+}
+.panel-close-btn { 
+    display:none; 
+    background:none; 
+    border:none; 
+    cursor:pointer; 
+    color:rgba(208,197,181,0.7); 
+    font-size:1.5rem; 
+    line-height:1; 
+    padding:0; 
+}
+
+/* ═══ 手機底部列 ═══ */
+.mobile-bottom-bar { 
+    display:none; 
+}
+.mobile-overlay { 
+    display:none; 
+}
+
+/* ═══ Mobile ≤ 1100px ═══ */
+@media (max-width:1100px) {
+  /* 手機版解除整頁高度鎖定，讓內容自然流動 */
+  html:has(.root-wrap),
+  body:has(.root-wrap) { 
+    overflow: auto !important; 
+    height: auto !important; 
+}
+  .root-wrap { 
+    height: auto; 
+    overflow: visible; 
+}
+
+  /* dine-header 手機版：隱藏品牌區 */
+  .dh-brand  { 
+    display: none; 
+}
+  .dh-member { 
+    display: none; 
+}
+  .dh-center { 
+    justify-content: flex-start; 
+    gap: 0.75rem; 
+}
+
+  .mobile-header { 
+    display:block; 
+}
+  .mobile-search-wrap { 
+    display:flex; 
+}
+  .page-layout { 
+    grid-template-columns:1fr; 
+    flex:none; 
+    height:auto; 
+    overflow:visible; 
+}
+  .sidebar-left { 
+    display:none; 
+}
+
+  /* Order panel → full-height bottom sheet */
+  .order-panel {
+    position:fixed; 
+    inset:0; 
+    z-index:200;
+    transform:translateY(100%);
+    transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    border-left:none; 
+    border-top:1px solid rgba(77,70,58,0.4);
+    pointer-events: auto;
+  }
+  .order-panel.panel-open { 
+    transform:translateY(0); 
+}
+  .order-panel.panel-open * { 
+    pointer-events: auto; 
+}
+  .panel-close-btn { 
+    display:block; 
+}
+
+  .mobile-bottom-bar {
+    display:flex; 
+    align-items:center; 
+    justify-content:space-between;
+    position:fixed; 
+    bottom:0; 
+    left:0; 
+    right:0; 
+    z-index:80;
+    background:linear-gradient(135deg,#2b1c16 0%,#1e100b 100%);
+    border-top:1px solid rgba(77,70,58,0.4);
+    padding:0.85rem 1.25rem; 
+    cursor:pointer;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+  }
+  /* backdrop-filter 會在 Chromium 造成 z-index 失效，改用純背景色 */
+  .mobile-overlay {
+    display:block; 
+    position:fixed; 
+    inset:0; 
+    z-index:100;
+    background:rgba(24,11,6,0.78);
+    pointer-events: auto;
+  }
+}
+
+.bottom-badge { 
+    min-width:1.5rem; 
+    height:1.5rem; 
+    border-radius:99px; 
+    background:linear-gradient(to right,#e3c76b,#c6ab53); 
+    color:#3b2f00; 
+    font-family:'Work Sans',sans-serif; 
+    font-size:0.7rem; 
+    font-weight:700; 
+    display:flex; 
+    align-items:center; 
+    justify-content:center; 
+}
+.bottom-cta { 
+    background:linear-gradient(to right,#e3c76b,#c6ab53); 
+    color:#3b2f00; 
+    padding:0.45rem 1rem; 
+    border-radius:0.125rem; 
+}
+
+/* ═══ Dish rows ═══ */
+.dish-row {
+    display:grid;
+    grid-template-columns:160px 1fr;   /* 列表視圖：圖片 + 內容（按鈕已併入內容欄） */
+    align-items:stretch;
+    background:#362620;
+    cursor:pointer;
+    transition:transform 0.45s cubic-bezier(0.4,0,0.2,1),box-shadow 0.45s ease;
+}
+.dish-row:hover { 
+    transform:translateX(4px);
+    box-shadow:-4px 0 0 #e3c76b; 
+}
+.dish-row.dish-row-grid { 
+    grid-template-columns:1fr; 
+    display:flex; 
+    flex-direction:column; }
+.dish-img {
+    width:160px;
+    height:120px;
+    object-fit:cover;
+    align-self:center;
+    display:block; 
+    flex-shrink:0; 
+    transition:transform 0.7s cubic-bezier(0.4,0,0.2,1); 
+}
+.dish-row:hover .dish-img { 
+    transform:scale(1.05); 
+}
+.dish-row-grid .dish-img { 
+    width:100%; 
+    height:140px; 
+}
+.dish-img-placeholder {
+    width:160px;
+    height:120px;
+    align-self:center;
+    background:#2b1c16; 
+    display:flex; 
+    align-items:center; 
+    justify-content:center; 
+    flex-shrink:0; 
+    color:rgba(208,197,181,0.15); 
+    font-size:1.8rem; 
+}
+.dish-row-grid .dish-img-placeholder { 
+    width:100%; 
+    height:140px; 
+}
+/* 列表視圖：內容欄垂直置中，確保上下間距一致 */
+.dish-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.75rem 0.75rem;
+}
+/* 網格卡片：內容區填滿，把底部往下推 */
+.dish-content-grid {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;  /* 名稱、badge、描述全部置中 */
+    text-align: center;
+}
+/* Badge 列 */
+.dish-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin: 0.4rem 0;
+}
+/* 網格視圖：badge 置中 */
+.dish-content-grid .dish-badges {
+    justify-content: center;
+}
+/* 網格底部：價格 + 按鈕，固定在卡片底部，置中 */
+.grid-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 0.75rem;
+    border-top: 1px solid rgba(77,70,58,0.25);
+}
+.grid-price {
+    color: #d5b478;
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    text-align: center;
+}
+/* 列表視圖底列：價格左、按鈕右，同一行 */
+.list-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    padding-top: 0.4rem;
+}
+.qty-col {
+    display:flex;
+    flex-direction:row;
+    align-items:center;
+    gap:0.4rem;
+}
+.qty-row { 
+    display:flex; 
+    flex-direction:row; 
+    align-items:center; 
+    gap:0.4rem; 
+    margin-bottom:0.8rem; 
+    margin-top: auto;
+}
+.qty-num { 
+    color:#f9ddd3; 
+    width: 40px; 
+    text-align: center;
+}
+.qty-num.active { 
+    color:#e3c76b; 
+}
+.dishes-wrap.grid-view { 
+    display:grid; 
+    grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); 
+    gap:0.75rem; 
+}
+
+/* ═══ Misc ═══ */
+.candle-glow { 
+    background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(227,199,107,.10) 0%,transparent 70%); 
+}
+.feather-divider { 
+    height:1px; 
+    background:linear-gradient(90deg,transparent,#e4c285 50%,transparent); 
+    position:relative; 
+}
+.feather-divider::after { 
+    content:'◈'; 
+    position:absolute; 
+    left:50%; 
+    top:50%; 
+    transform:translate(-50%,-50%); 
+    color:#e4c285; 
+    font-size:.7rem; 
+    background:#1e100b; 
+    padding:0 .65rem; 
+}
+/* 餐點名稱字體大小 — 在這裡調整 */
+.dish-name {                        /* 列表視圖 */
+    font-size: 1.4rem; 
+}
+.dish-row-grid .dish-name {      /* 網格視圖 */
+    font-size: 1.4rem;
+    text-align: center;
+    width: 100%;
+}
+
+.section-title {
+    font-family:'Noto Serif TC',serif; 
+    font-style:italic; 
+    font-size:1.3rem; 
+    color:#e3c76b; 
+    padding-top:1.5rem; 
+    margin-bottom:0.85rem; 
+}
+.status-msg { 
+    text-align:center; 
+    padding:5rem 1rem; 
+    font-family:'Newsreader',serif; 
+    font-style:italic; 
+    color:rgba(249,221,211,.4); 
+}
+.order-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid rgba(77,70,58,.25);
+}
+.order-item:last-child {
+    border-bottom: none;
+}
+.order-item-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 1rem;
+}
+.order-item-right {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+.order-item-price {
+    padding-right: 0.6rem;
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    color: #d5b478;
+    white-space: nowrap;
+}
+.order-item-qty {
+    font-size: 1rem;
+    width: 1.5rem;
+    text-align: center;
+}
+
+/* ═══ Buttons ═══ */
+.qty-btn { 
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    width:20px; 
+    height:20px; 
+    border:1px solid rgba(77,70,58,.7); 
+    background:#2b1c16; 
+    color:#f9ddd3; 
+    border-radius:.125rem; 
+    cursor:pointer;
+    display: inline-flex; 
+    align-items:center; 
+    justify-content:center; 
+    font-size:1.5rem; 
+    line-height:1; 
+    transition:border-color .3s,color .3s; 
+}
+.qty-btn:hover { 
+    border-color:#e3c76b; 
+    color:#e3c76b; }
+.chip-label {
+    font-family:'Work Sans',sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(208,197,181,0.45);
+    white-space: nowrap;
+    flex-shrink: 0;
+    align-self: center;
+}
+.chip-btn {
+    font-family:'Work Sans',sans-serif; 
+    font-size:1rem; 
+    letter-spacing:.15em; 
+    text-transform:uppercase; 
+    padding:.28rem .8rem; 
+    border-radius:.75rem; 
+    background:#5d4514; 
+    color:#e4c285; 
+    border:1px solid transparent; 
+    cursor:pointer; 
+    transition:all .3s; 
+    user-select:none; 
+    white-space:nowrap; 
+}
+.chip-btn:hover { 
+    border-color:rgba(228,194,133,.5); 
+}
+.chip-btn.active { 
+    border-color:#e4c285; 
+    box-shadow:0 0 16px rgba(228,194,133,.35),inset 0 0 8px rgba(228,194,133,.07); 
+    color:#fee182; 
+}
+.view-btn { 
+    padding:.35rem .65rem; 
+    font-family:'Work Sans',sans-serif; 
+    font-size:.7rem; 
+    color:rgba(208,197,181,.5); 
+    border:1px solid rgba(77,70,58,.5); 
+    cursor:pointer; 
+    transition:all .3s; 
+    background:transparent; 
+}
+.view-btn.active { 
+    color:#e3c76b; 
+    border-color:#e3c76b; 
+    background:rgba(227,199,107,.06); 
+}
+.submit-btn { 
+    background:linear-gradient(to right,#e3c76b,#c6ab53); 
+    color:#3b2f00; 
+    display:block; 
+    font-family:'Work Sans',sans-serif; 
+    cursor:pointer; 
+    border:none; 
+}
+.submit-btn:hover:not(:disabled) { 
+    filter:brightness(1.1); 
+}
+.submit-btn:active:not(:disabled) { 
+    transform:scale(.97); 
+}
+.submit-btn:disabled { 
+    opacity:.4; 
+    cursor:not-allowed; 
+}
+.clear-btn { 
+    border:1px solid rgba(77,70,58,.5); 
+    color:rgba(208,197,181,.7); 
+    background:none; 
+    cursor:pointer; 
+    font-family:'Work Sans',sans-serif; 
+}
+.clear-btn:hover { 
+    border-color:rgba(255,100,80,.5); 
+    color:#ffb4ab; 
+}
+
+/* ═══ 備註文字框 ═══ */
+.note-textarea {
+    width: 100%;
+    background: rgba(43,28,22,0.6);
+    border: 1px solid rgba(227,199,107,0.35);
+    border-radius: 0.25rem;
+    color: #f9ddd3;
+    font-size: 0.85rem;
+    padding: 0.6rem 0.75rem;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    line-height: 1.5;
+}
+.note-textarea::placeholder {
+    color: rgba(208,197,181,0.3);
+}
+.note-textarea:focus {
+    border-color: rgba(227,199,107,0.7);
+    box-shadow: 0 0 0 2px rgba(227,199,107,0.08);
+}
+
+/* ═══ Form ═══ */
+.input-line { 
+    background:transparent; 
+    border:none; 
+    border-bottom:1px solid rgba(77,70,58,.65); 
+    border-radius:0; 
+    color:#f9ddd3; 
+    font-family:'Newsreader',serif; 
+    font-size:.95rem; 
+    padding:.5rem 0; 
+    outline:none; 
+    width:100%; 
+    transition:border-color .4s,box-shadow .4s; 
+}
+.input-line:focus { 
+    border-bottom-color:#e3c76b; 
+    box-shadow:0 4px 12px -4px rgba(227,199,107,.22); 
+}
+.input-line::placeholder { 
+    color:rgba(208,197,181,.3); 
+}
+.table-id-input { 
+    background:transparent; 
+    border:none; 
+    border-bottom:1px solid rgba(227,199,107,.35); 
+    color:#e3c76b; 
+    width:8rem; 
+    outline:none; 
+    padding-left:5px; 
+    transition:border-color .3s; 
+    -moz-appearance:textfield; 
+    font-family:'Noto Serif TC',serif; 
+    font-style:italic; 
+}
+.table-id-input::-webkit-outer-spin-button,.table-id-input::-webkit-inner-spin-button { 
+    -webkit-appearance:none; 
+}
+.table-id-input:focus { 
+    border-bottom-color:#e3c76b; 
+}
+.table-id-input::placeholder { 
+    color:rgba(227,199,107,.3); 
+    font-size:.85rem; 
+}
+.table-id-select { 
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    background:#2b1c16; 
+    border:none; 
+    border-bottom:1px solid rgba(227,199,107,.45); 
+    color:#e3c76b; 
+    font-family:'Noto Serif TC',serif; 
+    font-style:italic; 
+    font-size:1rem; 
+    padding:0.1rem 0.25rem; 
+    outline:none; 
+    cursor:pointer; 
+    min-width:6rem; 
+    transition:border-color .3s; }
+.table-id-select:focus { 
+    border-bottom-color:#e3c76b; 
+}
+.table-id-select option { 
+    background:#2b1c16; 
+    color:#f9ddd3; 
+    font-style:normal; 
+}
+
+/* ═══ Badges ═══ */
+.badge-new  { 
+    background:rgba(227,199,107,.18); 
+    border:1px solid rgba(227,199,107,.45); 
+    color:#e3c76b; 
+}
+.badge-veg  { 
+    background:rgba(66,49,43,.5); 
+    border:1px solid rgba(120,180,80,.4); 
+    color:#a3d977; 
+}
+.badge-spicy{ 
+    background:rgba(147,0,10,.25); 
+    border:1px solid rgba(255,100,80,.4); 
+    color:#ffb4ab; 
+}
+.badge-chef { 
+    background:rgba(93,69,20,.4); 
+    border:1px solid rgba(228,194,133,.35); 
+    color:#e4c285; 
+}
+.badge { 
+    font-family:'Work Sans',sans-serif; 
+    font-size:.55rem; 
+    letter-spacing:.18em; 
+    text-transform:uppercase; 
+    padding:.15rem .45rem; 
+}
+
+/* ═══ Toast ═══ */
+.toast-wrap { 
+    position:fixed; 
+    bottom:5rem; 
+    left:50%; 
+    z-index:300; 
+    transition:all .35s; 
+}
+@media (min-width:1101px) { 
+    .toast-wrap { 
+        bottom:2rem; 
+    } 
+}
+
+/* ═══ Scrollbar ═══ */
+::-webkit-scrollbar { 
+    width:4px; 
+    height:4px; 
+}
+::-webkit-scrollbar-track { 
+    background:transparent; 
+}
+::-webkit-scrollbar-thumb { 
+    background:#4d463a; 
+    border-radius:3px; 
+}
+
+/* ═══ Font helpers ═══ */
+.font-body     { 
+    font-family:'Newsreader',serif; 
+}
+.font-headline { 
+    font-family:'Noto Serif TC',serif; 
+}
+.font-label    { 
+    font-family:'Work Sans',sans-serif; 
+    }
+</style>
