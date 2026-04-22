@@ -81,7 +81,7 @@
                         id="dishesPrev"
                         aria-label="Previous"
                     >
-                        <svg
+                        <svg 
                             viewBox="0 0 16 16"
                             fill="none"
                             stroke="currentColor"

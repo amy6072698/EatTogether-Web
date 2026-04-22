@@ -1,20 +1,24 @@
 <template>
   <div class="menu-page">
     <header class="menu-header">
-      <div class="container">
+      <div class="menu-header-bg"></div>
+      <div class="menu-header-overlay"></div>
+      <div class="container" style="position:relative;z-index:2;">
         <span class="menu-eyebrow">Signature Flavors</span>
         <h1 class="eat-h1">精選菜單</h1>
 
-        <nav class="category-tabs">
+        <nav class="category-tabs" ref="tabsNav">
           <button
             v-for="cat in categories"
             :key="cat.id"
+            :ref="el => { if (el) tabBtnRefs[cat.id] = el }"
             class="tab-btn"
             :class="{ active: currentCategory === cat.id }"
             @click="currentCategory = cat.id"
           >
             {{ cat.name }}
           </button>
+          <span class="tab-indicator" :style="indicatorStyle"></span>
         </nav>
       </div>
     </header>
@@ -172,8 +176,30 @@
       </div>
 
       <!-- Empty -->
-      <div v-if="!loading && !error && filteredDishes.length === 0" class="state-container empty-state">
-        <p>找不到符合條件的餐點，換個關鍵字或分類試試看。</p>
+      <div
+        v-if="!loading && !error && filteredDishes.length === 0"
+        class="state-container empty-state"
+        :key="`empty-${searchQuery}-${filterVeg}-${filterSpicy}-${filterRec}-${filterFav}-${filterAvailable}-${currentCategory}`"
+      >
+        <svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none">
+          <!-- 盤子陰影 -->
+          <ellipse cx="40" cy="54" rx="27" ry="5" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 2.5" opacity="0.25"/>
+          <!-- 盤子外圈 -->
+          <ellipse cx="40" cy="40" rx="22" ry="22" stroke="currentColor" stroke-width="1.8"/>
+          <!-- 盤子內圈 -->
+          <ellipse cx="40" cy="40" rx="15" ry="15" stroke="currentColor" stroke-width="1" opacity="0.35"/>
+          <!-- 叉子（左） -->
+          <line x1="19" y1="14" x2="19" y2="66" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="16" y1="14" x2="16" y2="22" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          <line x1="22" y1="14" x2="22" y2="22" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          <path d="M16 22 Q19 27 22 22" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+          <!-- 湯匙（右） -->
+          <ellipse cx="61" cy="19" rx="4.5" ry="6.5" stroke="currentColor" stroke-width="1.8"/>
+          <line x1="61" y1="25.5" x2="61" y2="66" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <p class="empty-title">找不到符合條件的餐點</p>
+        <p class="empty-sub">換個關鍵字，或清除篩選條件試試看</p>
+        <button class="clear-filter-btn" @click="clearFilters">清除篩選</button>
       </div>
     </main>
 
@@ -276,7 +302,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 
 // ── Intersection Observer 進場 ───────────────────────
 const vReveal = {
@@ -391,11 +417,32 @@ const getCountdown = (endDateString, startDateString) => {
   return `倒數 ${hh}:${mm}:${ss}`;
 };
 
+// ── Sliding Tab Indicator ─────────────────────────────
+const tabsNav = ref(null);
+const tabBtnRefs = reactive({});
+const indicatorStyle = ref({ left: '0px', width: '0px', opacity: 0 });
+
+const updateIndicator = async () => {
+  await nextTick();
+  const btn = tabBtnRefs[currentCategory.value];
+  const nav = tabsNav.value;
+  if (!btn || !nav) return;
+  const btnRect = btn.getBoundingClientRect();
+  const navRect = nav.getBoundingClientRect();
+  indicatorStyle.value = {
+    left: `${btnRect.left - navRect.left}px`,
+    width: `${btnRect.width}px`,
+    opacity: 1,
+  };
+};
+
 // ── State ────────────────────────────────────────────
 const dishes = ref([]);
 const loading = ref(true);
 const error = ref(null);
 const currentCategory = ref(0);
+
+watch(currentCategory, updateIndicator);
 const searchQuery = ref('');
 const filterVeg = ref(false);
 const filterSpicy = ref(false);
@@ -445,6 +492,18 @@ const categories = [
   { id: 4, name: '湯品' },
   { id: 5, name: '附餐' }
 ];
+
+// ── 清除所有篩選 ──────────────────────────────────────
+const clearFilters = () => {
+  searchQuery.value = ''
+  filterVeg.value = false
+  filterSpicy.value = false
+  filterRec.value = false
+  filterFav.value = false
+  filterAvailable.value = false
+  currentCategory.value = 0
+  sortOrder.value = 'default'
+}
 
 // ── Modal ────────────────────────────────────────────
 const openModal = (dish) => {
@@ -498,6 +557,10 @@ const fetchMenu = async () => {
   }
 };
 
+// ── 回到頂端 ──────────────────────────────────────────
+const showBackTop = ref(false);
+const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
 // ── 分頁 ─────────────────────────────────────────────
 const PAGE_SIZE = 12;
 const currentPage = ref(1);
@@ -510,10 +573,6 @@ watch(
 
 // 換頁時捲回頂端
 watch(currentPage, scrollToTop);
-
-// ── 回到頂端按鈕 ──────────────────────────────────────
-const showBackTop = ref(false);
-const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 const handleScroll = () => { showBackTop.value = window.scrollY > 400; };
 onMounted(() => window.addEventListener('scroll', handleScroll, { passive: true }));
 onUnmounted(() => window.removeEventListener('scroll', handleScroll));
@@ -563,6 +622,7 @@ const pagedDishes = computed(() => {
 onMounted(() => {
   fetchMenu();
   _refreshTimer = setInterval(fetchMenu, 5_000);
+  updateIndicator();
 });
 onUnmounted(() => {
   clearInterval(_refreshTimer);
@@ -578,9 +638,27 @@ onUnmounted(() => {
 }
 
 .menu-header {
-  padding: 8rem 0 4rem;
+  padding: 8rem 0 2rem;
   text-align: center;
-  background: linear-gradient(to bottom, rgba(24, 11, 6, 0.95), var(--eat-surface));
+  position: relative;
+  overflow: hidden;
+}
+.menu-header-bg {
+  position: absolute;
+  inset: 0;
+  background-image: url('https://images.unsplash.com/photo-1473093226795-af9932fe5856?w=1400&q=80');
+  background-size: cover;
+  background-position: center 60%;
+}
+.menu-header-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(24, 11, 6, 0.78) 0%,
+    rgba(24, 11, 6, 0.68) 55%,
+    var(--eat-surface) 100%
+  );
 }
 
 .menu-eyebrow {
@@ -608,6 +686,21 @@ onUnmounted(() => {
   gap: 0.5rem;
   flex-wrap: wrap;
   padding: 0 1rem;
+  position: relative;
+  padding-bottom: 6px;
+}
+
+.tab-indicator {
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  background: var(--eat-primary);
+  border-radius: 1px;
+  transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s;
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(227, 199, 107, 0.5);
 }
 
 .tab-btn {
@@ -1173,6 +1266,69 @@ onUnmounted(() => {
 .attr-chip.rec   { border-color: rgba(227,199,107,0.4); color: var(--eat-primary); }
 .attr-chip.pop   { border-color: rgba(217,83,79,0.3); color: rgba(255,140,100,0.8); }
 
+/* ── Empty State ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.empty-icon {
+  width: 88px;
+  height: 88px;
+  color: var(--eat-primary);
+  opacity: 0.65;
+  margin-bottom: 0.75rem;
+  animation: shake 0.75s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  animation-delay: 0.08s;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  15%       { transform: translateX(-9px) rotate(-5deg); }
+  30%       { transform: translateX(8px)  rotate(4deg); }
+  45%       { transform: translateX(-6px) rotate(-2.5deg); }
+  60%       { transform: translateX(5px)  rotate(1.5deg); }
+  75%       { transform: translateX(-3px) rotate(-1deg); }
+  90%       { transform: translateX(2px)  rotate(0.5deg); }
+}
+
+.empty-title {
+  font-family: var(--font-headline);
+  font-size: 1.25rem;
+  color: var(--eat-primary);
+  font-style: italic;
+  margin: 0;
+}
+
+.empty-sub {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: rgba(249, 221, 211, 0.4);
+  font-style: italic;
+  margin: 0 0 0.75rem;
+}
+
+.clear-filter-btn {
+  background: none;
+  border: 1px solid rgba(227, 199, 107, 0.4);
+  color: var(--eat-primary);
+  padding: 0.55rem 2.25rem;
+  font-family: var(--font-label);
+  font-size: 0.78rem;
+  cursor: pointer;
+  border-radius: 30px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  transition: background 0.3s, border-color 0.3s, transform 0.2s;
+}
+.clear-filter-btn:hover {
+  background: rgba(227, 199, 107, 0.1);
+  border-color: var(--eat-primary);
+  transform: translateY(-2px);
+}
+
 /* States */
 .state-container { padding: 8rem 0; text-align: center; }
 .spinner {
@@ -1268,7 +1424,7 @@ onUnmounted(() => {
 
 /* Utils */
 .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
-.py-5 { padding-top: 4rem; padding-bottom: 6rem; }
+.py-5 { padding-top: 2rem; padding-bottom: 6rem; }
 
 /* md:grid-cols-3 — 768px 以上升為三欄 */
 @media (min-width: 768px) {
