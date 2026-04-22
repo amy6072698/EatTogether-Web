@@ -96,7 +96,6 @@ namespace EatTogether.API
 			});
 
             // 註冊 DbContext
-            // 註冊 DbContext
             builder.Services.AddDbContext<EatTogetherDBContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
