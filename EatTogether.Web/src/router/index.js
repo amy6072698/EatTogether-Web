@@ -94,21 +94,17 @@ const router = createRouter({
 router.beforeEach(async (to) => {
     const authStore = useAuthStore()
 
-    // 等待 App.vue onMounted 的 checkAuth 完成（isLoading 由 false → true → false）
-    // 首次進入時 isLoading 可能尚未被設定為 true，因此搭配 App.vue onMounted 使用
-    while (authStore.isLoading) {
-        await nextTick()
-    }
-
-    // 不需登入的頁面直接放行
-    if (!to.meta.requiresAuth) return true
-
-    // 需登入但未登入 → 導回首頁，並帶上 redirect query 供登入後跳回
-    if (!authStore.isLoggedIn) {
-        return { name: 'Home', query: { redirect: to.fullPath } }
-    }
-
-    return true
+const router = createRouter({
+    history: createWebHistory(),
+    routes,
+    scrollBehavior(to, from, savedPosition) {
+        if (savedPosition) {
+            return savedPosition   // 瀏覽器上一頁/下一頁時還原位置
+        }
+        return { top: 0 }          // 一般換頁回到頂部
+    },
 })
+
+// TODO: 0-F8 路由守衛實作（需先完成 0-F7 auth store）
 
 export default router;
