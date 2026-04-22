@@ -113,20 +113,16 @@ namespace EatTogether.API
             // 註冊Service
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IOrderService, OrderService>();
-            builder.Services.AddScoped<IPasswordResetEmailService, PasswordResetEmailService>();			
-			builder.Services.AddSingleton<EatTogether.API.Models.Infra.JwtHelper>();
-			// 結帳相關
-			builder.Services.AddMemoryCache();
-			builder.Services.AddHttpClient();
-
-            // 前台寄信服務
-            builder.Services.AddScoped<IEmailService, EmailService>();
+            builder.Services.AddScoped<IPasswordResetEmailService, PasswordResetEmailService>();
 
 
-			// Add services to the container.
+            // 註冊 Infra（需要 DI 的才註冊）
+            builder.Services.AddScoped<JwtHelper>();
 
-			// 排除 class library（EatTogether.dll）的 MVC Controllers，避免與 API Controllers 路由衝突
-			builder.Services.AddControllers()
+            // Add services to the container.
+
+            // 排除 class library（EatTogether.dll）的 MVC Controllers，避免與 API Controllers 路由衝突
+            builder.Services.AddControllers()
 				.ConfigureApplicationPartManager(apm =>
 				{
 					var libParts = apm.ApplicationParts

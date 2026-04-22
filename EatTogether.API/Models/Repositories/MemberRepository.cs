@@ -10,7 +10,10 @@ namespace EatTogether.Models.Repositories
 		Task<MemberDetailDto?> GetByIdAsync(int id);
 		Task UpdateBlacklistAsync(int id, bool isBlacklisted, string? reason);
 		Task<MemberListDto?> GetByPhoneAsync(string phone);
-	}
+
+        // -----內用點餐頁用------------------------------
+        Task<Member?> GetByEmailAsync(string email);
+    }
 
 	public class MemberRepository : IMemberRepository
 	{
@@ -134,5 +137,13 @@ namespace EatTogether.Models.Repositories
 
 			await _context.SaveChangesAsync();
 		}
-	}
+
+        // -----內用點餐頁用------------------------------
+        public async Task<Member?> GetByEmailAsync(string email)
+        {
+            return await _context.Members
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Email == email && !m.IsDeleted);
+        }
+    }
 }

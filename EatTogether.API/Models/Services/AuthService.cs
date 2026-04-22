@@ -1,4 +1,5 @@
-﻿using EatTogether.API.Models.EfModels;
+﻿using EatTogether.API.Models.DTOs;
+using EatTogether.API.Models.EfModels;
 using EatTogether.API.Models.Infra;
 using EatTogether.Models.DTOs;
 using EatTogether.Models.Infra;
@@ -13,7 +14,10 @@ namespace EatTogether.Models.Services
 		Task<Result<LoginDto>> LoginAsync(string account, string password);
 		Task<Result> ResetPasswordAsync(string token, string newPassword);
 		Task<bool> ValidateResetTokenAsync(string token);
-	}
+
+        // -----內用點餐頁用------------------------------
+        Task<Result<MemberLoginDto>> MemberLoginAsync(string email, string password);
+    }
 
 	public class AuthService : IAuthService
 	{
@@ -23,14 +27,17 @@ namespace EatTogether.Models.Services
 		private readonly IRoleFunctionRepository _roleFuncRepo;
 		private readonly IPasswordResetEmailService _emailService;
 		private readonly IHttpContextAccessor _httpContextAccessor;
+        // -----內用點餐頁用------------------------------
+        private readonly IMemberRepository _memberRepo;
 
-		public AuthService(
+        public AuthService(
 			IUserRepository userRepo,
 			IRoleRepository roleRepo,
 			IPasswordResetTokenRepository tokenRepo,
 			IRoleFunctionRepository roleFuncRepo,
 			IPasswordResetEmailService emailService,
-			IHttpContextAccessor httpContextAccessor)
+			IHttpContextAccessor httpContextAccessor,
+            IMemberRepository memberRepo)
 		{
 			_userRepo = userRepo;
 			_roleRepo = roleRepo;
@@ -38,6 +45,7 @@ namespace EatTogether.Models.Services
 			_roleFuncRepo = roleFuncRepo;
 			_emailService = emailService;
 			_httpContextAccessor = httpContextAccessor;
+			_memberRepo = memberRepo;
 		}
 
 		public async Task<Result<LoginDto>> LoginAsync(string account, string password)
@@ -163,7 +171,30 @@ namespace EatTogether.Models.Services
 			return Result.Success();
 		}
 
+        // -----內用點餐頁用------------------------------
+        public async Task<Result<MemberLoginDto>> MemberLoginAsync(string email, string password)
+        {
+            var member = await _memberRepo.GetByEmailAsync(email);
 
+            if (member == null)
+                return Result<MemberLoginDto>.Fail($"找不到email: {email}");
 
-	}
+            if (!HashUtility.VerifyPassword(password, member.HashedPassword))
+                return Result<MemberLoginDto>.Fail($"密碼錯誤");
+
+            if (member.IsBlacklisted)
+                return Result<MemberLoginDto>.Fail("黑名單");
+
+            if (!member.IsConfirmed)
+                return Result<MemberLoginDto>.Fail("未驗證");
+
+            return Result<MemberLoginDto>.Success(new MemberLoginDto
+            {
+                MemberId = member.Id,
+                Name = member.Name,
+                Email = member.Email,
+            });
+        }
+
+    }
 }
