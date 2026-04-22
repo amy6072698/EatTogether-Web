@@ -1,7 +1,9 @@
 <template>
   <div class="setmeal-page">
     <header class="setmeal-header">
-      <div class="container">
+      <div class="setmeal-header-bg"></div>
+      <div class="setmeal-header-overlay"></div>
+      <div class="container" style="position:relative;z-index:2;">
         <span class="setmeal-eyebrow">Set Menus</span>
         <h1 class="eat-h1">精選套餐</h1>
       </div>
@@ -460,7 +462,25 @@ onUnmounted(() => {
 .setmeal-header {
   padding: 8rem 0 4rem;
   text-align: center;
-  background: linear-gradient(to bottom, rgba(24, 11, 6, 0.95), var(--eat-surface));
+  position: relative;
+  overflow: hidden;
+}
+.setmeal-header-bg {
+  position: absolute;
+  inset: 0;
+  background-image: url('https://images.unsplash.com/photo-1544025162-d76694265947?w=1400&q=80');
+  background-size: cover;
+  background-position: center 40%;
+}
+.setmeal-header-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(24, 11, 6, 0.80) 0%,
+    rgba(24, 11, 6, 0.70) 55%,
+    var(--eat-surface) 100%
+  );
 }
 
 .setmeal-eyebrow {
