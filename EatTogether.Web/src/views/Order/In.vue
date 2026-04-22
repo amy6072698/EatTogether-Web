@@ -1,5 +1,28 @@
 <template>
-  <div class="root-wrap">
+  <!-- ══ 桌位驗證中 ══ -->
+  <div v-if="tableStatus === 'checking'" class="gate-wrap">
+    <div class="gate-spinner"></div>
+    <p class="gate-hint font-label">驗證桌位中…</p>
+  </div>
+
+  <!-- ══ 禁止進入：空桌 / 找不到 ══ -->
+  <div v-else-if="tableStatus === 'empty' || tableStatus === 'not-found'" class="gate-wrap">
+    <div class="gate-icon">🪑</div>
+    <h2 class="gate-title font-headline">此桌位目前為空桌</h2>
+    <p class="gate-body font-body">如需服務請洽現場服務人員。</p>
+    <p class="gate-sub font-label">桌號：{{ tableNameFromUrl }}</p>
+  </div>
+
+  <!-- ══ 禁止進入：保留中 ══ -->
+  <div v-else-if="tableStatus === 'reserved'" class="gate-wrap">
+    <div class="gate-icon">🔒</div>
+    <h2 class="gate-title font-headline">此桌位已保留</h2>
+    <p class="gate-body font-body">此桌位目前為訂位保留桌，如需服務請洽現場服務人員。</p>
+    <p class="gate-sub font-label">桌號：{{ tableNameFromUrl }}</p>
+  </div>
+
+  <!-- ══ 正常點餐頁面 ══ -->
+  <div v-else class="root-wrap">
 
     <!-- ══ 全寬頂部 Header ══ -->
     <header class="dine-header">
@@ -12,10 +35,7 @@
       <!-- 中：桌號 ＋ 用餐人數（同一行） -->
       <div class="dh-center">
         <span class="dh-label font-label">桌號</span>
-        <select v-model="tableId" class="dh-select font-headline">
-          <option value="" disabled>請選擇</option>
-          <option v-for="t in tables" :key="t.id" :value="t.id">{{ t.tableName }}</option>
-        </select>
+        <span class="dh-table-name font-headline">{{ tables.find(t => t.id === tableId)?.tableName || tableNameFromUrl || '—' }}</span>
 
         <div class="dh-sep"></div>
 
@@ -30,14 +50,27 @@
         <button class="dh-pax-btn font-label" @click="store.pax++">+</button>
       </div>
 
-      <!-- 右：會員 -->
-      <div class="dh-member">
+      <!-- 右：會員（可點擊展開下拉） -->
+      <div class="dh-member dh-member-btn" @click.stop="memberDropdownOpen = !memberDropdownOpen">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" style="color:rgba(208,197,181,0.45);flex-shrink:0;" viewBox="0 0 16 16">
           <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.03 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
         </svg>
-        <span class="dh-member-label font-label">會員：</span>
-        <span class="dh-member-name font-label">{{ memberName }}</span>
+        <span class="dh-member-label font-label">{{ memberName }}</span>
+        <svg class="dh-chevron" :class="{ open: memberDropdownOpen }" xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
+        </svg>
+        <!-- 下拉選單 -->
+        <div v-if="memberDropdownOpen" class="member-dropdown" @click.stop="">
+          <button class="member-dropdown-item font-label" @click="openSwitchAccount">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
+              <path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-4.5-.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H11.5z"/>
+            </svg>
+            切換帳號
+          </button>
+        </div>
       </div>
+      <!-- 點擊背景關閉下拉 -->
+      <div v-if="memberDropdownOpen" class="member-backdrop" @click="memberDropdownOpen = false"></div>
 
     </header>
 
@@ -253,6 +286,14 @@
     <!-- 手機 overlay -->
     <div v-if="orderPanelOpen" @click="orderPanelOpen = false" class="mobile-overlay"></div>
 
+    <!-- Auth Modal -->
+    <AuthModal
+      v-if="authModalVisible"
+      :initial-step="authModalInitStep"
+      @guest="onGuestOrder"
+      @logged-in="onLoggedIn"
+    />
+
     <!-- Detail Modal -->
     <DishDetailModal
       :dish="activeDetail"
@@ -264,7 +305,7 @@
     <OrderSuccessModal
       :visible="successModalOpen"
       :order-number="orderNumber"
-      :table-label="String(tableId)"
+      :table-label="tables.find(t => t.id === tableId)?.tableName || String(tableId)"
       @close="onSuccessClose"
     />
 
@@ -276,16 +317,19 @@
       </div>
     </div>
 
-  </div>
+  </div><!-- end root-wrap -->
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { useOrderStore } from '@/stores/order';
 import apiFetch from '@/utils/apiFetch';
-import DishDetailModal from '@/components/DishDetailModal.vue';
-import OrderSuccessModal from '@/components/OrderSuccessModal.vue';
+import DishDetailModal from '@/components/Order/DishDetailModal.vue';
+import OrderSuccessModal from '@/components/Order/OrderSuccessModal.vue';
+import AuthModal from '@/components/Order/AuthModal.vue';
 
+const route = useRoute();
 const store = useOrderStore();
 const tableId  = ref('');
 const memberName = ref('訪客');   // TODO: 串接登入資訊後替換
@@ -309,9 +353,58 @@ const toastVisible = ref(false);
 const toastMsg    = ref('');
 let toastTimer = null;
 
+// ── 桌位狀態：'checking' | 'occupied' | 'empty' | 'reserved' | 'not-found'
+// 若 URL 沒有 ?table= 參數則跳過驗證（讓服務人員可直接開頁面選桌）
+const tableStatus     = ref(route.query.table ? 'checking' : 'occupied');
+const tableNameFromUrl = route.query.table || '';   // e.g. "B3"
+
+// ── 身份驗證
+const authModalVisible   = ref(false);
+const authModalInitStep  = ref('choice');   // 'choice' | 'login'
+const memberDropdownOpen = ref(false);      // Header 會員下拉選單
+
+// ── 身份驗證：嘗試用現有 cookie token 驗證，失敗則顯示 Modal ──
+async function checkAuth() {
+  try {
+    const res = await apiFetch('/Auth/Me');
+    if (res.ok) {
+      const data = await res.json();
+      memberName.value = data.name || '會員';
+    } else {
+      // 401 → token 無效，顯示選擇 Modal
+      authModalInitStep.value = 'choice';
+      authModalVisible.value  = true;
+    }
+  } catch {
+    // 網路異常也顯示 Modal（讓使用者選訪客）
+    authModalInitStep.value = 'choice';
+    authModalVisible.value  = true;
+  }
+}
+
+function onGuestOrder() {
+  authModalVisible.value = false;
+  memberName.value = '訪客';
+}
+
+function onLoggedIn(data) {
+  authModalVisible.value = false;
+  memberName.value = data.name || data.memberName || data.email || '會員';
+}
+
+function openSwitchAccount() {
+  memberDropdownOpen.value = false;
+  authModalInitStep.value  = 'login';   // 直接跳登入表單
+  authModalVisible.value   = true;
+}
+
 // ── 此頁為全螢幕版面，移除全域 body padding（Navbar 已隱藏）──
 onMounted(async () => {
   document.body.style.paddingTop = '0';
+
+  // 先驗證身份（非同步，不阻塞菜單載入）
+  checkAuth();
+
   try {
     const [menuRes, tablesRes] = await Promise.all([
       apiFetch('/Orders/MenuItems'),
@@ -320,6 +413,23 @@ onMounted(async () => {
     if (!menuRes.ok) throw new Error(`HTTP ${menuRes.status}`);
     products.value = await menuRes.json();
     if (tablesRes.ok) tables.value = await tablesRes.json();
+
+    // ── 桌位狀態驗證（只在有 ?table= 時執行）──
+    if (tableNameFromUrl) {
+      const matched = tables.value.find(
+        t => t.tableName?.toLowerCase() === tableNameFromUrl.toLowerCase()
+      );
+      if (!matched) {
+        tableStatus.value = 'not-found';
+      } else if (matched.status === 1) {
+        tableStatus.value = 'occupied';
+        tableId.value = matched.id;          // 自動帶入桌號
+      } else if (matched.status === 2) {
+        tableStatus.value = 'reserved';
+      } else {
+        tableStatus.value = 'empty';         // 0 或其他皆視為空桌
+      }
+    }
 
     // 預設選第一個 sidebar 分類（優先今日推薦，否則第一個一般分類）
     activeSidebarCat.value = sidebarCategories.value[0]?.key ?? '';
@@ -479,12 +589,14 @@ async function submitOrder() {
       items: cartItemsWithDetails.value.map(i => ({
         productId: i.productId, productName: i.productName,
         qty: i.qty, unitPrice: i.unitPrice, isSetMeal: i.isSetMeal ?? false,
+        note: store.notes[i.productId] || null,
       })),
     };
     const res = await apiFetch('/Orders/CreatePreOrder', { method: 'POST', body: JSON.stringify(body) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     orderNumber.value = data.orderNumber;
+    store.clearOrder();          // 送出成功立即清空購物車與備註
     successModalOpen.value = true;
     orderPanelOpen.value = false;
   } catch (err) {
@@ -495,7 +607,7 @@ async function submitOrder() {
   }
 }
 
-function onSuccessClose() { successModalOpen.value = false; store.clearOrder(); }
+function onSuccessClose() { successModalOpen.value = false; }
 
 function showToast(msg) {
   toastMsg.value = msg;
@@ -513,9 +625,72 @@ body:has(.root-wrap) {
   overflow: hidden !important;
   height: 100% !important;
 }
+/* 內用頁面隱藏全站 Navbar / Footer（掃碼點餐不需要） */
+html:has(.root-wrap) nav.navbar,
+html:has(.root-wrap) footer,
+html:has(.gate-wrap) nav.navbar,
+html:has(.gate-wrap) footer {
+  display: none !important;
+}
 </style>
 
 <style scoped>
+/* ════════════════════════════════════════════
+   桌位狀態封鎖畫面
+   ════════════════════════════════════════════ */
+.gate-wrap {
+  min-height: 100vh;
+  background: #1e100b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+.gate-icon {
+  font-size: 3.5rem;
+  opacity: 0.55;
+  margin-bottom: 0.5rem;
+}
+.gate-title {
+  font-size: 1.6rem;
+  font-style: italic;
+  color: #e3c76b;
+  margin: 0;
+}
+.gate-body {
+  font-size: 1rem;
+  font-style: italic;
+  color: rgba(249,221,211,0.6);
+  margin: 0;
+  max-width: 26rem;
+  line-height: 1.7;
+}
+.gate-sub {
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(208,197,181,0.35);
+  margin-top: 0.5rem;
+}
+/* loading spinner */
+.gate-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid rgba(227,199,107,0.15);
+  border-top-color: #e3c76b;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 0.5rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.gate-hint {
+  font-size: 0.8rem;
+  letter-spacing: 0.18em;
+  color: rgba(208,197,181,0.4);
+  margin: 0;
+}
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Newsreader:ital,wght@0,400;0,600;1,400&family=Work+Sans:wght@300;400&family=Cormorant+Garamond:ital,wght@1,400;1,600&display=swap');
 
 .root-wrap {
@@ -570,21 +745,11 @@ body:has(.root-wrap) {
     color: rgba(208,197,181,0.5);
     white-space: nowrap;
 }
-.dh-select {
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid rgba(227,199,107,0.4);
+.dh-table-name {
     color: #e3c76b;
     font-size: 0.95rem;
     font-style: italic;
-    padding: 0.05rem 0.2rem;
-    min-width: 5rem;
-    outline: none;
-    cursor: pointer;
-    transition: border-color 0.3s;
 }
-.dh-select:focus { border-bottom-color: #e3c76b; }
-.dh-select option { background: #2b1c16; color: #f9ddd3; font-style: normal; }
 
 /* 分隔線 */
 .dh-sep {
@@ -639,15 +804,63 @@ body:has(.root-wrap) {
     gap: 0.4rem;
     min-width: 9rem;
     white-space: nowrap;
+    position: relative;
 }
+.dh-member-btn {
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    transition: background 0.2s;
+}
+.dh-member-btn:hover { background: rgba(227,199,107,0.07); }
 .dh-member-label {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     letter-spacing: 0.08em;
-    color: rgba(208,197,181,0.5);
+    color: rgba(208,197,181,0.75);
 }
-.dh-member-name {
-    font-size: 0.95rem;
-    color: #f9ddd3;
+.dh-chevron {
+    color: rgba(208,197,181,0.4);
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+.dh-chevron.open { transform: rotate(180deg); }
+
+/* 下拉選單 */
+.member-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    min-width: 9rem;
+    background: #2b1c16;
+    border: 1px solid rgba(77,70,58,0.45);
+    border-radius: 0.5rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    overflow: hidden;
+    z-index: 100;
+}
+.member-dropdown-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    color: rgba(208,197,181,0.7);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    text-align: left;
+}
+.member-dropdown-item:hover {
+    background: rgba(227,199,107,0.07);
+    color: #e3c76b;
+}
+.member-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
 }
 
 /* ═══ 手機分類捲動列 ═══ */

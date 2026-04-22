@@ -11,8 +11,8 @@ using System.Text;
 
 namespace EatTogether.API
 {
-    public class Program  
-	{
+    public class Program
+    {
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -85,22 +85,39 @@ namespace EatTogether.API
 
             // 設定 Services
             builder.Services.AddHttpContextAccessor();
-			//builder.Services.AddScoped<ITokenService, TokenService>();
-			//builder.Services.AddScoped<IAuthService, AuthService>();
-			//builder.Services.AddScoped<IMemberService, MemberService>();
+            //builder.Services.AddScoped<ITokenService, TokenService>();
+            //builder.Services.AddScoped<IAuthService, AuthService>();
+            //builder.Services.AddScoped<IMemberService, MemberService>();
 
-			// 設定 6. Repositories
-			//builder.Services.AddScoped<IAuthRepository, AuthRepository>();
-			//builder.Services.AddScoped<IMemberRepository, MemberRepository>();
-			//builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-			// 註冊Repository
-			builder.Services.AddScoped<IDishRepository, DishRepository>();
-			builder.Services.AddScoped<ISetMealRepository, SetMealRepository>();
+            // 設定 6. Repositories
+            //builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+            //builder.Services.AddScoped<IMemberRepository, MemberRepository>();
+            //builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+            // 註冊Repository
+            builder.Services.AddScoped<ICouponRepository, CouponRepository>();
+            builder.Services.AddScoped<IEventRepository, EventRepository>();
+            builder.Services.AddScoped<IDishRepository, DishRepository>();
+            builder.Services.AddScoped<IProductRepository, ProductRepository>();
+            builder.Services.AddScoped<ISetMealRepository, SetMealRepository>();
+            builder.Services.AddScoped<ITableRepository, TableRepository>();
+            builder.Services.AddScoped<IMemberCouponRepository, MemberCouponRepository>();
+            builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+            builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+            builder.Services.AddScoped<IPreOrderRepository, PreOrderRepository>();
+            builder.Services.AddScoped<IProductRepository, ProductRepository>();
+            builder.Services.AddScoped<IRoleFunctionRepository, RoleFunctionRepository>();
+            builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+            builder.Services.AddScoped<IUserRepository, UserRepository>();
+			builder.Services.AddScoped<IMemberRepository, MemberRepository>();
 
-			// 註冊Service
-			builder.Services.AddScoped<DishService>();
-			builder.Services.AddScoped<SetMealService>();
-
+            // 註冊Service
+            builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<IOrderService, OrderService>();
+            builder.Services.AddScoped<IPasswordResetEmailService, PasswordResetEmailService>();			
+			builder.Services.AddSingleton<EatTogether.API.Models.Infra.JwtHelper>();
+			// 結帳相關
+			builder.Services.AddMemoryCache();
+			builder.Services.AddHttpClient();
 
             // 前台寄信服務
             builder.Services.AddScoped<IEmailService, EmailService>();
