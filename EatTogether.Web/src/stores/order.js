@@ -41,6 +41,7 @@ export const useOrderStore = defineStore('order', () => {
   function clearOrder() {
     Object.keys(cart).forEach(k => delete cart[k]);
     Object.keys(notes).forEach(k => delete notes[k]);
+    specialRequest.value = '';
   }
 
   return { cart, notes, pax, specialRequest, cartItems, totalItems, addItem, removeItem, setNote, clearOrder };
