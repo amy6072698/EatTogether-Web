@@ -94,8 +94,9 @@
       <!-- 餐點卡片 -->
       <TransitionGroup v-else name="card" tag="div" :class="viewMode === 'grid' ? 'menu-grid' : 'menu-list'">
         <div
-          v-for="dish in filteredDishes"
+          v-for="(dish, index) in pagedDishes"
           :key="dish.id"
+          v-reveal="index"
           class="dish-card"
           :class="{ 'is-soldout': dish.stockStatus === 2 }"
           @click="openModal(dish)"
@@ -110,6 +111,7 @@
             <div v-else class="img-placeholder">
               <span>{{ dish.dishName.charAt(0) }}</span>
             </div>
+            <div v-if="dish.stockStatus === 1" class="stock-bar" :style="{ width: stockWidth(dish.id) + '%' }"></div>
             <div v-if="dish.stockStatus === 2" class="soldout-overlay">
               <span class="soldout-text">已售完</span>
             </div>
@@ -155,6 +157,19 @@
           </div>
         </div>
       </TransitionGroup>
+
+      <!-- 分頁列 -->
+      <div v-if="!loading && !error && totalPages > 1" class="pagination">
+        <button class="page-btn" :disabled="currentPage === 1" @click="currentPage--">‹</button>
+        <template v-for="p in totalPages" :key="p">
+          <button
+            class="page-btn"
+            :class="{ active: p === currentPage }"
+            @click="currentPage = p"
+          >{{ p }}</button>
+        </template>
+        <button class="page-btn" :disabled="currentPage === totalPages" @click="currentPage++">›</button>
+      </div>
 
       <!-- Empty -->
       <div v-if="!loading && !error && filteredDishes.length === 0" class="state-container empty-state">
@@ -250,11 +265,53 @@
         </div>
       </div>
     </Transition>
+
+    <!-- 回到頂端 -->
+    <Transition name="back-top">
+      <button v-if="showBackTop" class="back-top-btn" @click="scrollToTop" aria-label="回到頂端">
+        ↑
+      </button>
+    </Transition>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
+
+// ── Intersection Observer 進場 ───────────────────────
+const vReveal = {
+  mounted(el, binding) {
+    const delay = binding.value * 50
+    el.style.opacity = '0'
+    el.style.transform = 'translateY(40px)'
+    el.style.transition = 'opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1), transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)'
+    el.style.transitionDelay = `${delay}ms`
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        el.style.opacity = '1'
+        el.style.transform = 'translateY(0)'
+        setTimeout(() => {
+          el.style.opacity = ''
+          el.style.transform = ''
+          el.style.transition = ''
+          el.style.transitionDelay = ''
+        }, 400 + delay)
+        observer.disconnect()
+      }
+    }, { threshold: 0.1 })
+    observer.observe(el)
+    el._revealObserver = observer
+  },
+  unmounted(el) {
+    el._revealObserver?.disconnect()
+  }
+}
+
+// ── 庫存進度條寬度（以 id 為 seed，穩定不亂跳）─────────
+const stockWidth = (id) => {
+  const n = typeof id === 'number' ? id : String(id).split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+  return 20 + (n % 16) // 20–35%
+}
 
 // ── 安全解析食材 JSON ────────────────────────────────
 const parseIngredients = (jsonString) => {
@@ -441,6 +498,26 @@ const fetchMenu = async () => {
   }
 };
 
+// ── 分頁 ─────────────────────────────────────────────
+const PAGE_SIZE = 12;
+const currentPage = ref(1);
+
+// 任何篩選條件變動時回到第 1 頁
+watch(
+  [searchQuery, filterVeg, filterSpicy, filterRec, filterFav, filterAvailable, currentCategory, sortOrder],
+  () => { currentPage.value = 1; }
+);
+
+// 換頁時捲回頂端
+watch(currentPage, scrollToTop);
+
+// ── 回到頂端按鈕 ──────────────────────────────────────
+const showBackTop = ref(false);
+const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+const handleScroll = () => { showBackTop.value = window.scrollY > 400; };
+onMounted(() => window.addEventListener('scroll', handleScroll, { passive: true }));
+onUnmounted(() => window.removeEventListener('scroll', handleScroll));
+
 // ── Computed ─────────────────────────────────────────
 const hasActiveFilter = computed(() =>
   searchQuery.value !== '' ||
@@ -475,6 +552,12 @@ const filteredDishes = computed(() => {
     case 'recommended': return [...result].sort((a, b) => (b.isRecommended ? 1 : 0) - (a.isRecommended ? 1 : 0));
     default:           return [...result].sort((a, b) => (a.stockStatus === 2 ? 1 : 0) - (b.stockStatus === 2 ? 1 : 0));
   }
+});
+
+const totalPages = computed(() => Math.ceil(filteredDishes.value.length / PAGE_SIZE));
+const pagedDishes = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE;
+  return filteredDishes.value.slice(start, start + PAGE_SIZE);
 });
 
 onMounted(() => {
@@ -760,6 +843,22 @@ onUnmounted(() => {
   font-size: 1.1rem;
   font-family: var(--font-label);
   letter-spacing: 0.2em;
+}
+
+/* ── 庫存剩餘進度條 ── */
+.stock-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #f97316, #fb923c 80%, rgba(251,146,60,0));
+  border-radius: 0 2px 0 0;
+  z-index: 3;
+  animation: stock-pulse 1.8s ease-in-out infinite;
+}
+@keyframes stock-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
 }
 
 /* ── Glare 反光塗層 ── */
@@ -1100,6 +1199,72 @@ onUnmounted(() => {
 }
 .retry-btn:hover { background-color: var(--eat-primary); color: var(--eat-surface); }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 分頁列 ── */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 3rem;
+  flex-wrap: wrap;
+}
+.page-btn {
+  min-width: 2.2rem;
+  height: 2.2rem;
+  padding: 0 0.6rem;
+  background: none;
+  border: 1px solid rgba(227, 199, 107, 0.15);
+  border-radius: 6px;
+  color: rgba(249, 221, 211, 0.5);
+  font-family: var(--font-label);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.page-btn:hover:not(:disabled) {
+  border-color: rgba(227, 199, 107, 0.4);
+  color: var(--eat-primary);
+}
+.page-btn.active {
+  background: rgba(227, 199, 107, 0.12);
+  border-color: rgba(227, 199, 107, 0.5);
+  color: var(--eat-primary);
+  font-weight: 600;
+}
+.page-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+/* ── 回到頂端按鈕 ── */
+.back-top-btn {
+  position: fixed;
+  bottom: 2.5rem;
+  right: 2rem;
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 50%;
+  background: rgba(24, 11, 6, 0.85);
+  border: 1px solid rgba(227, 199, 107, 0.35);
+  color: var(--eat-primary);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  z-index: 200;
+}
+.back-top-btn:hover {
+  border-color: var(--eat-primary);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.back-top-enter-active, .back-top-leave-active { transition: opacity 0.3s, transform 0.3s; }
+.back-top-enter-from, .back-top-leave-to { opacity: 0; transform: translateY(12px); }
 
 /* Utils */
 .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
