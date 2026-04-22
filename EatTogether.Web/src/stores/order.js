@@ -2,8 +2,9 @@ import { defineStore } from 'pinia';
 import { ref, reactive, computed } from 'vue';
 
 export const useOrderStore = defineStore('order', () => {
-  const cart = reactive({});   // { productId: qty }
-  const pax = ref(2);
+  const cart    = reactive({});   // { productId: qty }
+  const notes   = reactive({});   // { productId: noteString }
+  const pax     = ref(2);
   const specialRequest = ref('');
 
   const cartItems = computed(() =>
@@ -23,12 +24,24 @@ export const useOrderStore = defineStore('order', () => {
   function removeItem(productId) {
     if (!cart[productId]) return;
     cart[productId]--;
-    if (cart[productId] <= 0) delete cart[productId];
+    if (cart[productId] <= 0) {
+      delete cart[productId];
+      delete notes[productId];
+    }
+  }
+
+  function setNote(productId, note) {
+    if (note && note.trim()) {
+      notes[productId] = note.trim();
+    } else {
+      delete notes[productId];
+    }
   }
 
   function clearOrder() {
     Object.keys(cart).forEach(k => delete cart[k]);
+    Object.keys(notes).forEach(k => delete notes[k]);
   }
 
-  return { cart, pax, specialRequest, cartItems, totalItems, addItem, removeItem, clearOrder };
+  return { cart, notes, pax, specialRequest, cartItems, totalItems, addItem, removeItem, setNote, clearOrder };
 });
