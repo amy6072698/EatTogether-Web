@@ -1,8 +1,6 @@
 
 using EatTogether.API.Models.EfModels;
 using EatTogether.API.Models.Infra;
-using EatTogether.API.Models.EfModels;
-using EatTogether.API.Models.Infra;
 using EatTogether.Models.Repositories;
 using EatTogether.Models.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -131,12 +129,6 @@ namespace EatTogether.API
 			// 結帳相關
 			builder.Services.AddMemoryCache();
 			builder.Services.AddHttpClient();
-			builder.Services.AddSingleton<EcPayService>();
-			builder.Services.AddScoped<IOrderService, OrderService>();
-			builder.Services.AddScoped<IReportService, ReportService>();
-			builder.Services.AddScoped<EventService>();
-			builder.Services.AddScoped<ArticleCategoryService>();
-			builder.Services.AddScoped<ArticleService>();
 
             // 前台寄信服務
             builder.Services.AddScoped<IEmailService, EmailService>();
