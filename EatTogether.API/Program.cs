@@ -206,10 +206,17 @@ namespace EatTogether.API
                 app.UseSwaggerUI();
             }
 
+			// 強制瀏覽器未來一律使用 HTTPS，防止降級攻擊（開發環境不啟用）
+			if (!app.Environment.IsDevelopment())
+			{
+				app.UseHsts();
+			}
+
             app.UseHttpsRedirection();
 
-            // 靜態檔案：優先用設定的外部 wwwroot（MVC 專案），找不到再用預設
-            var staticRoot = builder.Configuration["StaticFilesRoot"];
+
+			// 靜態檔案：優先用設定的外部 wwwroot（MVC 專案），找不到再用預設
+			var staticRoot = builder.Configuration["StaticFilesRoot"];
             if (!string.IsNullOrEmpty(staticRoot) && Directory.Exists(staticRoot))
             {
                 app.UseStaticFiles(new StaticFileOptions
@@ -221,7 +228,58 @@ namespace EatTogether.API
             {
                 app.UseStaticFiles();
             }
-            app.UseCors("FrontendPolicy");   // 順序：CORS → RateLimit → Auth
+			// CSP Header：縱深防禦，限制瀏覽器可載入的資源來源
+			app.Use(async (ctx, next) =>
+			{
+				// connect-src：
+				// 開發環境 → 前端透過 Vite proxy（/api）轉發，瀏覽器看到的是同源，'self' 即可
+				// 正式環境 → 若前端與 API 不同域，請將下方網域替換為實際 API 網域
+				var connectSrc = app.Environment.IsDevelopment()
+					? "'self'"
+					: "'self' https://api.eattogether.com";  // ← 正式部署前請替換為實際 API 網域
+
+				// 1. Content-Security-Policy
+				//    即使存在 XSS 漏洞，也能透過瀏覽器政策大幅限制攻擊者能做的事（縱深防禦）
+				ctx.Response.Headers.Append(
+					"Content-Security-Policy",
+					$"default-src 'self'; " +  // 預設只允許同源資源
+					$"script-src 'self'; " +  // JS 只允許同源（防止載入外部惡意腳本）
+					$"connect-src {connectSrc}; " +  // fetch/XHR 目標（開發走 Vite proxy；正式視部署架構）
+					$"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +  // Bootstrap inline style + Google Fonts CSS
+					$"img-src 'self' data: https:; " +  // 同源、Base64、HTTPS 外部圖（商品圖/頭像）
+					$"font-src 'self' data: https://fonts.gstatic.com; " +  // Bootstrap 字體本地打包 + Google Fonts 字體檔
+					$"frame-ancestors 'none';"                                             // 禁止被任何網站 iframe 嵌入（防 Clickjacking）
+				);
+
+				// 2. X-Content-Type-Options
+				//    防止瀏覽器猜測回應的 Content-Type（MIME Sniffing 攻擊）
+				//    例如：攻擊者上傳副檔名 .jpg 但內容是 JS，瀏覽器不會自行判斷並執行
+				ctx.Response.Headers.Append(
+					"X-Content-Type-Options",
+					"nosniff"
+				);
+
+				// 3. Referrer-Policy
+				//    控制 Referer Header 的內容，防止 URL 中的敏感參數（如 reset token）洩漏給外部網站
+				//    strict-origin-when-cross-origin：
+				//      同源請求 → 帶完整 URL
+				//      跨域請求 → 只帶 Origin（不帶路徑與參數）
+				ctx.Response.Headers.Append(
+					"Referrer-Policy",
+					"strict-origin-when-cross-origin"
+				);
+
+				// 4. Permissions-Policy
+				//    主動關閉專案不需要的瀏覽器功能，即使 XSS 攻擊成功也無法利用這些 API
+				//    義起吃不需要攝影機、麥克風、地理位置，全部禁用
+				ctx.Response.Headers.Append(
+					"Permissions-Policy",
+					"camera=(), microphone=(), geolocation=()"
+				);
+
+				await next();
+			});
+			app.UseCors("FrontendPolicy");   // 順序：CORS → RateLimit → Auth
 			app.UseRateLimiter();
             app.UseAuthentication();
 			app.UseAuthorization();
