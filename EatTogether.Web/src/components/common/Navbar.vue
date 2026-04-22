@@ -68,6 +68,7 @@ const route = useRoute()
 const navLinks = [
   { label: '菜單',   to: '/menu' },
   { label: '套餐',   to: '/setmeal' },
+  { label: '本季限定', to: '/limited' },
   { label: '訂位',   to: '/reservation' },
   { label: '會員',   to: '/member' },
   { label: '外帶點餐', to: '/takeout' },
