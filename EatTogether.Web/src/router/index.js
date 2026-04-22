@@ -23,12 +23,17 @@ const routes = [
     {
         path: "/menu",
         name: "menu",
-        component: () => import("@/views/Menu.vue"),
+        component: () => import("@/views/Menu/Menu.vue"),
     },
     {
         path: "/setmeal",
         name: "SetMeal",
-        component: () => import("@/views/SetMeal.vue"),
+        component: () => import("@/views/Menu/SetMeal.vue"),
+    },
+    {
+        path: "/limited",
+        name: "Limited",
+        component: () => import("@/views/Menu/Limited.vue"),
     },
     {
         path: "/In",
