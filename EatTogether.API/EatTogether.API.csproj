@@ -21,7 +21,13 @@
 
   <ItemGroup>
     <Folder Include="Controllers\" />
+    <Folder Include="Models\DTOs\" />
+    <Folder Include="Models\Extensions\" />
+    <Folder Include="Models\ViewModels\" />
+    <Folder Include="Models\Services\" />
+    <Folder Include="Models\Repositories\" />
   </ItemGroup>
+
 
   <ItemGroup>
     <None Include="efpt.config.json.user" />
