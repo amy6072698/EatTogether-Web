@@ -1,0 +1,47 @@
+﻿using Microsoft.AspNetCore.Mvc.Rendering;
+using System.ComponentModel.DataAnnotations;
+
+namespace EatTogether.Models.ViewModels
+{
+	public class CategoryViewModel
+	{
+		public int Id { get; set; }
+
+
+		[Required(ErrorMessage = "分類名稱為必填")]
+		[StringLength(50, ErrorMessage = "分類名稱最多50個字元")]
+		[Display(Name = "分類名稱")]
+		public string CategoryName { get; set; } = null!;
+
+
+		[Display(Name = "是否啟用")]
+		public bool IsActive { get; set; } = true;
+
+
+		[Display(Name = "上層分類")]
+		public int? ParentCategoryId { get; set; }
+
+
+		[Display(Name = "上層分類名稱")]
+		public string? ParentCategoryName { get; set; }
+
+
+		[Display(Name = "顯示順序")]
+		public int DisplayOrder { get; set; }
+
+		[MaxLength(int.MaxValue)]
+		[Display(Name = "圖片網址")]
+		public string? ImageUrl { get; set; }
+
+		[Display(Name = "建立時間")]
+		public DateTime CreatedAt { get; set; }
+
+		[Display(Name = "更新時間")]
+		public DateTime? UpdatedAt { get; set; }
+
+		[Display(Name = "餐點數量")]
+		public int DishCount { get; set; }
+
+		public List<SelectListItem> ParentCategoryOptions { get; set; } = new(); // 用於下拉選單的分類選項
+	}
+}

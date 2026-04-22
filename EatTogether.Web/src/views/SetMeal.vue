@@ -25,8 +25,9 @@
       <!-- 套餐卡片列表 -->
       <TransitionGroup v-else name="card" tag="div" class="setmeal-grid">
         <div
-          v-for="meal in setMeals"
+          v-for="(meal, index) in setMeals"
           :key="meal.id"
+          v-reveal="index"
           class="meal-card"
           @click="openModal(meal)"
         >
@@ -40,10 +41,15 @@
             <div v-else class="img-placeholder">
               <span>{{ meal.setMealName.charAt(0) }}</span>
             </div>
+            <div v-if="mealIsLowStock(meal)" class="stock-bar" :style="{ width: stockWidth(meal.id) + '%' }"></div>
             <div class="badge-group">
               <span v-if="meal.isRecommended" class="badge badge-rec">推薦</span>
               <span v-if="meal.isPopular" class="badge badge-pop">熱銷</span>
             </div>
+          </div>
+
+          <div v-if="!isAvailable(meal)" class="time-overlay">
+            <span class="time-overlay-text">{{ startLabel(meal) }} 開始供應</span>
           </div>
 
           <div class="meal-info">
@@ -123,10 +129,11 @@
             <div v-if="fixedItems(selectedMeal).length" class="modal-section">
               <div class="modal-section-label">套餐內容</div>
               <div class="fixed-items">
-                <div v-for="item in fixedItems(selectedMeal)" :key="item.dishId" class="fixed-item">
+                <div v-for="item in fixedItems(selectedMeal)" :key="item.dishId" class="fixed-item" :class="{ 'is-soldout': dishStock(item.dishId) === 2 }">
                   <span class="item-name">{{ item.dishName }}</span>
                   <span class="item-qty">× {{ item.quantity }}</span>
-                  <span class="item-price">NT$ {{ item.dishPrice.toLocaleString() }}</span>
+                  <span v-if="dishStock(item.dishId) === 2" class="item-soldout-tag">已售完</span>
+                  <span v-else class="item-price">NT$ {{ item.dishPrice.toLocaleString() }}</span>
                 </div>
               </div>
             </div>
@@ -140,20 +147,21 @@
                 </span>
               </div>
               <div class="option-items">
-                <div v-for="item in group.items" :key="item.dishId" class="option-item">
+                <div v-for="item in group.items" :key="item.dishId" class="option-item" :class="{ 'is-soldout': dishStock(item.dishId) === 2 }">
                   <span class="option-name">{{ item.dishName }}</span>
-                  <span class="option-price">NT$ {{ item.dishPrice.toLocaleString() }}</span>
+                  <span v-if="dishStock(item.dishId) === 2" class="option-soldout-tag">已售完</span>
+                  <span v-else class="option-price">NT$ {{ item.dishPrice.toLocaleString() }}</span>
                   <div class="qty-control">
                     <button
                       class="qty-btn"
                       @click="changeQty(selectedMeal.id, groupNo, item.dishId, -1)"
-                      :disabled="getQty(selectedMeal.id, groupNo, item.dishId) === 0"
+                      :disabled="getQty(selectedMeal.id, groupNo, item.dishId) === 0 || dishStock(item.dishId) === 2"
                     >−</button>
                     <span class="qty-num">{{ getQty(selectedMeal.id, groupNo, item.dishId) }}</span>
                     <button
                       class="qty-btn"
                       @click="changeQty(selectedMeal.id, groupNo, item.dishId, 1)"
-                      :disabled="groupTotal(selectedMeal.id, groupNo) >= group.pickLimit"
+                      :disabled="groupTotal(selectedMeal.id, groupNo) >= group.pickLimit || dishStock(item.dishId) === 2"
                     >+</button>
                   </div>
                 </div>
@@ -164,7 +172,7 @@
             <div class="price-summary">
               <div class="price-row">
                 <span>單點合計</span>
-                <span>NT$ {{ modalSingleTotal.toLocaleString() }}</span>
+                <span>NT$ {{ animatedSingleTotal.toLocaleString() }}</span>
               </div>
               <div class="price-row set-price-row">
                 <span>套餐價格</span>
@@ -172,7 +180,7 @@
               </div>
               <div class="price-row save-row" v-if="modalSingleTotal - selectedMeal.setPrice > 0">
                 <span>省下</span>
-                <span class="save-amount">NT$ {{ (modalSingleTotal - selectedMeal.setPrice).toLocaleString() }}</span>
+                <span class="save-amount">NT$ {{ animatedSavings.toLocaleString() }}</span>
               </div>
             </div>
           </div>
@@ -183,7 +191,77 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
+
+// ── Intersection Observer 進場 ──────────────────────
+const vReveal = {
+  mounted(el, binding) {
+    const delay = binding.value * 50
+    el.style.opacity = '0'
+    el.style.transform = 'translateY(40px)'
+    el.style.transition = 'opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1), transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)'
+    el.style.transitionDelay = `${delay}ms`
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        el.style.opacity = '1'
+        el.style.transform = 'translateY(0)'
+        setTimeout(() => {
+          el.style.opacity = ''
+          el.style.transform = ''
+          el.style.transition = ''
+          el.style.transitionDelay = ''
+        }, 400 + delay)
+        observer.disconnect()
+      }
+    }, { threshold: 0.1 })
+    observer.observe(el)
+    el._revealObserver = observer
+  },
+  unmounted(el) {
+    el._revealObserver?.disconnect()
+  }
+}
+
+// ── 庫存進度條 ──────────────────────────────────────
+const stockWidth = (id) => {
+  const n = typeof id === 'number' ? id : String(id).split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+  return 20 + (n % 16)
+}
+
+// 以 dishId 查詢 stockStatus（SetMeal items 不帶此欄位，需從 dishes API 取得）
+const dishes = ref([]);
+const dishStockMap = computed(() =>
+  Object.fromEntries(dishes.value.map(d => [d.id, d.stockStatus]))
+);
+const dishStock = (dishId) => dishStockMap.value[dishId] ?? 0;
+
+const mealIsLowStock = (meal) =>
+  meal.stockStatus === 1 ||
+  (meal.items && meal.items.some(i => dishStock(i.dishId) === 1))
+
+// ── 時段判斷 ────────────────────────────────────────
+const currentTime = ref(new Date());
+
+const parseTimeToday = (timeStr) => {
+  if (!timeStr) return null;
+  const [h, m, s = 0] = timeStr.split(':').map(Number);
+  const d = new Date(currentTime.value);
+  d.setHours(h, m, s, 0);
+  return d;
+};
+
+const isAvailable = (meal) => {
+  if (!meal.startTime && !meal.endTime) return true;
+  const now = currentTime.value;
+  const start = parseTimeToday(meal.startTime);
+  const end   = parseTimeToday(meal.endTime);
+  if (start && end) return now >= start && now <= end;
+  if (start) return now >= start;
+  if (end)   return now <= end;
+  return true;
+};
+
+const startLabel = (meal) => meal.startTime ? meal.startTime.substring(0, 5) : '';
 
 // ── State ──────────────────────────────────────────
 const setMeals = ref([]);
@@ -275,15 +353,47 @@ const modalSingleTotal = computed(() => {
   return fixedTotal + optionalTotal;
 });
 
+// ── 數字滾動動畫 ───────────────────────────────────
+const animatedSingleTotal = ref(0);
+const animatedSavings = ref(0);
+let _syncWatcher = null;
+
+const easeOutQuart = (t) => 1 - Math.pow(1 - t, 4);
+
+const animateValue = (target, to, duration = 800) => {
+  const start = performance.now();
+  const tick = (now) => {
+    const p = Math.min((now - start) / duration, 1);
+    target.value = Math.round(easeOutQuart(p) * to);
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+};
+
 // ── Modal ──────────────────────────────────────────
 const openModal = (meal) => {
   selectedMeal.value = meal;
   initQuantities(meal);
   isModalOpen.value = true;
   document.body.style.overflow = 'hidden';
+
+  animatedSingleTotal.value = 0;
+  animatedSavings.value = 0;
+  const targetSingle = modalSingleTotal.value;
+  const targetSavings = Math.max(0, targetSingle - meal.setPrice);
+  animateValue(animatedSingleTotal, targetSingle);
+  if (targetSavings > 0) animateValue(animatedSavings, targetSavings);
+
+  // 動畫結束後同步 live 數值（使用者調整選項時即時反映）
+  if (_syncWatcher) _syncWatcher();
+  _syncWatcher = watch(modalSingleTotal, (val) => {
+    animatedSingleTotal.value = val;
+    animatedSavings.value = Math.max(0, val - (selectedMeal.value?.setPrice ?? 0));
+  });
 };
 
 const closeModal = () => {
+  if (_syncWatcher) { _syncWatcher(); _syncWatcher = null; }
   isModalOpen.value = false;
   selectedMeal.value = null;
   document.body.style.overflow = '';
@@ -296,12 +406,20 @@ onUnmounted(() => window.removeEventListener('keydown', handleEsc));
 // ── API ────────────────────────────────────────────
 let _refreshTimer = null;
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+
+const fetchDishes = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/Dishes/active`);
+    if (res.ok) dishes.value = await res.json();
+  } catch {}
+};
+
 const fetchSetMeals = async () => {
   // 首次載入時才顯示 loading，背景輪詢時保留現有資料避免閃白
   if (setMeals.value.length === 0) {
     loading.value = true;
   }
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
   try {
     const res = await fetch(`${API_BASE}/SetMeals/active`);
     if (!res.ok) throw new Error(`抓取失敗 (${res.status})`);
@@ -318,12 +436,16 @@ const fetchSetMeals = async () => {
   }
 };
 
+let _clockTimer = null;
 onMounted(() => {
+  fetchDishes();
   fetchSetMeals();
-  _refreshTimer = setInterval(fetchSetMeals, 5_000);
+  _refreshTimer = setInterval(() => { fetchSetMeals(); fetchDishes(); }, 5_000);
+  _clockTimer = setInterval(() => { currentTime.value = new Date(); }, 1000);
 });
 onUnmounted(() => {
   clearInterval(_refreshTimer);
+  clearInterval(_clockTimer);
 });
 </script>
 
@@ -373,16 +495,57 @@ onUnmounted(() => {
   overflow: hidden;
   border: 1px solid rgba(227, 199, 107, 0.05);
   cursor: pointer;
+  position: relative;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
               border-color 0.3s,
               box-shadow 0.3s;
   display: flex;
   flex-direction: column;
 }
+
+/* ── 時段外遮罩 ── */
+.time-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 5, 2, 0.68);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.time-overlay-text {
+  font-family: var(--font-label);
+  font-size: 0.95rem;
+  letter-spacing: 0.18em;
+  color: var(--eat-primary);
+  border: 1px solid rgba(227, 199, 107, 0.35);
+  padding: 0.5rem 1.4rem;
+  border-radius: 4px;
+  background: rgba(227, 199, 107, 0.06);
+}
 .meal-card:hover {
   transform: translateY(-6px);
   border-color: rgba(227, 199, 107, 0.2);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* ── 庫存剩餘進度條 ── */
+.stock-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #f97316, #fb923c 80%, rgba(251,146,60,0));
+  border-radius: 0 2px 0 0;
+  z-index: 3;
+  animation: stock-pulse 1.8s ease-in-out infinite;
+}
+@keyframes stock-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
 }
 
 .meal-img-wrap {
@@ -637,6 +800,21 @@ onUnmounted(() => {
 }
 .option-name { flex-grow: 1; font-family: var(--font-body); font-size: 0.9rem; }
 .option-price { font-family: var(--font-label); font-size: 0.82rem; color: var(--eat-secondary); white-space: nowrap; }
+
+.fixed-item.is-soldout,
+.option-item.is-soldout { opacity: 0.45; }
+
+.item-soldout-tag,
+.option-soldout-tag {
+  font-family: var(--font-label);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: rgba(217, 83, 79, 0.85);
+  border: 1px solid rgba(217, 83, 79, 0.35);
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
 
 /* 數量加減控制器 */
 .qty-control {

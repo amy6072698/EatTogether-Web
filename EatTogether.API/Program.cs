@@ -1,8 +1,6 @@
 
 using EatTogether.API.Models.EfModels;
 using EatTogether.API.Models.Infra;
-using EatTogether.Models.EfModels;
-using EatTogether.Models.Infra;
 using EatTogether.Models.Repositories;
 using EatTogether.Models.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -14,8 +12,8 @@ using System.Threading.RateLimiting;
 
 namespace EatTogether.API
 {
-    public class Program
-    {
+    public class Program  
+	{
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -110,58 +108,13 @@ namespace EatTogether.API
 			//builder.Services.AddScoped<IMemberRepository, MemberRepository>();
 			//builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 			// 註冊Repository
-			builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 			builder.Services.AddScoped<IDishRepository, DishRepository>();
 			builder.Services.AddScoped<ISetMealRepository, SetMealRepository>();
-			builder.Services.AddScoped<IProductRepository, ProductRepository>();
-			builder.Services.AddScoped<ITableRepository, TableRepository>();
-			builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
-			builder.Services.AddScoped<ICouponRepository, CouponRepository>();
-			builder.Services.AddScoped<IMemberCouponRepository, MemberCouponRepository>();
-			builder.Services.AddScoped<IUserRepository, UserRepository>();
-			builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
-			builder.Services.AddScoped<IRoleRepository, RoleRepository>();
-			builder.Services.AddScoped<IFunctionRepository, FunctionRepository>();
-			builder.Services.AddScoped<IRoleFunctionRepository, RoleFunctionRepository>();
-			builder.Services.AddScoped<IMemberRepository, MemberRepository>();
-			builder.Services.AddScoped<IPreOrderRepository, PreOrderRepository>();
-			builder.Services.AddScoped<IProductRepository, ProductRepository>();
-			builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-			builder.Services.AddScoped<IReportRepository, ReportRepository>();
-			builder.Services.AddScoped<IEventRepository, EventRepository>();
-			builder.Services.AddScoped<IArticleCategoryRepository, ArticleCategoryRepository>();
-			builder.Services.AddScoped<IArticleRepository, ArticleRepository>();
 
 			// 註冊Service
-			builder.Services.AddScoped<CategoryService>();
 			builder.Services.AddScoped<DishService>();
 			builder.Services.AddScoped<SetMealService>();
-			builder.Services.AddScoped<ProductService>();
-			builder.Services.AddScoped<TableService>();
-			builder.Services.AddScoped<ReservationService>();
-			builder.Services.AddScoped<CouponService>();
-			builder.Services.AddScoped<ReservationEmailService>();
-			builder.Services.AddScoped<BirthdayCouponService>();
-			builder.Services.AddHostedService<BirthdayCouponBackgroundService>();
-			builder.Services.AddHostedService<CouponNotifyBackgroundService>();
-			builder.Services.AddSingleton<DishSchedulerService>();
-			builder.Services.AddHostedService(sp => sp.GetRequiredService<DishSchedulerService>());
-			builder.Services.AddScoped<IAuthService, AuthService>();
-			// 💡 註冊使用者編號產生器，解決 UserService 無法啟動的問題
-			builder.Services.AddScoped<UserNumberGenerator>();
-			builder.Services.AddScoped<IUserService, UserService>();
-			builder.Services.AddScoped<IRoleService, RoleService>();
-			builder.Services.AddScoped<IMemberService, MemberService>();
-			builder.Services.AddScoped<IPasswordResetEmailService, PasswordResetEmailService>();
-			// 結帳相關
-			builder.Services.AddMemoryCache();
-			builder.Services.AddHttpClient();
-			builder.Services.AddSingleton<EcPayService>();
-			builder.Services.AddScoped<IOrderService, OrderService>();
-			builder.Services.AddScoped<IReportService, ReportService>();
-			builder.Services.AddScoped<EventService>();
-			builder.Services.AddScoped<ArticleCategoryService>();
-			builder.Services.AddScoped<ArticleService>();
+
 
             // 前台寄信服務
             builder.Services.AddScoped<IEmailService, EmailService>();

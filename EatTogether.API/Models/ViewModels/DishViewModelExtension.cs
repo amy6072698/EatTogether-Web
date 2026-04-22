@@ -1,0 +1,56 @@
+﻿using EatTogether.Models.DTOs;
+
+namespace EatTogether.Models.ViewModels
+{
+	public static class DishViewModelExtension
+	{
+		public static DishViewModel ToViewModel(this DishDto dto) // Dto => ViewModel
+		{
+			return new DishViewModel
+			{
+				Id = dto.Id,
+				CategoryId = dto.CategoryId,
+				CategoryName = dto.CategoryName,
+				DishName = dto.DishName,
+				Price = dto.Price,
+				IsActive = dto.IsActive,
+				Description = dto.Description,
+				ImageUrl = dto.ImageUrl,
+				IsTakeOut = dto.IsTakeOut,
+				IsLimited = dto.IsLimited,
+				IsRecommended = dto.IsRecommended,
+				IsPopular = dto.IsPopular,
+				IsVegetarian = dto.IsVegetarian,
+				SpicyLevel = dto.SpicyLevel,
+				StartDate = dto.StartDate,
+				EndDate = dto.EndDate,
+				CreatedAt = dto.CreatedAt,
+				UpdatedAt = dto.UpdatedAt,
+				DisplayOrder = dto.DisplayOrder,
+				StockStatus = dto.StockStatus
+			};
+		}
+		public static DishDto ToDto(this DishViewModel vm) // ViewModel => Dto
+		{
+			return new DishDto
+			{
+				Id = vm.Id,
+				CategoryId = vm.CategoryId,
+				DishName = vm.DishName,
+				Price = vm.Price ?? 0,
+				IsActive = vm.IsActive,
+				Description = vm.Description,
+				ImageUrl = vm.ImageUrl,
+				IsTakeOut = vm.IsTakeOut,
+				IsLimited = vm.IsLimited,
+				IsRecommended = vm.IsRecommended,
+				IsPopular = vm.IsPopular,
+				IsVegetarian = vm.IsVegetarian,
+				SpicyLevel = vm.SpicyLevel,
+				StartDate = vm.StartDate,
+				EndDate = vm.EndDate,
+				DisplayOrder = vm.DisplayOrder
+			};
+		}
+	}
+}
