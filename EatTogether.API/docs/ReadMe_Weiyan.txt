@@ -43,25 +43,25 @@
 
 ====================Vue 3 前台====================
 
-[]建立 Vue 專案基礎
-  []專案建立（Vite + Vue 3）
-  []安裝 vue-router
-  []設定 router（兩個路由）
+[V]建立 Vue 專案基礎
+  [V]專案建立（Vite + Vue 3）
+  [V]安裝 vue-router
+  [V]設定 router（兩個路由）
     /news              → NewsListView.vue
     /news/:id          → NewsDetailView.vue
 
 
-[]add 最新消息列表頁
-  []NewsListView.vue
-    []onMounted 呼叫 GET api/News
-    []ref() 存 articles 陣列、分頁資訊
-    []v-for 渲染文章卡片
-    []卡片顯示：標題、Summary、發布日期、分類、封面圖、點閱數
-    []summary 含 HTML tag 需處理（strip tag 或 v-html）
-    []分頁切換（點擊頁碼重新 fetch）
-    []置頂文章（IsPinned）可加視覺標記
-    []套入 Stitch 切版樣式
-
+[working]add 最新消息列表頁
+  [working]NewsListView.vue
+    [V]onMounted 呼叫 GET api/News
+    [V]ref() 存 articles 陣列、分頁資訊
+    [V]v-for 渲染文章卡片
+    [V]卡片顯示：標題、Summary、發布日期、分類、封面圖、點閱數
+    [V]summary 含 HTML tag 需處理（strip tag 或 v-html）
+    [V]分頁切換（點擊頁碼重新 fetch）
+    [V]置頂文章（IsPinned）可加視覺標記
+    [V]套入 Stitch 切版樣式
+    [working]icon套用
 
 []add 單篇文章詳細頁
   []NewsDetailView.vue
