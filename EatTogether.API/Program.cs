@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Threading.RateLimiting;
 
 namespace EatTogether.API
 {
@@ -46,7 +47,7 @@ namespace EatTogether.API
                         ValidIssuer = builder.Configuration["Jwt:Issuer"],
                         ValidAudience = builder.Configuration["Jwt:Audience"],
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-                        ClockSkew = TimeSpan.Zero  // Token ����ɶ����e�\�~�t
+                        ClockSkew = TimeSpan.Zero  // Token 到期時間不容許誤差
 					};
 
                     // 從 HttpOnly Cookie 取得 Token
@@ -62,27 +63,40 @@ namespace EatTogether.API
 
             builder.Services.AddAuthorization();
 
-            // 設定 Rate Limiting
-            builder.Services.AddRateLimiter(options =>
-            {
-                options.AddFixedWindowLimiter("auth", opt =>
-                {
-                    opt.Window = TimeSpan.FromMinutes(1);
-                    opt.PermitLimit = 5;
-                    opt.QueueLimit = 0;
-                    opt.AutoReplenishment = true;
-                });
-                options.AddFixedWindowLimiter("general", opt =>
-                {
-                    opt.Window = TimeSpan.FromMinutes(1);
-                    opt.PermitLimit = 60;
-                    opt.QueueLimit = 0;
-                });
-                options.RejectionStatusCode = 429; // Too Many Requests
+			// 設定 Rate Limiting
+			builder.Services.AddRateLimiter(options =>
+			{
+				// 敏感驗證端點：每 IP 每分鐘最多 5 次（登入/註冊/忘記密碼/重送驗證信）
+				options.AddPolicy("AuthPolicy", httpContext =>
+					RateLimitPartition.GetFixedWindowLimiter(
+						partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+						factory: _ => new FixedWindowRateLimiterOptions
+						{
+							Window = TimeSpan.FromMinutes(1),
+							PermitLimit = 5,
+							QueueLimit = 0,
+						}
+					)
+				);
+
+				// 一般 API 端點：每 IP 每分鐘最多 60 次
+				options.AddPolicy("GeneralPolicy", httpContext =>
+					RateLimitPartition.GetFixedWindowLimiter(
+						partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+						factory: _ => new FixedWindowRateLimiterOptions
+						{
+							Window = TimeSpan.FromMinutes(1),
+							PermitLimit = 60,
+							QueueLimit = 0,
+						}
+					)
+				);
+
+				options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 			});
 
-            // 註冊 DbContext
-            builder.Services.AddDbContext<EatTogetherDBContext>(options =>
+			// 註冊 DbContext
+			builder.Services.AddDbContext<EatTogetherDBContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             // 設定 Services
