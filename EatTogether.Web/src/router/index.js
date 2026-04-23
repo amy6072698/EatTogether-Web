@@ -22,18 +22,18 @@ const routes = [
     // },
     {
         path: "/menu",
-        name: "menu",
-        component: () => import("@/views/Menu/Menu.vue"),
+        name: "Menu",
+        component: () => import("@/views/menu/Menu.vue"),
     },
     {
         path: "/setmeal",
         name: "SetMeal",
-        component: () => import("@/views/Menu/SetMeal.vue"),
+        component: () => import("@/views/menu/SetMeal.vue"),
     },
     {
         path: "/limited",
         name: "Limited",
-        component: () => import("@/views/Menu/Limited.vue"),
+        component: () => import("@/views/menu/Limited.vue"),
     },
     {
         path: "/In",
