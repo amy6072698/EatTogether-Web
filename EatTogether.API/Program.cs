@@ -1,6 +1,7 @@
 
 using EatTogether.API.Models.EfModels;
 using EatTogether.API.Models.Infra;
+using EatTogether.API.Models.Repositories;
 using EatTogether.Models.Repositories;
 using EatTogether.Models.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -123,6 +124,7 @@ namespace EatTogether.API
             builder.Services.AddScoped<IRoleRepository, RoleRepository>();
             builder.Services.AddScoped<IUserRepository, UserRepository>();
 			builder.Services.AddScoped<IMemberRepository, MemberRepository>();
+            builder.Services.AddScoped<IMemberFavoriteRepository, MemberFavoriteRepository>();
 
             // 註冊Service
             builder.Services.AddScoped<IAuthService, AuthService>();

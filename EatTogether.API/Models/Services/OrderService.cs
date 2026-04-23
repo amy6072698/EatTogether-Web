@@ -1,4 +1,5 @@
 ﻿using EatTogether.API.Models.EfModels;
+using EatTogether.API.Models.Repositories;
 using EatTogether.Models.DTOs;
 using EatTogether.Models.Infra;
 using EatTogether.Models.Repositories;
@@ -63,6 +64,9 @@ namespace EatTogether.Models.Services
 
         // ECPay 付款確認（callback 未收到時的 DB 備援查詢）
         Task<bool> IsOrderCompletedAsync(char tradePrefix, int id);
+
+        // 前台點餐會員收藏
+        Task<List<CreatePreOrderItemViewModel>> GetFavoritesAsync(int memberId);
     }
 
     public class OrderService : IOrderService
@@ -76,6 +80,7 @@ namespace EatTogether.Models.Services
         private readonly IMemberRepository _memberRepo;
         private readonly IMemberCouponRepository _memberCouponRepo;
         private readonly IUserRepository _userRepo;
+        private readonly IMemberFavoriteRepository _memberFavoriteRepo;
 
         public OrderService(
             IPreOrderRepository preOrderRepo,
@@ -86,7 +91,8 @@ namespace EatTogether.Models.Services
             IEventRepository eventRepo,
             IMemberRepository memberRepo,
             IMemberCouponRepository memberCouponRepo,
-            IUserRepository userRepo)
+            IUserRepository userRepo,
+            IMemberFavoriteRepository memberFavoriteRepo)
         {
             _preOrderRepo = preOrderRepo;
             _tableRepo = tableRepo;
@@ -97,6 +103,7 @@ namespace EatTogether.Models.Services
             _memberRepo = memberRepo;
             _memberCouponRepo = memberCouponRepo;
             _userRepo = userRepo;
+            _memberFavoriteRepo = memberFavoriteRepo;
         }
 
         // ── CreatePreOrder ──────────────────────────────────────────────────
@@ -1655,6 +1662,14 @@ namespace EatTogether.Models.Services
                 default:
                     return false;
             }
+        }
+
+        // 前台點餐會員收藏
+        public async Task<List<CreatePreOrderItemViewModel>> GetFavoritesAsync(int memberId)
+        {
+            var productIds = await _memberFavoriteRepo.GetFavoriteProductIdsByMemberIdAsync(memberId);
+            var allItems = await GetMenuItemsAsync();
+            return allItems.Where(p => productIds.Contains(p.ProductId)).ToList();
         }
     }
 }

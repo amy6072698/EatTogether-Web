@@ -370,6 +370,16 @@ const authModalVisible   = ref(false);
 const authModalInitStep  = ref('choice');   // 'choice' | 'login'
 const memberDropdownOpen = ref(false);      // Header 會員下拉選單
 
+// ── 會員收藏
+const favoriteProducts = ref([]);
+
+async function loadFavorites() {
+  try {
+    const res = await apiFetch('/Orders/Favorites');
+    if (res.ok) favoriteProducts.value = await res.json();
+  } catch {}
+}
+
 // ── 身份驗證：嘗試用現有 cookie token 驗證，失敗則顯示 Modal ──
 async function checkAuth() {
   try {
@@ -377,6 +387,7 @@ async function checkAuth() {
     if (res.ok) {
       const data = await res.json();
       memberName.value = data.name || '會員';
+      loadFavorites();
     } else {
       // 401 → token 無效，顯示選擇 Modal
       authModalInitStep.value = 'choice';
@@ -397,6 +408,7 @@ function onGuestOrder() {
 function onLoggedIn(data) {
   authModalVisible.value = false;
   memberName.value = data.name || data.memberName || data.email || '會員';
+  loadFavorites();
 }
 
 function openSwitchAccount() {
@@ -477,6 +489,7 @@ const CATEGORY_ORDER = ['套餐', '主餐', '湯品', '甜點', '附餐', '飲�
 const sidebarCategories = computed(() => {
   // ── 特殊分類（依資料有無顯示）──
   const specials = [
+    { key: '我的收藏', label: '我的收藏', count: favoriteProducts.value.length },
     { key: '今日推薦', label: '今日推薦', count: products.value.filter(p => p.isRecommended).length },
     { key: '主廚特選', label: '主廚特選', count: products.value.filter(p => p.isPopular).length },
   ].filter(s => s.count > 0);
@@ -513,6 +526,11 @@ const filteredProducts = computed(() => {
 });
 
 const displaySections = computed(() => {
+  // 收藏分類
+  if (activeSidebarCat.value === '我的收藏') {
+    if (!favoriteProducts.value.length) return [];
+    return [{ key: '我的收藏', label: '我的收藏', dishes: favoriteProducts.value }];
+  }
   // 搜尋模式：跨所有分類
   if (searchQuery.value.trim()) {
     const dishes = filteredProducts.value;
