@@ -5,6 +5,7 @@ using EatTogether.Models.Infra;
 using EatTogether.Models.Repositories;
 using EatTogether.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Text.Json;
 
 namespace EatTogether.Models.Services
 {
@@ -67,6 +68,8 @@ namespace EatTogether.Models.Services
 
         // 前台點餐會員收藏
         Task<List<CreatePreOrderItemViewModel>> GetFavoritesAsync(int memberId);
+        // 前台點餐會員歷史訂單
+        Task<List<MemberOrderHistoryDto>> GetMemberOrderHistoryAsync(int memberId);
     }
 
     public class OrderService : IOrderService
@@ -219,6 +222,17 @@ namespace EatTogether.Models.Services
                 DoneOrCancel = 0
             }).ToList();
 
+            // 組備註 JSON
+            var itemNotes = dto.Items
+                .Where(i => !string.IsNullOrWhiteSpace(i.Note) && !i.ParentIndex.HasValue)
+                .ToDictionary(i => i.ProductName, i => i.Note!);
+
+            var noteJson = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                order = dto.Note ?? "",
+                items = itemNotes
+            });
+
             var preOrder = new PreOrder
             {
                 OrderNumber    = orderNumber,
@@ -230,7 +244,7 @@ namespace EatTogether.Models.Services
                 EventId        = dto.EventId,
                 DiscountAmount = discountAmount,
                 TotalAmount    = (int)(originalAmount - discountAmount),
-                Note           = dto.Note,
+                Note           = noteJson,
                 PeopleNum      = dto.PeopleNum,
                 PayMethod      = dto.PayMethod,
                 MemberId       = dto.MemberId,
@@ -1670,6 +1684,43 @@ namespace EatTogether.Models.Services
             var productIds = await _memberFavoriteRepo.GetFavoriteProductIdsByMemberIdAsync(memberId);
             var allItems = await GetMenuItemsAsync();
             return allItems.Where(p => productIds.Contains(p.ProductId)).ToList();
+        }
+
+        // 前台點餐會員歷史訂單
+        public async Task<List<MemberOrderHistoryDto>> GetMemberOrderHistoryAsync(int memberId)
+        {
+            var orders = await _orderRepo.GetRecentByMemberIdAsync(memberId);
+            return orders.Select(o =>
+            {
+                // 解析備註 JSON
+                var itemNotes = new Dictionary<string, string>();
+                var orderNote = "";
+                if (!string.IsNullOrEmpty(o.PreOrder?.Note))
+                {
+                    try
+                    {
+                        var json = JsonSerializer.Deserialize<JsonElement>(o.PreOrder.Note);
+                        orderNote = json.TryGetProperty("order", out var on) ? on.GetString() ?? "" : "";
+                        if (json.TryGetProperty("items", out var items))
+                            foreach (var kv in items.EnumerateObject())
+                                itemNotes[kv.Name] = kv.Value.GetString() ?? "";
+                    }
+                    catch { }
+                }
+
+                return new MemberOrderHistoryDto
+                {
+                    OrderNumber = o.OrderNumber,
+                    OrderAt = o.OrderAt,
+                    OrderNote = orderNote,
+                    Items = o.OrderDetails.Select(d => new MemberOrderItemDto
+                    {
+                        ProductName = d.ProductName,
+                        Qty = d.Qty,
+                        Note = itemNotes.TryGetValue(d.ProductName, out var n) ? n : null,
+                    }).ToList()
+                };
+            }).ToList();
         }
     }
 }
