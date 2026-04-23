@@ -66,6 +66,7 @@ import { RouterLink } from 'vue-router'
 const route = useRoute()
 
 const navLinks = [
+  { label: '最新消息',   to: '/news' },
   { label: '菜單',   to: '/menu' },
   { label: '套餐',   to: '/setmeal' },
   { label: '本季限定', to: '/limited' },
