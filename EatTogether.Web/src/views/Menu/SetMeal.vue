@@ -31,7 +31,9 @@
           :key="meal.id"
           v-reveal="index"
           class="meal-card"
+          :class="{ 'is-comparing': compareList.includes(meal.id) }"
           @click="openModal(meal)"
+          @mouseleave="activePreview = null"
         >
           <div
             class="meal-img-wrap"
@@ -52,7 +54,53 @@
               <span v-if="meal.isRecommended" class="badge badge-rec">推薦</span>
               <span v-if="meal.isPopular" class="badge badge-pop">熱銷</span>
             </div>
+            <!-- 比較按鈕 -->
+            <button
+              class="compare-btn"
+              :class="{ active: compareList.includes(meal.id) }"
+              @click.stop="toggleCompare(meal.id)"
+              :aria-label="compareList.includes(meal.id) ? '取消比較' : '加入比較'"
+            >
+              <span class="compare-check">{{ compareList.includes(meal.id) ? '✓' : '+' }}</span>
+              比較
+            </button>
+            <!-- 快速預覽按鈕 -->
+            <button
+              v-if="isAvailable(meal)"
+              class="preview-btn"
+              @click.stop="activePreview = activePreview === meal.id ? null : meal.id"
+              aria-label="快速預覽"
+            >👁</button>
           </div>
+
+          <!-- 快速預覽 Tooltip -->
+          <Transition name="preview-tip">
+            <div v-if="activePreview === meal.id" class="preview-tip" @click.stop>
+              <!-- 固定餐點（卡片超過3項時補完整清單） -->
+              <div v-if="meal.items.filter(i => !i.isOptional).length" class="tip-section">
+                <span class="tip-label">套餐內含</span>
+                <div class="tip-ingredients">
+                  <span
+                    v-for="item in meal.items.filter(i => !i.isOptional)"
+                    :key="item.dishId"
+                    class="tip-ing-chip"
+                  >{{ item.dishName }} ×{{ item.quantity }}</span>
+                </div>
+              </div>
+              <!-- 可選項目群組（卡片上看不到的資訊） -->
+              <div v-if="Object.keys(optionGroups(meal)).length" class="tip-section">
+                <span class="tip-label">可選項目</span>
+                <div class="tip-ingredients">
+                  <span
+                    v-for="(group, groupNo) in optionGroups(meal)"
+                    :key="groupNo"
+                    class="tip-ing-chip tip-option-chip"
+                  >{{ group.categoryName }} × {{ group.pickLimit }}</span>
+                </div>
+              </div>
+              <button class="tip-more" @click.stop="openModal(meal)">查看完整資訊 →</button>
+            </div>
+          </Transition>
 
           <div v-if="!isAvailable(meal)" class="time-overlay">
             <span class="time-overlay-text">{{ startLabel(meal) }} 開始供應</span>
@@ -97,10 +145,117 @@
 
     <ToastContainer />
 
+    <!-- ── 比較列 ── -->
+    <Transition name="compare-bar">
+      <div v-if="compareList.length === 2" class="compare-bar">
+        <div class="compare-bar-meals">
+          <div v-for="meal in compareMeals" :key="meal.id" class="compare-bar-item">
+            <span class="cbi-name">{{ meal.setMealName }}</span>
+            <span class="cbi-price">NT$ {{ meal.setPrice.toLocaleString() }}</span>
+            <span v-if="getSavings(meal) > 0" class="cbi-save">省 {{ getSavings(meal).toLocaleString() }}</span>
+          </div>
+        </div>
+        <div class="compare-bar-actions">
+          <button class="compare-detail-btn" @click="showComparePanel = true">詳細比較</button>
+          <button class="compare-clear-btn" @click="clearCompare">清除比較</button>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ── 比較面板 ── -->
+    <Transition name="modal">
+      <div v-if="showComparePanel" class="compare-panel-overlay" @click.self="showComparePanel = false">
+        <div class="compare-panel">
+          <div class="compare-panel-header">
+            <h2 class="compare-panel-title">套餐比較</h2>
+            <button class="compare-panel-close" @click="showComparePanel = false">✕</button>
+          </div>
+          <div class="compare-panel-body">
+            <!-- 基本資訊列 -->
+            <div class="cp-row cp-header-row">
+              <div class="cp-cell cp-label"></div>
+              <div v-for="meal in compareMeals" :key="meal.id" class="cp-cell cp-meal-name">
+                {{ meal.setMealName }}
+              </div>
+            </div>
+            <div class="cp-row">
+              <div class="cp-cell cp-label">套餐價格</div>
+              <div v-for="meal in compareMeals" :key="meal.id" class="cp-cell cp-price">
+                NT$ {{ meal.setPrice.toLocaleString() }}
+              </div>
+            </div>
+            <div class="cp-row">
+              <div class="cp-cell cp-label">單點合計</div>
+              <div v-for="meal in compareMeals" :key="meal.id" class="cp-cell">
+                NT$ {{ meal.items.reduce((s, i) => s + i.dishPrice * i.quantity, 0).toLocaleString() }}
+              </div>
+            </div>
+            <div class="cp-row">
+              <div class="cp-cell cp-label">可省金額</div>
+              <div v-for="meal in compareMeals" :key="meal.id" class="cp-cell cp-save">
+                <span v-if="getSavings(meal) > 0">省 NT$ {{ getSavings(meal).toLocaleString() }}</span>
+                <span v-else>—</span>
+              </div>
+            </div>
+            <div class="cp-row">
+              <div class="cp-cell cp-label">餐點數量</div>
+              <div v-for="meal in compareMeals" :key="meal.id" class="cp-cell">
+                {{ meal.items.filter(i => !i.isOptional).length }} 道固定
+                <span v-if="Object.keys(optionGroups(meal)).length">
+                  + {{ Object.keys(optionGroups(meal)).length }} 組可選
+                </span>
+              </div>
+            </div>
+            <div class="cp-row">
+              <div class="cp-cell cp-label">供應時段</div>
+              <div v-for="meal in compareMeals" :key="meal.id" class="cp-cell">
+                {{ getTimeRange(meal) || '全天供應' }}
+              </div>
+            </div>
+            <!-- 固定餐點明細 -->
+            <div class="cp-row cp-section-title">
+              <div class="cp-cell cp-label">套餐內容</div>
+              <div v-for="meal in compareMeals" :key="meal.id" class="cp-cell">
+                <div class="cp-items">
+                  <div
+                    v-for="item in meal.items.filter(i => !i.isOptional)"
+                    :key="item.dishId"
+                    class="cp-item"
+                  >
+                    <span class="cp-item-name">{{ item.dishName }}</span>
+                    <span class="cp-item-meta">×{{ item.quantity }} · NT${{ item.dishPrice }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- 可選項目 -->
+            <div v-if="compareMeals.some(m => Object.keys(optionGroups(m)).length)" class="cp-row">
+              <div class="cp-cell cp-label">可選項目</div>
+              <div v-for="meal in compareMeals" :key="meal.id" class="cp-cell">
+                <div class="cp-items">
+                  <div
+                    v-for="(group, gNo) in optionGroups(meal)"
+                    :key="gNo"
+                    class="cp-item"
+                  >
+                    <span class="cp-item-name">{{ group.categoryName }}</span>
+                    <span class="cp-item-meta">選 {{ group.pickLimit }} 項</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="compare-panel-footer">
+            <button class="compare-clear-btn" @click="clearCompare(); showComparePanel = false">清除比較</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- ── Modal ── -->
     <Transition name="modal">
       <div v-if="isModalOpen && selectedMeal" class="modal-overlay" @click.self="closeModal">
-        <div class="modal-box">
+        <div class="modal-box" ref="modalBoxRef">
 
           <!-- 圖片區 -->
           <div class="modal-img-wrap">
@@ -115,34 +270,6 @@
               <span>{{ selectedMeal.setMealName.charAt(0) }}</span>
             </div>
             <div class="modal-img-gradient"></div>
-            <div class="share-wrap" ref="shareWrapRef">
-              <button class="modal-share" @click.stop="shareMenuOpen = !shareMenuOpen" aria-label="分享">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                  <polyline points="16 6 12 2 8 6"/>
-                  <line x1="12" y1="2" x2="12" y2="15"/>
-                </svg>
-              </button>
-              <Transition name="share-menu">
-                <div v-if="shareMenuOpen" class="share-menu">
-                  <button class="share-item" @click="openShareItem('line')">
-                    <span class="share-icon si-line">L</span>LINE
-                  </button>
-                  <button class="share-item" @click="openShareItem('facebook')">
-                    <span class="share-icon si-fb">f</span>Facebook
-                  </button>
-                  <button class="share-item" @click="openShareItem('x')">
-                    <span class="share-icon si-x">𝕏</span>X
-                  </button>
-                  <button class="share-item" @click="openShareItem('copy')">
-                    <span class="share-icon si-copy">
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    </span>複製連結
-                  </button>
-                </div>
-              </Transition>
-            </div>
-            <button class="modal-close" @click="closeModal">✕</button>
             <div class="modal-badge-group">
               <span v-if="selectedMeal.isRecommended" class="badge badge-rec">推薦</span>
               <span v-if="selectedMeal.isPopular" class="badge badge-pop">熱銷</span>
@@ -220,6 +347,44 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- 按鈕並列於 modal-box 外，用 position:fixed + JS 動態對齊右上角 -->
+        <button
+          class="modal-close"
+          :style="{ top: btnPos.top, right: btnPos.closeRight }"
+          @click="closeModal"
+        >✕</button>
+        <div
+          class="share-wrap"
+          ref="shareWrapRef"
+          :style="{ top: btnPos.top, right: btnPos.shareRight }"
+        >
+          <button class="modal-share" @click.stop="shareMenuOpen = !shareMenuOpen" aria-label="分享">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+              <polyline points="16 6 12 2 8 6"/>
+              <line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>
+          </button>
+          <Transition name="share-menu">
+            <div v-if="shareMenuOpen" class="share-menu">
+              <button class="share-item" @click="openShareItem('line')">
+                <span class="share-icon si-line">L</span>LINE
+              </button>
+              <button class="share-item" @click="openShareItem('facebook')">
+                <span class="share-icon si-fb">f</span>Facebook
+              </button>
+              <button class="share-item" @click="openShareItem('x')">
+                <span class="share-icon si-x">𝕏</span>X
+              </button>
+              <button class="share-item" @click="openShareItem('copy')">
+                <span class="share-icon si-copy">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </span>複製連結
+              </button>
+            </div>
+          </Transition>
         </div>
       </div>
     </Transition>
@@ -319,13 +484,52 @@ const setMeals = ref([]);
 const loading = ref(true);
 const error = ref(null);
 const isModalOpen = ref(false);
+const activePreview = ref(null);
+
+// ── 套餐比較 ───────────────────────────────────────
+const compareList = ref([]);
+const showComparePanel = ref(false);
+
+const compareMeals = computed(() =>
+  compareList.value.map(id => setMeals.value.find(m => m.id === id)).filter(Boolean)
+);
+
+const toggleCompare = (mealId) => {
+  const idx = compareList.value.indexOf(mealId);
+  if (idx !== -1) {
+    compareList.value.splice(idx, 1);
+  } else if (compareList.value.length >= 2) {
+    show('最多只能比較 2 個套餐', 'info');
+  } else {
+    compareList.value.push(mealId);
+  }
+};
+
+const clearCompare = () => {
+  compareList.value = [];
+  showComparePanel.value = false;
+  show('已清除比較', 'info');
+};
 const selectedMeal = ref(null);
 const modalBodyRef = ref(null);
 const modalImgRef = ref(null);
+const modalBoxRef = ref(null);
+
+// 按鈕動態定位（相對 viewport，避免被任何 stacking context 裁切）
+const btnPos = reactive({ top: '1rem', closeRight: '1rem', shareRight: '3.5rem' });
+
+const updateBtnPos = () => {
+  if (!modalBoxRef.value) return;
+  const r = modalBoxRef.value.getBoundingClientRect();
+  btnPos.top        = `${r.top  + 16}px`;
+  btnPos.closeRight = `${window.innerWidth - r.right + 16}px`;
+  btnPos.shareRight = `${window.innerWidth - r.right + 56}px`;
+};
 
 watch(isModalOpen, async (open) => {
   if (!open) return;
   await nextTick();
+  updateBtnPos();
 
   // B: Ken Burns
   const img = modalImgRef.value;
@@ -496,7 +700,8 @@ const shareWrapRef = ref(null);
 const openShareItem = async (type) => {
   const meal = selectedMeal.value;
   if (!meal) return;
-  const encodedUrl = encodeURIComponent(window.location.href);
+  const mealUrl     = `${window.location.origin}/setmeal?meal=${meal.id}`;
+  const encodedUrl  = encodeURIComponent(mealUrl);
   const encodedText = encodeURIComponent(`${meal.setMealName} NT$${meal.setPrice.toLocaleString()}`);
   switch (type) {
     case 'line':     window.open(`https://social-plugins.line.me/lineit/share?url=${encodedUrl}`, '_blank'); break;
@@ -504,7 +709,7 @@ const openShareItem = async (type) => {
     case 'x':        window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`, '_blank'); break;
     case 'copy':
       try {
-        await navigator.clipboard.writeText(`${meal.setMealName} NT$${meal.setPrice.toLocaleString()} | 義起吃`);
+        await navigator.clipboard.writeText(mealUrl);
         show('🔗 連結已複製！', 'success');
       } catch {
         show('複製失敗，請手動複製', 'error');
@@ -552,10 +757,12 @@ const closeModal = () => {
 const handleEsc = (e) => { if (e.key === 'Escape') closeModal(); };
 onMounted(() => {
   window.addEventListener('keydown', handleEsc);
+  window.addEventListener('resize', updateBtnPos);
   document.addEventListener('click', handleShareClickOutside);
 });
 onUnmounted(() => {
   window.removeEventListener('keydown', handleEsc);
+  window.removeEventListener('resize', updateBtnPos);
   document.removeEventListener('click', handleShareClickOutside);
 });
 
@@ -593,11 +800,18 @@ const fetchSetMeals = async () => {
 };
 
 let _clockTimer = null;
-onMounted(() => {
-  fetchDishes();
-  fetchSetMeals();
+onMounted(async () => {
+  await Promise.all([fetchDishes(), fetchSetMeals()]);
   _refreshTimer = setInterval(() => { fetchSetMeals(); fetchDishes(); }, 5_000);
   _clockTimer = setInterval(() => { currentTime.value = new Date(); }, 1000);
+
+  // 深層連結：偵測 ?meal=id，自動打開對應 Modal
+  const params = new URLSearchParams(window.location.search);
+  const mealParam = params.get('meal');
+  if (mealParam) {
+    const meal = setMeals.value.find(m => String(m.id) === mealParam);
+    if (meal) openModal(meal);
+  }
 });
 onUnmounted(() => {
   clearInterval(_refreshTimer);
@@ -705,6 +919,227 @@ onUnmounted(() => {
   border-color: rgba(227, 199, 107, 0.2);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
 }
+.meal-card.is-comparing {
+  border-color: rgba(227, 199, 107, 0.7);
+  box-shadow: 0 0 0 2px rgba(227, 199, 107, 0.35), 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* ── 比較按鈕 ── */
+.compare-btn {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  border: 1px solid rgba(227, 199, 107, 0.3);
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.75);
+  font-family: var(--font-label);
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  backdrop-filter: blur(6px);
+}
+.compare-btn:hover { background: rgba(0,0,0,0.8); border-color: rgba(227,199,107,0.6); color: var(--eat-primary); }
+.compare-btn.active {
+  background: rgba(227, 199, 107, 0.18);
+  border-color: var(--eat-primary);
+  color: var(--eat-primary);
+}
+.compare-check { font-size: 0.7rem; font-weight: 700; }
+
+/* ── 比較列 ── */
+.compare-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 900;
+  background: rgba(18, 8, 4, 0.97);
+  border-top: 1px solid rgba(227, 199, 107, 0.3);
+  backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5);
+}
+.compare-bar-meals { display: flex; gap: 2rem; flex: 1; }
+.compare-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.5rem 1rem;
+  background: rgba(227, 199, 107, 0.05);
+  border: 1px solid rgba(227, 199, 107, 0.15);
+  border-radius: 10px;
+  min-width: 160px;
+}
+.cbi-name {
+  font-family: var(--font-headline);
+  font-size: 0.95rem;
+  color: var(--eat-primary);
+  font-style: italic;
+}
+.cbi-price {
+  font-family: var(--font-label);
+  font-size: 0.82rem;
+  color: var(--eat-secondary);
+}
+.cbi-save {
+  font-family: var(--font-label);
+  font-size: 0.7rem;
+  color: #7ecf7e;
+}
+.compare-bar-actions { display: flex; gap: 0.75rem; flex-shrink: 0; }
+.compare-detail-btn {
+  padding: 0.6rem 1.5rem;
+  background: var(--eat-primary);
+  border: none;
+  border-radius: 8px;
+  color: var(--eat-surface);
+  font-family: var(--font-label);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.compare-detail-btn:hover { opacity: 0.85; }
+.compare-clear-btn {
+  padding: 0.6rem 1.2rem;
+  background: none;
+  border: 1px solid rgba(227, 199, 107, 0.3);
+  border-radius: 8px;
+  color: rgba(249, 221, 211, 0.6);
+  font-family: var(--font-label);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.compare-clear-btn:hover { border-color: rgba(249,221,211,0.5); color: var(--eat-on-surface); }
+
+/* 比較列進退場 */
+.compare-bar-enter-active { transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+.compare-bar-leave-active { transition: transform 0.25s ease; }
+.compare-bar-enter-from, .compare-bar-leave-to { transform: translateY(100%); }
+
+/* ── 比較面板 ── */
+.compare-panel-overlay {
+  position: fixed; inset: 0; z-index: 1050;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(16px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem;
+}
+.compare-panel {
+  width: 100%; max-width: 760px;
+  max-height: calc(100vh - 3rem);
+  background: #1a0a05;
+  border: 1px solid rgba(227, 199, 107, 0.2);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.compare-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.75rem;
+  border-bottom: 1px solid rgba(227, 199, 107, 0.12);
+  flex-shrink: 0;
+}
+.compare-panel-title {
+  font-family: var(--font-headline);
+  color: var(--eat-primary);
+  font-size: 1.4rem;
+  font-style: italic;
+  margin: 0;
+}
+.compare-panel-close {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255,255,255,0.06); border: none;
+  color: rgba(255,255,255,0.7); font-size: 0.9rem;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+}
+.compare-panel-close:hover { background: rgba(255,255,255,0.12); }
+.compare-panel-body {
+  flex: 1; min-height: 0;
+  overflow-y: auto;
+  padding: 0.5rem 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(227,199,107,0.2) transparent;
+}
+.compare-panel-footer {
+  padding: 1rem 1.75rem;
+  border-top: 1px solid rgba(227, 199, 107, 0.12);
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+/* 比較表格列 */
+.cp-row {
+  display: grid;
+  grid-template-columns: 130px 1fr 1fr;
+  border-bottom: 1px solid rgba(227, 199, 107, 0.07);
+}
+.cp-row:last-child { border-bottom: none; }
+.cp-cell {
+  padding: 0.9rem 1.25rem;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: rgba(249, 221, 211, 0.75);
+}
+.cp-label {
+  font-family: var(--font-label);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(249, 221, 211, 0.35);
+  display: flex;
+  align-items: flex-start;
+  padding-top: 1rem;
+}
+.cp-header-row { background: rgba(227, 199, 107, 0.04); }
+.cp-meal-name {
+  font-family: var(--font-headline);
+  color: var(--eat-primary);
+  font-size: 1.05rem;
+  font-style: italic;
+}
+.cp-price { color: var(--eat-secondary); font-weight: 600; }
+.cp-save { color: #7ecf7e; }
+.cp-items { display: flex; flex-direction: column; gap: 0.45rem; }
+.cp-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+}
+.cp-item-name { font-size: 0.85rem; }
+.cp-item-meta {
+  font-family: var(--font-label);
+  font-size: 0.72rem;
+  color: rgba(249,221,211,0.4);
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .compare-bar { flex-direction: column; align-items: stretch; padding: 0.75rem 1rem; }
+  .compare-bar-meals { gap: 0.75rem; }
+  .cp-row { grid-template-columns: 90px 1fr 1fr; }
+  .cp-cell { padding: 0.7rem 0.75rem; font-size: 0.8rem; }
+}
 
 /* ── 庫存剩餘進度條 ── */
 .stock-bar {
@@ -720,6 +1155,107 @@ onUnmounted(() => {
 @keyframes stock-pulse {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.6; }
+}
+
+/* ── 快速預覽按鈕 ── */
+.preview-btn {
+  position: absolute;
+  bottom: 0.65rem;
+  right: 0.65rem;
+  z-index: 4;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(227, 199, 107, 0.3);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.22s ease, transform 0.22s ease, background 0.2s;
+}
+.meal-card:hover .preview-btn { opacity: 1; transform: scale(1); }
+.preview-btn:hover { background: rgba(0, 0, 0, 0.85); border-color: var(--eat-primary); }
+
+/* ── 快速預覽 Tooltip ── */
+.preview-tip {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  background: rgba(12, 5, 2, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(227, 199, 107, 0.25);
+  border-radius: 14px;
+  padding: 1rem;
+  z-index: 10;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+.tip-desc {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: rgba(249, 221, 211, 0.75);
+  font-style: italic;
+  line-height: 1.6;
+  margin: 0 0 0.65rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tip-ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+.tip-ing-chip {
+  font-family: var(--font-label);
+  font-size: 0.68rem;
+  padding: 0.15rem 0.55rem;
+  background: rgba(227, 199, 107, 0.08);
+  border: 1px solid rgba(227, 199, 107, 0.2);
+  border-radius: 20px;
+  color: var(--eat-secondary);
+}
+.tip-more {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 0 0;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(227, 199, 107, 0.12);
+  color: var(--eat-primary);
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  text-align: right;
+  transition: opacity 0.15s;
+  margin-top: 0.1rem;
+}
+.tip-more:hover { opacity: 0.75; }
+.tip-section { margin-bottom: 0.6rem; }
+.tip-label {
+  display: block;
+  font-family: var(--font-label);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(249, 221, 211, 0.35);
+  margin-bottom: 0.35rem;
+}
+.tip-option-chip {
+  border-color: rgba(227, 199, 107, 0.35);
+  color: var(--eat-primary);
+}
+.preview-tip-enter-active { transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1); }
+.preview-tip-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
+.preview-tip-enter-from   { opacity: 0; transform: translateY(6px) scale(0.97); }
+.preview-tip-leave-to     { opacity: 0; transform: translateY(3px) scale(0.98); }
+@media (max-width: 768px) {
+  .preview-btn { display: none; }
 }
 
 .meal-img-wrap {
@@ -868,10 +1404,14 @@ onUnmounted(() => {
 
 .modal-box {
   width: 100%; max-width: 540px;
+  max-height: calc(100vh - 3rem);
   background: #1e100b;
   border: 1px solid rgba(227, 199, 107, 0.15);
   border-radius: 24px;
-  overflow: hidden;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  position: relative;
   animation: modalPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 @keyframes modalPop {
@@ -880,10 +1420,16 @@ onUnmounted(() => {
 }
 
 .modal-img-wrap {
-  position: relative; height: 240px;
-  background: #251813; overflow: hidden;
+  position: relative; height: 200px;
+  flex-shrink: 0;
+  background: #251813;
+  overflow: hidden;
+  border-radius: 24px 24px 0 0; /* 頂部圓角與 modal-box 一致 */
 }
-.modal-img { width: 100%; height: 100%; object-fit: cover; }
+.modal-img {
+  width: 100%; height: 100%; object-fit: cover;
+  display: block;
+}
 .modal-img-placeholder {
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
@@ -896,15 +1442,15 @@ onUnmounted(() => {
   background: linear-gradient(to top, #1e100b, transparent);
 }
 .modal-close {
-  position: absolute; top: 1rem; right: 1rem;
+  position: fixed; z-index: 1100;
   width: 32px; height: 32px; border-radius: 50%;
-  background: rgba(0,0,0,0.5); border: none;
-  color: rgba(255,255,255,0.8); font-size: 0.9rem;
+  background: rgba(0,0,0,0.6); border: none;
+  color: #fff; font-size: 0.9rem;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   transition: background 0.2s;
 }
-.modal-close:hover { background: rgba(0,0,0,0.8); }
-.share-wrap { position: absolute; top: 1rem; right: 3.5rem; z-index: 3; }
+.modal-close:hover { background: rgba(0,0,0,0.9); }
+.share-wrap { position: fixed; z-index: 1100; }
 .modal-share {
   width: 32px; height: 32px; border-radius: 50%;
   background: rgba(0,0,0,0.5); border: none; color: rgba(255,255,255,0.8);
@@ -947,8 +1493,10 @@ onUnmounted(() => {
 
 .modal-body {
   padding: 1.75rem;
-  max-height: 60vh;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  border-radius: 0 0 24px 24px;
   scrollbar-width: thin;
   scrollbar-color: rgba(227, 199, 107, 0.2) transparent;
 }
@@ -1153,6 +1701,6 @@ onUnmounted(() => {
   .eat-h1 { font-size: 2.2rem; }
   .setmeal-grid { grid-template-columns: 1fr; }
   .modal-title { font-size: 1.4rem; }
-  .modal-body { max-height: 65vh; }
+  .modal-img-wrap { height: 170px; }
 }
 </style>

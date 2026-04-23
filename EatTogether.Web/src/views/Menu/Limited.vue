@@ -102,6 +102,7 @@
           }"
           :style="{ '--glow-delay': `${(index % 3) * 1.4}s` }"
           @click="openModal(dish)"
+          @mouseleave="activePreview = null"
         >
           <!-- ── 圖片區 ── -->
           <div class="card-img-wrap">
@@ -155,7 +156,29 @@
               @click.stop="toggleFavorite(dish.id)"
               :aria-label="favorites.includes(dish.id) ? '取消收藏' : '加入收藏'"
             >{{ favorites.includes(dish.id) ? '❤️' : '🤍' }}</button>
+            <!-- 快速預覽按鈕 -->
+            <button
+              v-if="dish.stockStatus !== 2 && !isUpcoming(dish)"
+              class="preview-btn"
+              @click.stop="activePreview = activePreview === dish.id ? null : dish.id"
+              aria-label="快速預覽"
+            >👁</button>
           </div>
+
+          <!-- 快速預覽 Tooltip -->
+          <Transition name="preview-tip">
+            <div v-if="activePreview === dish.id" class="preview-tip" @click.stop>
+              <p class="tip-desc">{{ dish.description || '限定季節食材，主廚嚴選推薦，每一口都是時令的珍貴。' }}</p>
+              <div v-if="parseIngredients(dish.ingredientsJson).length" class="tip-ingredients">
+                <span
+                  v-for="ing in parseIngredients(dish.ingredientsJson).slice(0, 3)"
+                  :key="ing.name"
+                  class="tip-ing-chip"
+                >{{ ing.name }}</span>
+              </div>
+              <button class="tip-more" @click.stop="openModal(dish)">查看完整資訊 →</button>
+            </div>
+          </Transition>
 
           <!-- ── 資訊區 ── -->
           <div class="card-info">
@@ -271,6 +294,17 @@
               <span class="modal-countdown-label">距離截止</span>
               <span class="modal-countdown-value">{{ getCountdown(selectedDish.endDate) }}</span>
             </div>
+
+            <!-- 提醒按鈕（有 endDate 且供應中才顯示）-->
+            <button
+              v-if="selectedDish.endDate && !isUpcoming(selectedDish) && selectedDish.stockStatus !== 2"
+              class="modal-remind-btn"
+              :class="{ 'is-set': reminders.includes(selectedDish.id) }"
+              :disabled="reminders.includes(selectedDish.id)"
+              @click="setReminder(selectedDish)"
+            >
+              {{ reminders.includes(selectedDish.id) ? '✓ 已設定提醒' : '🔔 提醒我' }}
+            </button>
 
             <!-- 供應期間 -->
             <div class="modal-period">
@@ -406,8 +440,37 @@ const toggleFavorite = (dishId) => {
   localStorage.setItem('menu-favorites', JSON.stringify(favorites.value))
 }
 
+// ── 提醒 ─────────────────────────────────────────────
+const reminders = ref(JSON.parse(localStorage.getItem('limited-reminders') || '[]'))
+
+const setReminder = async (dish) => {
+  if (!('Notification' in window)) {
+    show('此瀏覽器不支援通知功能', 'error')
+    return
+  }
+  const permission = await Notification.requestPermission()
+  if (permission === 'granted') {
+    reminders.value.push(dish.id)
+    localStorage.setItem('limited-reminders', JSON.stringify(reminders.value))
+    show('🔔 提醒已設定！截止前會通知您', 'success')
+  } else {
+    show('請在瀏覽器設定中允許通知權限', 'error')
+  }
+}
+
+// ── 食材 JSON 解析 ────────────────────────────────────
+const parseIngredients = (json) => {
+  try {
+    const arr = JSON.parse(json)
+    return Array.isArray(arr) ? arr : []
+  } catch {
+    return []
+  }
+}
+
 // ── Modal ─────────────────────────────────────────────
 const isModalOpen = ref(false)
+const activePreview = ref(null)
 const selectedDish = ref(null)
 const modalBodyRef = ref(null)
 const modalImgRef = ref(null)
@@ -474,7 +537,8 @@ const shareWrapRef = ref(null)
 const openShareItem = async (type) => {
   const dish = selectedDish.value
   if (!dish) return
-  const encodedUrl = encodeURIComponent(window.location.href)
+  const dishUrl     = `${window.location.origin}/limited?dish=${dish.id}`
+  const encodedUrl  = encodeURIComponent(dishUrl)
   const encodedText = encodeURIComponent(`${dish.dishName} NT$${dish.price.toLocaleString()}`)
   switch (type) {
     case 'line':     window.open(`https://social-plugins.line.me/lineit/share?url=${encodedUrl}`, '_blank'); break
@@ -482,7 +546,7 @@ const openShareItem = async (type) => {
     case 'x':        window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`, '_blank'); break
     case 'copy':
       try {
-        await navigator.clipboard.writeText(`${dish.dishName} NT$${dish.price.toLocaleString()} | 義起吃`)
+        await navigator.clipboard.writeText(dishUrl)
         show('🔗 連結已複製！', 'success')
       } catch {
         show('複製失敗，請手動複製', 'error')
@@ -582,12 +646,39 @@ const fetchLimited = async () => {
 }
 
 // ── 生命週期 ──────────────────────────────────────────
-onMounted(() => {
-  fetchLimited()
+onMounted(async () => {
+  await fetchLimited()
   _refreshTimer = setInterval(fetchLimited, 10_000)
   _clockTimer   = setInterval(() => { currentTime.value = new Date() }, 1000)
   window.addEventListener('keydown', handleEsc)
   document.addEventListener('click', handleShareClickOutside)
+
+  // 深層連結：偵測 ?dish=id，自動打開對應 Modal
+  const params = new URLSearchParams(window.location.search)
+  const dishParam = params.get('dish')
+  if (dishParam) {
+    const dish = limitedDishes.value.find(d => String(d.id) === dishParam)
+    if (dish) openModal(dish)
+  }
+
+  // 提醒通知：檢查已設定提醒且距截止 24h 內的餐點
+  if (Notification.permission === 'granted' && reminders.value.length) {
+    const now = new Date()
+    reminders.value.forEach(id => {
+      const dish = limitedDishes.value.find(d => d.id === id)
+      if (!dish || !dish.endDate) return
+      const end = new Date(dish.endDate)
+      const diffMs = end - now
+      if (diffMs > 0 && diffMs < 24 * 60 * 60 * 1000) {
+        const h = Math.floor(diffMs / 3_600_000)
+        const m = Math.floor((diffMs % 3_600_000) / 60_000)
+        new Notification(`⏰ ${dish.dishName} 即將截止！`, {
+          body: `距離下架還有 ${h} 小時 ${m} 分鐘，把握機會！`,
+          icon: dish.imageUrl ? dish.imageUrl : undefined,
+        })
+      }
+    })
+  }
 })
 onUnmounted(() => {
   clearInterval(_refreshTimer)
@@ -1124,6 +1215,93 @@ onUnmounted(() => {
 }
 .fav-btn:hover { transform: scale(1.25); }
 
+/* ── 快速預覽按鈕 ── */
+.preview-btn {
+  position: absolute;
+  bottom: 0.65rem;
+  right: 0.65rem;
+  z-index: 4;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(227, 199, 107, 0.3);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.22s ease, transform 0.22s ease, background 0.2s;
+}
+.limited-card:hover .preview-btn { opacity: 1; transform: scale(1); }
+.preview-btn:hover { background: rgba(0, 0, 0, 0.85); border-color: var(--eat-primary); }
+
+/* ── 快速預覽 Tooltip ── */
+.preview-tip {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  background: rgba(12, 5, 2, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(227, 199, 107, 0.25);
+  border-radius: 14px;
+  padding: 1rem;
+  z-index: 10;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+.tip-desc {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: rgba(249, 221, 211, 0.75);
+  font-style: italic;
+  line-height: 1.6;
+  margin: 0 0 0.65rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tip-ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+.tip-ing-chip {
+  font-family: var(--font-label);
+  font-size: 0.68rem;
+  padding: 0.15rem 0.55rem;
+  background: rgba(227, 199, 107, 0.08);
+  border: 1px solid rgba(227, 199, 107, 0.2);
+  border-radius: 20px;
+  color: var(--eat-secondary);
+}
+.tip-more {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 0 0;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(227, 199, 107, 0.12);
+  color: var(--eat-primary);
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  text-align: right;
+  transition: opacity 0.15s;
+  margin-top: 0.1rem;
+}
+.tip-more:hover { opacity: 0.75; }
+.preview-tip-enter-active { transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1); }
+.preview-tip-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
+.preview-tip-enter-from   { opacity: 0; transform: translateY(6px) scale(0.97); }
+.preview-tip-leave-to     { opacity: 0; transform: translateY(3px) scale(0.98); }
+@media (max-width: 768px) {
+  .preview-btn { display: none; }
+}
+
 /* ── Modal 動畫 ── */
 .modal-enter-active { transition: opacity 0.3s ease; }
 .modal-leave-active { transition: opacity 0.22s ease; }
@@ -1293,6 +1471,37 @@ onUnmounted(() => {
   border-color: rgba(227, 199, 107, 0.5);
   color: var(--eat-primary);
   background: rgba(227, 199, 107, 0.06);
+}
+
+/* Modal 提醒按鈕 */
+.modal-remind-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: 1px solid rgba(126, 207, 126, 0.25);
+  border-radius: 30px;
+  color: rgba(144, 238, 144, 0.65);
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  padding: 0.35rem 1rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  align-self: flex-start;
+}
+.modal-remind-btn:hover:not(:disabled) {
+  border-color: rgba(126, 207, 126, 0.55);
+  color: #7ecf7e;
+  background: rgba(126, 207, 126, 0.07);
+}
+.modal-remind-btn.is-set,
+.modal-remind-btn:disabled {
+  border-color: rgba(126, 207, 126, 0.45);
+  color: #7ecf7e;
+  background: rgba(126, 207, 126, 0.08);
+  cursor: default;
+  opacity: 0.85;
 }
 
 .modal-desc {

@@ -104,6 +104,7 @@
           class="dish-card"
           :class="{ 'is-soldout': dish.stockStatus === 2 }"
           @click="openModal(dish)"
+          @mouseleave="activePreview = null"
         >
           <div
             class="dish-img-wrap"
@@ -145,7 +146,34 @@
                 >{{ getCountdown(dish.endDate, dish.startDate) }}</span>
               </template>
             </div>
+
+            <!-- 快速預覽按鈕（在圖片內，不超出 overflow:hidden 範圍） -->
+            <button
+              v-if="dish.stockStatus !== 2"
+              class="preview-btn"
+              @click.stop="activePreview = activePreview === dish.id ? null : dish.id"
+              aria-label="快速預覽"
+            >👁</button>
           </div>
+
+          <!-- 快速預覽 Tooltip（移到 dish-img-wrap 外，相對 dish-card 定位） -->
+          <Transition name="preview-tip">
+            <div
+              v-if="activePreview === dish.id"
+              class="preview-tip"
+              @click.stop
+            >
+              <p class="tip-desc">{{ dish.description || '精選新鮮食材，傳承義式經典風味，每一口都是主廚的心意。' }}</p>
+              <div v-if="parseIngredients(dish.ingredientsJson).length" class="tip-ingredients">
+                <span
+                  v-for="ing in parseIngredients(dish.ingredientsJson).slice(0, 3)"
+                  :key="ing.name"
+                  class="tip-ing-chip"
+                >{{ ing.name }}</span>
+              </div>
+              <button class="tip-more" @click.stop="openModal(dish)">查看完整資訊 →</button>
+            </div>
+          </Transition>
 
           <div class="dish-info">
             <div class="dish-title-row">
@@ -523,6 +551,7 @@ const toggleFavorite = (dishId) => {
 // Modal
 const isModalOpen = ref(false);
 const selectedDish = ref(null);
+const activePreview = ref(null);
 const modalBodyRef = ref(null);
 const modalImgRef = ref(null);
 
@@ -610,7 +639,8 @@ const shareWrapRef = ref(null);
 const openShareItem = async (type) => {
   const dish = selectedDish.value;
   if (!dish) return;
-  const encodedUrl = encodeURIComponent(window.location.href);
+  const dishUrl = `${window.location.origin}/menu?dish=${dish.id}`;
+  const encodedUrl  = encodeURIComponent(dishUrl);
   const encodedText = encodeURIComponent(`${dish.dishName} NT$${dish.price.toLocaleString()}`);
   switch (type) {
     case 'line':     window.open(`https://social-plugins.line.me/lineit/share?url=${encodedUrl}`, '_blank'); break;
@@ -618,7 +648,7 @@ const openShareItem = async (type) => {
     case 'x':        window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`, '_blank'); break;
     case 'copy':
       try {
-        await navigator.clipboard.writeText(`${dish.dishName} NT$${dish.price.toLocaleString()} | 義起吃`);
+        await navigator.clipboard.writeText(dishUrl);
         show('🔗 連結已複製！', 'success');
       } catch {
         show('複製失敗，請手動複製', 'error');
@@ -737,10 +767,21 @@ const filteredDishes = computed(() => {
 });
 
 
-onMounted(() => {
-  fetchMenu();
+onMounted(async () => {
+  await fetchMenu();
   _refreshTimer = setInterval(fetchMenu, 5_000);
   updateIndicator();
+
+  // 深層連結：偵測 ?dish=id，自動打開對應 Modal
+  const params = new URLSearchParams(window.location.search);
+  const dishParam = params.get('dish');
+  if (dishParam) {
+    const dish = dishes.value.find(d => String(d.id) === dishParam);
+    if (dish) {
+      if (dish.categoryId) currentCategory.value = dish.categoryId;
+      openModal(dish);
+    }
+  }
 });
 onUnmounted(() => {
   clearInterval(_refreshTimer);
@@ -1108,6 +1149,98 @@ onUnmounted(() => {
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .fav-btn:hover { transform: scale(1.25); }
+
+/* ── 快速預覽按鈕 ── */
+.preview-btn {
+  position: absolute;
+  bottom: 0.65rem;
+  right: 0.65rem;
+  z-index: 4;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(227, 199, 107, 0.3);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.22s ease, transform 0.22s ease, background 0.2s;
+}
+.dish-card:hover .preview-btn { opacity: 1; transform: scale(1); }
+.preview-btn:hover { background: rgba(0, 0, 0, 0.85); border-color: var(--eat-primary); }
+
+/* ── 快速預覽 Tooltip ── */
+.preview-tip {
+  position: absolute;
+  /* 蓋在圖片上方：圖片高度 200px，tooltip 從頂部往下偏移讓它出現在圖片區域內 */
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  background: rgba(12, 5, 2, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(227, 199, 107, 0.25);
+  border-radius: 14px;
+  padding: 1rem;
+  z-index: 10;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+.tip-desc {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: rgba(249, 221, 211, 0.75);
+  font-style: italic;
+  line-height: 1.6;
+  margin: 0 0 0.65rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tip-ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+.tip-ing-chip {
+  font-family: var(--font-label);
+  font-size: 0.68rem;
+  padding: 0.15rem 0.55rem;
+  background: rgba(227, 199, 107, 0.08);
+  border: 1px solid rgba(227, 199, 107, 0.2);
+  border-radius: 20px;
+  color: var(--eat-secondary);
+}
+.tip-more {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(227, 199, 107, 0.12);
+  color: var(--eat-primary);
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  text-align: right;
+  transition: opacity 0.15s;
+  padding-top: 0.6rem;
+  margin-top: 0.1rem;
+}
+.tip-more:hover { opacity: 0.75; }
+
+/* Tooltip 進退場動畫 */
+.preview-tip-enter-active { transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1); }
+.preview-tip-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
+.preview-tip-enter-from   { opacity: 0; transform: translateY(6px) scale(0.97); }
+.preview-tip-leave-to     { opacity: 0; transform: translateY(3px) scale(0.98); }
+
+@media (max-width: 768px) {
+  .preview-btn { display: none; }
+}
 
 .dish-img-wrap {
   position: relative;
