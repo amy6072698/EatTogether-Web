@@ -80,22 +80,6 @@ const routes = [
 const router = createRouter({
     history: createWebHistory(),
     routes,
-});
-
-// ── 登入驗證完成後取消以下註解 ──────────────────────────
-// import { useAuthStore } from '@/stores/auth'
-// router.beforeEach(async (to) => {
-//   const auth = useAuthStore()
-//   if (auth.member === null) await auth.fetchMe()
-//   if (to.meta.requiresAuth && !auth.isLoggedIn)
-//     return { path: '/login', query: { redirect: to.fullPath } }
-//   if (to.meta.guestOnly && auth.isLoggedIn)
-//     return { path: '/' }
-// })
-
-const router = createRouter({
-    history: createWebHistory(),
-    routes,
     scrollBehavior(to, from, savedPosition) {
         if (savedPosition) {
             return savedPosition   // 瀏覽器上一頁/下一頁時還原位置
