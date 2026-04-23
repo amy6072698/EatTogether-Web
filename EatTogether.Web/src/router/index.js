@@ -71,12 +71,29 @@ const routes = [
         meta: { hideChrome: true },
     },
 
+    {
+        path: '/news',
+        name: 'NewsList',
+        component:()=> import('@/views/news/NewsListView.vue'),
+
+    },
+    {
+        path: '/news/:id',
+        name: 'NewsDetail',
+        component:()=> import('@/views/news/NewsDetailView.vue'),
+
+    },
+
     // ── 404 Not Found ─────────────────────────────────────
     {
         path: '/:pathMatch(.*)*',
         name: 'NotFound',
         component: () => import('@/views/NotFound.vue'),
     },
+
+    
+
+
 ];
 
 const router = createRouter({
