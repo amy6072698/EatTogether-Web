@@ -45,6 +45,30 @@ const routes = [
     },
     // 攔截尚未實作的路由，避免 null component crash
     { path: '/:pathMatch(.*)*', redirect: '/' },
+
+    {
+        path: '/news',
+        name: 'NewsList',
+        component:()=> import('@/views/news/NewsListView.vue'),
+
+    },
+    {
+        path: '/news/:id',
+        name: 'NewsDetail',
+        component:()=> import('@/views/news/NewsDetailView.vue'),
+
+    },
+
+    // ── 404 Not Found ─────────────────────────────────────
+    {
+        path: '/:pathMatch(.*)*',
+        name: 'NotFound',
+        component: () => import('@/views/NotFound.vue'),
+    },
+
+    
+
+
 ];
 
 const router = createRouter({

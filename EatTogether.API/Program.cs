@@ -198,7 +198,7 @@ namespace EatTogether.API
             }
             else
             {
-                app.UseStaticFiles();
+				app.UseStaticFiles();
             }
 			// CSP Header：縱深防禦，限制瀏覽器可載入的資源來源
 			app.Use(async (ctx, next) =>
