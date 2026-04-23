@@ -5,6 +5,13 @@
     <p class="gate-hint font-label">驗證桌位中…</p>
   </div>
 
+  <!-- ══ 禁止進入：無桌號 ══ -->
+<div v-else-if="tableStatus === 'no-table'" class="gate-wrap">
+  <div class="gate-icon">🍽️</div>
+  <h2 class="gate-title font-headline">歡迎光臨</h2>
+  <p class="gate-body font-body">如需內用服務，請洽現場服務人員。</p>
+</div>
+
   <!-- ══ 禁止進入：空桌 / 找不到 ══ -->
   <div v-else-if="tableStatus === 'empty' || tableStatus === 'not-found'" class="gate-wrap">
     <div class="gate-icon">🪑</div>
@@ -355,7 +362,7 @@ let toastTimer = null;
 
 // ── 桌位狀態：'checking' | 'occupied' | 'empty' | 'reserved' | 'not-found'
 // 若 URL 沒有 ?table= 參數則跳過驗證（讓服務人員可直接開頁面選桌）
-const tableStatus     = ref(route.query.table ? 'checking' : 'occupied');
+const tableStatus     = ref(route.query.table ? 'checking' : 'no-table');
 const tableNameFromUrl = route.query.table || '';   // e.g. "B3"
 
 // ── 身份驗證
