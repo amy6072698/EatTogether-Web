@@ -138,6 +138,18 @@ namespace EatTogether.API
             // 前台寄信服務
             builder.Services.AddScoped<IEmailService, EmailService>();
 
+            // ── 訂位模組 ──
+            builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
+            builder.Services.AddScoped<ReservationService>();
+
+            // ── 優惠券前台 Service ──
+            builder.Services.AddScoped<CouponService>();
+
+            // ── BackgroundServices ──
+            builder.Services.AddHostedService<ReservationReminderBackgroundService>();
+            builder.Services.AddHostedService<NoShowMarkingBackgroundService>();
+            builder.Services.AddHostedService<CouponExpiryNotifyBackgroundService>();
+
 
 			// Add services to the container.
 
