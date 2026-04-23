@@ -17,13 +17,13 @@ const authStore = useAuthStore()
 const route    = useRoute()
 const router   = useRouter()
 
-onMounted(async () => {
-    // 確認登入狀態（已登入則直接跳過 API 呼叫）
-    await authStore.checkAuth()
+// onMounted(async () => {
+//     // 確認登入狀態（已登入則直接跳過 API 呼叫）
+//     await authStore.checkAuth()
 
-    // 若帶有 redirect query（由路由守衛附上），登入後自動跳回目標頁
-    if (authStore.isLoggedIn && route.query.redirect) {
-        router.push(route.query.redirect)
-    }
-})
+//     // 若帶有 redirect query（由路由守衛附上），登入後自動跳回目標頁
+//     if (authStore.isLoggedIn && route.query.redirect) {
+//         router.push(route.query.redirect)
+//     }
+// })
 </script>
