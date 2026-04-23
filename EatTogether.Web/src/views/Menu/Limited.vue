@@ -102,6 +102,7 @@
           }"
           :style="{ '--glow-delay': `${(index % 3) * 1.4}s` }"
           @click="openModal(dish)"
+          @mouseleave="activePreview = null"
         >
           <!-- ── 圖片區 ── -->
           <div class="card-img-wrap">
@@ -155,7 +156,29 @@
               @click.stop="toggleFavorite(dish.id)"
               :aria-label="favorites.includes(dish.id) ? '取消收藏' : '加入收藏'"
             >{{ favorites.includes(dish.id) ? '❤️' : '🤍' }}</button>
+            <!-- 快速預覽按鈕 -->
+            <button
+              v-if="dish.stockStatus !== 2 && !isUpcoming(dish)"
+              class="preview-btn"
+              @click.stop="activePreview = activePreview === dish.id ? null : dish.id"
+              aria-label="快速預覽"
+            >👁</button>
           </div>
+
+          <!-- 快速預覽 Tooltip -->
+          <Transition name="preview-tip">
+            <div v-if="activePreview === dish.id" class="preview-tip" @click.stop>
+              <p class="tip-desc">{{ dish.description || '限定季節食材，主廚嚴選推薦，每一口都是時令的珍貴。' }}</p>
+              <div v-if="parseIngredients(dish.ingredientsJson).length" class="tip-ingredients">
+                <span
+                  v-for="ing in parseIngredients(dish.ingredientsJson).slice(0, 3)"
+                  :key="ing.name"
+                  class="tip-ing-chip"
+                >{{ ing.name }}</span>
+              </div>
+              <button class="tip-more" @click.stop="openModal(dish)">查看完整資訊 →</button>
+            </div>
+          </Transition>
 
           <!-- ── 資訊區 ── -->
           <div class="card-info">
@@ -195,6 +218,8 @@
 
     </main>
 
+    <ToastContainer />
+
     <!-- ── Modal ── -->
     <Transition name="modal">
       <div v-if="isModalOpen && selectedDish" class="modal-overlay" @click.self="closeModal">
@@ -202,9 +227,36 @@
 
           <!-- 圖片區 -->
           <div class="modal-img-wrap">
-            <img v-if="selectedDish.imageUrl" :src="formatImageUrl(selectedDish.imageUrl)" :alt="selectedDish.dishName" class="modal-img"/>
+            <img v-if="selectedDish.imageUrl" :src="formatImageUrl(selectedDish.imageUrl)" :alt="selectedDish.dishName" class="modal-img" ref="modalImgRef"/>
             <div v-else class="modal-img-placeholder"><span>{{ selectedDish.dishName.charAt(0) }}</span></div>
             <div class="modal-img-gradient"></div>
+            <div class="share-wrap" ref="shareWrapRef">
+              <button class="modal-share" @click.stop="shareMenuOpen = !shareMenuOpen" aria-label="分享">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                  <polyline points="16 6 12 2 8 6"/>
+                  <line x1="12" y1="2" x2="12" y2="15"/>
+                </svg>
+              </button>
+              <Transition name="share-menu">
+                <div v-if="shareMenuOpen" class="share-menu">
+                  <button class="share-item" @click="openShareItem('line')">
+                    <span class="share-icon si-line">L</span>LINE
+                  </button>
+                  <button class="share-item" @click="openShareItem('facebook')">
+                    <span class="share-icon si-fb">f</span>Facebook
+                  </button>
+                  <button class="share-item" @click="openShareItem('x')">
+                    <span class="share-icon si-x">𝕏</span>X
+                  </button>
+                  <button class="share-item" @click="openShareItem('copy')">
+                    <span class="share-icon si-copy">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </span>複製連結
+                  </button>
+                </div>
+              </Transition>
+            </div>
             <button class="modal-close" @click="closeModal">✕</button>
             <div class="modal-badge-group">
               <span class="badge badge-lim">✦ 限定</span>
@@ -214,7 +266,7 @@
           </div>
 
           <!-- 資訊區 -->
-          <div class="modal-body">
+          <div class="modal-body" ref="modalBodyRef">
 
             <!-- 標題 + 價格 -->
             <div class="modal-title-row">
@@ -242,6 +294,17 @@
               <span class="modal-countdown-label">距離截止</span>
               <span class="modal-countdown-value">{{ getCountdown(selectedDish.endDate) }}</span>
             </div>
+
+            <!-- 提醒按鈕（有 endDate 且供應中才顯示）-->
+            <button
+              v-if="selectedDish.endDate && !isUpcoming(selectedDish) && selectedDish.stockStatus !== 2"
+              class="modal-remind-btn"
+              :class="{ 'is-set': reminders.includes(selectedDish.id) }"
+              :disabled="reminders.includes(selectedDish.id)"
+              @click="setReminder(selectedDish)"
+            >
+              {{ reminders.includes(selectedDish.id) ? '✓ 已設定提醒' : '🔔 提醒我' }}
+            </button>
 
             <!-- 供應期間 -->
             <div class="modal-period">
@@ -280,7 +343,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import ToastContainer from '@/components/common/ToastContainer.vue'
+import { useToast } from '@/composables/useToast.js'
+const { show } = useToast()
 
 // ── Intersection Observer 進場動畫 ───────────────────
 const vReveal = {
@@ -364,14 +430,137 @@ const spicyLabel = (level) => ['', '微辣', '中辣', '大辣', '極辣'][level
 const favorites = ref(JSON.parse(localStorage.getItem('menu-favorites') || '[]'))
 const toggleFavorite = (dishId) => {
   const idx = favorites.value.indexOf(dishId)
-  if (idx === -1) favorites.value.push(dishId)
-  else favorites.value.splice(idx, 1)
+  if (idx === -1) {
+    favorites.value.push(dishId)
+    show('❤️ 已加入收藏', 'success')
+  } else {
+    favorites.value.splice(idx, 1)
+    show('🤍 已取消收藏', 'info')
+  }
   localStorage.setItem('menu-favorites', JSON.stringify(favorites.value))
+}
+
+// ── 提醒 ─────────────────────────────────────────────
+const reminders = ref(JSON.parse(localStorage.getItem('limited-reminders') || '[]'))
+
+const setReminder = async (dish) => {
+  if (!('Notification' in window)) {
+    show('此瀏覽器不支援通知功能', 'error')
+    return
+  }
+  const permission = await Notification.requestPermission()
+  if (permission === 'granted') {
+    reminders.value.push(dish.id)
+    localStorage.setItem('limited-reminders', JSON.stringify(reminders.value))
+    show('🔔 提醒已設定！截止前會通知您', 'success')
+  } else {
+    show('請在瀏覽器設定中允許通知權限', 'error')
+  }
+}
+
+// ── 食材 JSON 解析 ────────────────────────────────────
+const parseIngredients = (json) => {
+  try {
+    const arr = JSON.parse(json)
+    return Array.isArray(arr) ? arr : []
+  } catch {
+    return []
+  }
 }
 
 // ── Modal ─────────────────────────────────────────────
 const isModalOpen = ref(false)
+const activePreview = ref(null)
 const selectedDish = ref(null)
+const modalBodyRef = ref(null)
+const modalImgRef = ref(null)
+
+watch(isModalOpen, async (open) => {
+  if (!open) return
+  await nextTick()
+
+  // B: Ken Burns
+  const img = modalImgRef.value
+  if (img) {
+    img.style.transition = 'none'
+    img.style.transform = 'scale(1.18)'
+    img.offsetHeight
+    img.style.transition = 'transform 7s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+    img.style.transform = 'scale(1.0)'
+  }
+
+  const body = modalBodyRef.value
+  if (!body) return
+
+  const sections = [...body.children]
+
+  // D: pre-hide chips
+  const chips = body.querySelectorAll('.attr-chip')
+  chips.forEach(chip => {
+    chip.style.transition = 'none'
+    chip.style.opacity = '0'
+    chip.style.transform = 'scale(0) translateY(6px)'
+  })
+
+  // A: reset sections
+  sections.forEach(el => {
+    el.style.transition = 'none'
+    el.style.opacity = '0'
+    el.style.transform = 'translateY(30px) scale(0.96)'
+  })
+
+  body.offsetHeight
+
+  // A: stagger in
+  sections.forEach((el, i) => {
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1), transform 0.55s cubic-bezier(0.22, 1, 0.36, 1)'
+      el.style.opacity = '1'
+      el.style.transform = 'translateY(0) scale(1)'
+    }, i * 90)
+  })
+
+  // D: chips bounce in
+  const chipsDelay = (sections.length - 1) * 90 + 180
+  chips.forEach((chip, i) => {
+    setTimeout(() => {
+      chip.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease'
+      chip.style.opacity = '1'
+      chip.style.transform = 'scale(1) translateY(0)'
+    }, chipsDelay + i * 55)
+  })
+})
+
+const shareMenuOpen = ref(false)
+const shareWrapRef = ref(null)
+
+const openShareItem = async (type) => {
+  const dish = selectedDish.value
+  if (!dish) return
+  const dishUrl     = `${window.location.origin}/limited?dish=${dish.id}`
+  const encodedUrl  = encodeURIComponent(dishUrl)
+  const encodedText = encodeURIComponent(`${dish.dishName} NT$${dish.price.toLocaleString()}`)
+  switch (type) {
+    case 'line':     window.open(`https://social-plugins.line.me/lineit/share?url=${encodedUrl}`, '_blank'); break
+    case 'facebook': window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, '_blank'); break
+    case 'x':        window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`, '_blank'); break
+    case 'copy':
+      try {
+        await navigator.clipboard.writeText(dishUrl)
+        show('🔗 連結已複製！', 'success')
+      } catch {
+        show('複製失敗，請手動複製', 'error')
+      }
+      break
+  }
+  shareMenuOpen.value = false
+}
+
+const handleShareClickOutside = (e) => {
+  if (shareMenuOpen.value && shareWrapRef.value && !shareWrapRef.value.contains(e.target)) {
+    shareMenuOpen.value = false
+  }
+}
 
 const openModal = (dish) => {
   // 售完或即將上架 → 不開 Modal
@@ -383,6 +572,7 @@ const openModal = (dish) => {
 const closeModal = () => {
   isModalOpen.value = false
   selectedDish.value = null
+  shareMenuOpen.value = false
   document.body.style.overflow = ''
 }
 const handleEsc = (e) => { if (e.key === 'Escape') closeModal() }
@@ -456,16 +646,45 @@ const fetchLimited = async () => {
 }
 
 // ── 生命週期 ──────────────────────────────────────────
-onMounted(() => {
-  fetchLimited()
+onMounted(async () => {
+  await fetchLimited()
   _refreshTimer = setInterval(fetchLimited, 10_000)
   _clockTimer   = setInterval(() => { currentTime.value = new Date() }, 1000)
   window.addEventListener('keydown', handleEsc)
+  document.addEventListener('click', handleShareClickOutside)
+
+  // 深層連結：偵測 ?dish=id，自動打開對應 Modal
+  const params = new URLSearchParams(window.location.search)
+  const dishParam = params.get('dish')
+  if (dishParam) {
+    const dish = limitedDishes.value.find(d => String(d.id) === dishParam)
+    if (dish) openModal(dish)
+  }
+
+  // 提醒通知：檢查已設定提醒且距截止 24h 內的餐點
+  if (Notification.permission === 'granted' && reminders.value.length) {
+    const now = new Date()
+    reminders.value.forEach(id => {
+      const dish = limitedDishes.value.find(d => d.id === id)
+      if (!dish || !dish.endDate) return
+      const end = new Date(dish.endDate)
+      const diffMs = end - now
+      if (diffMs > 0 && diffMs < 24 * 60 * 60 * 1000) {
+        const h = Math.floor(diffMs / 3_600_000)
+        const m = Math.floor((diffMs % 3_600_000) / 60_000)
+        new Notification(`⏰ ${dish.dishName} 即將截止！`, {
+          body: `距離下架還有 ${h} 小時 ${m} 分鐘，把握機會！`,
+          icon: dish.imageUrl ? dish.imageUrl : undefined,
+        })
+      }
+    })
+  }
 })
 onUnmounted(() => {
   clearInterval(_refreshTimer)
   clearInterval(_clockTimer)
   window.removeEventListener('keydown', handleEsc)
+  document.removeEventListener('click', handleShareClickOutside)
 })
 </script>
 
@@ -996,6 +1215,93 @@ onUnmounted(() => {
 }
 .fav-btn:hover { transform: scale(1.25); }
 
+/* ── 快速預覽按鈕 ── */
+.preview-btn {
+  position: absolute;
+  bottom: 0.65rem;
+  right: 0.65rem;
+  z-index: 4;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(227, 199, 107, 0.3);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.22s ease, transform 0.22s ease, background 0.2s;
+}
+.limited-card:hover .preview-btn { opacity: 1; transform: scale(1); }
+.preview-btn:hover { background: rgba(0, 0, 0, 0.85); border-color: var(--eat-primary); }
+
+/* ── 快速預覽 Tooltip ── */
+.preview-tip {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  background: rgba(12, 5, 2, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(227, 199, 107, 0.25);
+  border-radius: 14px;
+  padding: 1rem;
+  z-index: 10;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+.tip-desc {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: rgba(249, 221, 211, 0.75);
+  font-style: italic;
+  line-height: 1.6;
+  margin: 0 0 0.65rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tip-ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+.tip-ing-chip {
+  font-family: var(--font-label);
+  font-size: 0.68rem;
+  padding: 0.15rem 0.55rem;
+  background: rgba(227, 199, 107, 0.08);
+  border: 1px solid rgba(227, 199, 107, 0.2);
+  border-radius: 20px;
+  color: var(--eat-secondary);
+}
+.tip-more {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 0 0;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(227, 199, 107, 0.12);
+  color: var(--eat-primary);
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  text-align: right;
+  transition: opacity 0.15s;
+  margin-top: 0.1rem;
+}
+.tip-more:hover { opacity: 0.75; }
+.preview-tip-enter-active { transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1); }
+.preview-tip-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
+.preview-tip-enter-from   { opacity: 0; transform: translateY(6px) scale(0.97); }
+.preview-tip-leave-to     { opacity: 0; transform: translateY(3px) scale(0.98); }
+@media (max-width: 768px) {
+  .preview-btn { display: none; }
+}
+
 /* ── Modal 動畫 ── */
 .modal-enter-active { transition: opacity 0.3s ease; }
 .modal-leave-active { transition: opacity 0.22s ease; }
@@ -1068,6 +1374,42 @@ onUnmounted(() => {
   z-index: 2;
 }
 .modal-close:hover { background: rgba(0,0,0,0.85); }
+.share-wrap { position: absolute; top: 0.85rem; right: 3.35rem; z-index: 2; }
+.modal-share {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(0,0,0,0.55); border: none; color: rgba(255,255,255,0.75);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s, color 0.2s;
+}
+.modal-share:hover { background: rgba(0,0,0,0.85); color: var(--eat-primary); }
+.share-menu {
+  position: absolute; top: calc(100% + 0.45rem); right: 0;
+  background: rgba(18, 8, 4, 0.96); backdrop-filter: blur(16px);
+  border: 1px solid rgba(227, 199, 107, 0.22); border-radius: 12px;
+  padding: 0.35rem; display: flex; flex-direction: column; gap: 0.15rem;
+  min-width: 148px; box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+}
+.share-item {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.48rem 0.7rem; border: none; background: none; border-radius: 8px;
+  color: rgba(249, 221, 211, 0.82); font-family: var(--font-label);
+  font-size: 0.78rem; letter-spacing: 0.04em; cursor: pointer;
+  transition: background 0.15s; white-space: nowrap; width: 100%; text-align: left;
+}
+.share-item:hover { background: rgba(255,255,255,0.06); }
+.share-icon {
+  width: 22px; height: 22px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 700; flex-shrink: 0; line-height: 1;
+}
+.si-line { background: #06C755; color: white; border-radius: 6px; font-size: 0.62rem; }
+.si-fb   { background: #1877F2; color: white; border-radius: 50%; font-size: 0.88rem; }
+.si-x    { background: #0f0f0f; color: white; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); font-size: 0.75rem; }
+.si-copy { background: rgba(227,199,107,0.12); color: var(--eat-primary); border: 1px solid rgba(227,199,107,0.3); border-radius: 6px; }
+.share-menu-enter-active { transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1); }
+.share-menu-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
+.share-menu-enter-from   { opacity: 0; transform: scale(0.88) translateY(-8px); transform-origin: top right; }
+.share-menu-leave-to     { opacity: 0; transform: scale(0.92) translateY(-4px); transform-origin: top right; }
 .modal-badge-group {
   position: absolute;
   bottom: 0.9rem; left: 1rem;
@@ -1129,6 +1471,37 @@ onUnmounted(() => {
   border-color: rgba(227, 199, 107, 0.5);
   color: var(--eat-primary);
   background: rgba(227, 199, 107, 0.06);
+}
+
+/* Modal 提醒按鈕 */
+.modal-remind-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: 1px solid rgba(126, 207, 126, 0.25);
+  border-radius: 30px;
+  color: rgba(144, 238, 144, 0.65);
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  padding: 0.35rem 1rem;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+  align-self: flex-start;
+}
+.modal-remind-btn:hover:not(:disabled) {
+  border-color: rgba(126, 207, 126, 0.55);
+  color: #7ecf7e;
+  background: rgba(126, 207, 126, 0.07);
+}
+.modal-remind-btn.is-set,
+.modal-remind-btn:disabled {
+  border-color: rgba(126, 207, 126, 0.45);
+  color: #7ecf7e;
+  background: rgba(126, 207, 126, 0.08);
+  cursor: default;
+  opacity: 0.85;
 }
 
 .modal-desc {
