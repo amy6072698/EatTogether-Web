@@ -70,8 +70,6 @@ const routes = [
         component: () => import("@/views/order/In.vue"),
         meta: { hideChrome: true },
     },
-    // 攔截尚未實作的路由，避免 null component crash
-    { path: '/:pathMatch(.*)*', redirect: '/' },
 
     {
         path: '/news',
