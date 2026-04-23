@@ -1,5 +1,4 @@
-import { createRouter, createWebHistory } from "vue-router";
-import { nextTick } from 'vue'
+import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.js'
 
 const routes = [
@@ -50,24 +49,24 @@ const routes = [
     },
 
     {
-        path: "/menu",
-        name: "Menu",
-        component: () => import("@/views/menu/Menu.vue"),
+        path: '/menu',
+        name: 'Menu',
+        component: () => import('@/views/menu/Menu.vue'),
     },
     {
-        path: "/setmeal",
-        name: "SetMeal",
-        component: () => import("@/views/menu/SetMeal.vue"),
+        path: '/setmeal',
+        name: 'SetMeal',
+        component: () => import('@/views/menu/SetMeal.vue'),
     },
     {
-        path: "/limited",
-        name: "Limited",
-        component: () => import("@/views/menu/Limited.vue"),
+        path: '/limited',
+        name: 'Limited',
+        component: () => import('@/views/menu/Limited.vue'),
     },
     {
-        path: "/in",
-        name: "DineIn",
-        component: () => import("@/views/order/In.vue"),
+        path: '/in',
+        name: 'DineIn',
+        component: () => import('@/views/order/In.vue'),
         meta: { hideChrome: true },
     },
 
@@ -120,38 +119,38 @@ const routes = [
         component:()=> import('@/views/news/NewsDetailView.vue'),
     },
 
-        // ── 404 Not Found ─────────────────────────────────────
+    // ── 404 Not Found ─────────────────────────────────────
     {
         path: '/:pathMatch(.*)*',
         name: 'NotFound',
         component: () => import('@/views/NotFound.vue'),
     },
-
-    
-
-
-];
+]
 
 const router = createRouter({
     history: createWebHistory(),
     routes,
     scrollBehavior(to, from, savedPosition) {
         if (savedPosition) {
-            return savedPosition   // 瀏覽器上一頁/下一頁時還原位置
+            return savedPosition    // 瀏覽器上一頁/下一頁時還原位置
         }
-        return { top: 0 }          // 一般換頁回到頂部
+        return { top: 0 }           // 一般換頁回到頂部
     },
 })
 
-// ── 路由守衛（0-F8）────────────────────────────────────
+// ── 路由守衛 ───────────────────────────────────────────
+// 用模組層級的 singleton Promise 確保 checkAuth 只執行一次
+// 無論使用者首次進入哪個路由，守衛都會等待登入狀態確定後再判斷
+// 後續的路由切換因 Promise 已 resolved，await 會立即通過，不會重複打 API
+let authInitPromise = null
+
 router.beforeEach(async (to) => {
     const authStore = useAuthStore()
 
-    // 等待 App.vue onMounted 的 checkAuth 完成（isLoading 由 false → true → false）
-    // 首次進入時 isLoading 可能尚未被設定為 true，因此搭配 App.vue onMounted 使用
-    while (authStore.isLoading) {
-        await nextTick()
+    if (!authInitPromise) {
+        authInitPromise = authStore.checkAuth()
     }
+    await authInitPromise
 
     // 不需登入的頁面直接放行
     if (!to.meta.requiresAuth) return true
@@ -164,4 +163,4 @@ router.beforeEach(async (to) => {
     return true
 })
 
-export default router;
+export default router
