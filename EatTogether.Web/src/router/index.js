@@ -63,9 +63,9 @@ const routes = [
         component: () => import("@/views/Menu/Limited.vue"),
     },
     {
-        path: "/In",
+        path: "/in",
         name: "DineIn",
-        component: () => import("@/views/Order/In.vue"),
+        component: () => import("@/views/order/In.vue"),
         meta: { hideChrome: true },
     },
 
