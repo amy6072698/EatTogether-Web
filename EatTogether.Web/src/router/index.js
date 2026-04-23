@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
+import { nextTick } from 'vue'
+import { useAuthStore } from '@/stores/auth.js'
 
 const routes = [
     {
@@ -49,18 +51,18 @@ const routes = [
 
     {
         path: "/menu",
-        name: "menu",
-        component: () => import("@/views/Menu/Menu.vue"),
+        name: "Menu",
+        component: () => import("@/views/menu/Menu.vue"),
     },
     {
         path: "/setmeal",
         name: "SetMeal",
-        component: () => import("@/views/Menu/SetMeal.vue"),
+        component: () => import("@/views/menu/SetMeal.vue"),
     },
     {
         path: "/limited",
         name: "Limited",
-        component: () => import("@/views/Menu/Limited.vue"),
+        component: () => import("@/views/menu/Limited.vue"),
     },
     {
         path: "/in",
@@ -88,6 +90,25 @@ const router = createRouter({
     },
 })
 
-// TODO: 0-F8 路由守衛實作（需先完成 0-F7 auth store）
+// ── 路由守衛（0-F8）────────────────────────────────────
+router.beforeEach(async (to) => {
+    const authStore = useAuthStore()
+
+    // 等待 App.vue onMounted 的 checkAuth 完成（isLoading 由 false → true → false）
+    // 首次進入時 isLoading 可能尚未被設定為 true，因此搭配 App.vue onMounted 使用
+    while (authStore.isLoading) {
+        await nextTick()
+    }
+
+    // 不需登入的頁面直接放行
+    if (!to.meta.requiresAuth) return true
+
+    // 需登入但未登入 → 導回首頁，並帶上 redirect query 供登入後跳回
+    if (!authStore.isLoggedIn) {
+        return { name: 'Home', query: { redirect: to.fullPath } }
+    }
+
+    return true
+})
 
 export default router;

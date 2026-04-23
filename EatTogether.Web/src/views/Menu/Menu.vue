@@ -98,14 +98,19 @@
       <!-- 餐點卡片 -->
       <TransitionGroup v-else name="card" tag="div" :class="viewMode === 'grid' ? 'menu-grid' : 'menu-list'">
         <div
-          v-for="(dish, index) in pagedDishes"
+          v-for="(dish, index) in filteredDishes"
           :key="dish.id"
           v-reveal="index"
           class="dish-card"
           :class="{ 'is-soldout': dish.stockStatus === 2 }"
           @click="openModal(dish)"
+          @mouseleave="activePreview = null"
         >
-          <div class="dish-img-wrap">
+          <div
+            class="dish-img-wrap"
+            @mousemove="dish.stockStatus !== 2 && onSpotlight($event)"
+            @mouseleave="dish.stockStatus !== 2 && offSpotlight($event)"
+          >
             <img
               v-if="dish.imageUrl"
               :src="formatImageUrl(dish.imageUrl)"
@@ -141,7 +146,34 @@
                 >{{ getCountdown(dish.endDate, dish.startDate) }}</span>
               </template>
             </div>
+
+            <!-- 快速預覽按鈕（在圖片內，不超出 overflow:hidden 範圍） -->
+            <button
+              v-if="dish.stockStatus !== 2"
+              class="preview-btn"
+              @click.stop="activePreview = activePreview === dish.id ? null : dish.id"
+              aria-label="快速預覽"
+            >👁</button>
           </div>
+
+          <!-- 快速預覽 Tooltip（移到 dish-img-wrap 外，相對 dish-card 定位） -->
+          <Transition name="preview-tip">
+            <div
+              v-if="activePreview === dish.id"
+              class="preview-tip"
+              @click.stop
+            >
+              <p class="tip-desc">{{ dish.description || '精選新鮮食材，傳承義式經典風味，每一口都是主廚的心意。' }}</p>
+              <div v-if="parseIngredients(dish.ingredientsJson).length" class="tip-ingredients">
+                <span
+                  v-for="ing in parseIngredients(dish.ingredientsJson).slice(0, 3)"
+                  :key="ing.name"
+                  class="tip-ing-chip"
+                >{{ ing.name }}</span>
+              </div>
+              <button class="tip-more" @click.stop="openModal(dish)">查看完整資訊 →</button>
+            </div>
+          </Transition>
 
           <div class="dish-info">
             <div class="dish-title-row">
@@ -162,18 +194,6 @@
         </div>
       </TransitionGroup>
 
-      <!-- 分頁列 -->
-      <div v-if="!loading && !error && totalPages > 1" class="pagination">
-        <button class="page-btn" :disabled="currentPage === 1" @click="currentPage--">‹</button>
-        <template v-for="p in totalPages" :key="p">
-          <button
-            class="page-btn"
-            :class="{ active: p === currentPage }"
-            @click="currentPage = p"
-          >{{ p }}</button>
-        </template>
-        <button class="page-btn" :disabled="currentPage === totalPages" @click="currentPage++">›</button>
-      </div>
 
       <!-- Empty -->
       <div
@@ -215,11 +235,39 @@
               :src="formatImageUrl(selectedDish.imageUrl)"
               :alt="selectedDish.dishName"
               class="modal-img"
+              ref="modalImgRef"
             />
             <div v-else class="modal-img-placeholder">
               <span>{{ selectedDish.dishName.charAt(0) }}</span>
             </div>
             <div class="modal-img-gradient"></div>
+            <div class="share-wrap" ref="shareWrapRef">
+              <button class="modal-share" @click.stop="shareMenuOpen = !shareMenuOpen" aria-label="分享">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                  <polyline points="16 6 12 2 8 6"/>
+                  <line x1="12" y1="2" x2="12" y2="15"/>
+                </svg>
+              </button>
+              <Transition name="share-menu">
+                <div v-if="shareMenuOpen" class="share-menu">
+                  <button class="share-item" @click="openShareItem('line')">
+                    <span class="share-icon si-line">L</span>LINE
+                  </button>
+                  <button class="share-item" @click="openShareItem('facebook')">
+                    <span class="share-icon si-fb">f</span>Facebook
+                  </button>
+                  <button class="share-item" @click="openShareItem('x')">
+                    <span class="share-icon si-x">𝕏</span>X
+                  </button>
+                  <button class="share-item" @click="openShareItem('copy')">
+                    <span class="share-icon si-copy">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </span>複製連結
+                  </button>
+                </div>
+              </Transition>
+            </div>
             <button class="modal-close" @click="closeModal">✕</button>
             <div class="modal-badge-group">
               <span v-if="selectedDish.isRecommended" class="badge badge-rec">推薦</span>
@@ -229,7 +277,7 @@
           </div>
 
           <!-- 資訊區 -->
-          <div class="modal-body">
+          <div class="modal-body" ref="modalBodyRef">
             <div class="modal-header-row">
               <h2 class="modal-title">{{ selectedDish.dishName }}</h2>
               <div class="modal-price">NT$ {{ selectedDish.price.toLocaleString() }}</div>
@@ -298,11 +346,16 @@
         ↑
       </button>
     </Transition>
+
+    <ToastContainer />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import ToastContainer from '@/components/common/ToastContainer.vue';
+import { useToast } from '@/composables/useToast.js';
+const { show } = useToast();
 
 // ── Intersection Observer 進場 ───────────────────────
 const vReveal = {
@@ -331,6 +384,18 @@ const vReveal = {
   unmounted(el) {
     el._revealObserver?.disconnect()
   }
+}
+
+// ── Spotlight 光暈 ───────────────────────────────────
+const onSpotlight = (e) => {
+  const el = e.currentTarget
+  const rect = el.getBoundingClientRect()
+  el.style.setProperty('--sx', `${e.clientX - rect.left}px`)
+  el.style.setProperty('--sy', `${e.clientY - rect.top}px`)
+  el.style.setProperty('--spotlight-opacity', '1')
+}
+const offSpotlight = (e) => {
+  e.currentTarget.style.setProperty('--spotlight-opacity', '0')
 }
 
 // ── 庫存進度條寬度（以 id 為 seed，穩定不亂跳）─────────
@@ -459,6 +524,7 @@ const hoverStar = ref(0);
 const submitRating = (dishId, star) => {
   userRatings[dishId] = star;
   localStorage.setItem('menu-ratings', JSON.stringify(userRatings));
+  show('⭐ 感謝您的評分！', 'success');
   const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
   fetch(`${API_BASE}/Dishes/${dishId}/Rate`, {
     method: 'POST',
@@ -474,8 +540,10 @@ const toggleFavorite = (dishId) => {
   const idx = favorites.value.indexOf(dishId);
   if (idx === -1) {
     favorites.value.push(dishId);
+    show('❤️ 已加入收藏', 'success');
   } else {
     favorites.value.splice(idx, 1);
+    show('🤍 已取消收藏', 'info');
   }
   localStorage.setItem('menu-favorites', JSON.stringify(favorites.value));
 };
@@ -483,6 +551,65 @@ const toggleFavorite = (dishId) => {
 // Modal
 const isModalOpen = ref(false);
 const selectedDish = ref(null);
+const activePreview = ref(null);
+const modalBodyRef = ref(null);
+const modalImgRef = ref(null);
+
+watch(isModalOpen, async (open) => {
+  if (!open) return;
+  await nextTick();
+
+  // B: Ken Burns — start zoomed-in, slowly ease back to natural
+  const img = modalImgRef.value;
+  if (img) {
+    img.style.transition = 'none';
+    img.style.transform = 'scale(1.18)';
+    img.offsetHeight; // force reflow
+    img.style.transition = 'transform 7s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    img.style.transform = 'scale(1.0)';
+  }
+
+  const body = modalBodyRef.value;
+  if (!body) return;
+
+  const sections = [...body.children];
+
+  // D: pre-hide chips — they animate separately after their parent section reveals
+  const chips = body.querySelectorAll('.attr-chip');
+  chips.forEach(chip => {
+    chip.style.transition = 'none';
+    chip.style.opacity = '0';
+    chip.style.transform = 'scale(0) translateY(6px)';
+  });
+
+  // A: reset all direct children — more travel distance + subtle scale for depth
+  sections.forEach(el => {
+    el.style.transition = 'none';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(30px) scale(0.96)';
+  });
+
+  body.offsetHeight; // force reflow before animating
+
+  // A: stagger each section in with a springy easing
+  sections.forEach((el, i) => {
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1), transform 0.55s cubic-bezier(0.22, 1, 0.36, 1)';
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0) scale(1)';
+    }, i * 90);
+  });
+
+  // D: chips pop in as A wraps up its last section (tighter timing = snappier feel)
+  const chipsDelay = (sections.length - 1) * 90 + 180;
+  chips.forEach((chip, i) => {
+    setTimeout(() => {
+      chip.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease';
+      chip.style.opacity = '1';
+      chip.style.transform = 'scale(1) translateY(0)';
+    }, chipsDelay + i * 55);
+  });
+});
 
 const categories = [
   { id: 0, name: '全部' },
@@ -506,6 +633,37 @@ const clearFilters = () => {
 }
 
 // ── Modal ────────────────────────────────────────────
+const shareMenuOpen = ref(false);
+const shareWrapRef = ref(null);
+
+const openShareItem = async (type) => {
+  const dish = selectedDish.value;
+  if (!dish) return;
+  const dishUrl = `${window.location.origin}/menu?dish=${dish.id}`;
+  const encodedUrl  = encodeURIComponent(dishUrl);
+  const encodedText = encodeURIComponent(`${dish.dishName} NT$${dish.price.toLocaleString()}`);
+  switch (type) {
+    case 'line':     window.open(`https://social-plugins.line.me/lineit/share?url=${encodedUrl}`, '_blank'); break;
+    case 'facebook': window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, '_blank'); break;
+    case 'x':        window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`, '_blank'); break;
+    case 'copy':
+      try {
+        await navigator.clipboard.writeText(dishUrl);
+        show('🔗 連結已複製！', 'success');
+      } catch {
+        show('複製失敗，請手動複製', 'error');
+      }
+      break;
+  }
+  shareMenuOpen.value = false;
+};
+
+const handleShareClickOutside = (e) => {
+  if (shareMenuOpen.value && shareWrapRef.value && !shareWrapRef.value.contains(e.target)) {
+    shareMenuOpen.value = false;
+  }
+};
+
 const openModal = (dish) => {
   selectedDish.value = dish;
   isModalOpen.value = true;
@@ -515,12 +673,19 @@ const openModal = (dish) => {
 const closeModal = () => {
   isModalOpen.value = false;
   selectedDish.value = null;
+  shareMenuOpen.value = false;
   document.body.style.overflow = '';
 };
 
 const handleEsc = (e) => { if (e.key === 'Escape') closeModal(); };
-onMounted(() => window.addEventListener('keydown', handleEsc));
-onUnmounted(() => window.removeEventListener('keydown', handleEsc));
+onMounted(() => {
+  window.addEventListener('keydown', handleEsc);
+  document.addEventListener('click', handleShareClickOutside);
+});
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEsc);
+  document.removeEventListener('click', handleShareClickOutside);
+});
 
 // ── Utils ────────────────────────────────────────────
 const spicyLabel = (level) => {
@@ -561,18 +726,6 @@ const fetchMenu = async () => {
 const showBackTop = ref(false);
 const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
-// ── 分頁 ─────────────────────────────────────────────
-const PAGE_SIZE = 12;
-const currentPage = ref(1);
-
-// 任何篩選條件變動時回到第 1 頁
-watch(
-  [searchQuery, filterVeg, filterSpicy, filterRec, filterFav, filterAvailable, currentCategory, sortOrder],
-  () => { currentPage.value = 1; }
-);
-
-// 換頁時捲回頂端
-watch(currentPage, scrollToTop);
 const handleScroll = () => { showBackTop.value = window.scrollY > 400; };
 onMounted(() => window.addEventListener('scroll', handleScroll, { passive: true }));
 onUnmounted(() => window.removeEventListener('scroll', handleScroll));
@@ -613,16 +766,22 @@ const filteredDishes = computed(() => {
   }
 });
 
-const totalPages = computed(() => Math.ceil(filteredDishes.value.length / PAGE_SIZE));
-const pagedDishes = computed(() => {
-  const start = (currentPage.value - 1) * PAGE_SIZE;
-  return filteredDishes.value.slice(start, start + PAGE_SIZE);
-});
 
-onMounted(() => {
-  fetchMenu();
+onMounted(async () => {
+  await fetchMenu();
   _refreshTimer = setInterval(fetchMenu, 5_000);
   updateIndicator();
+
+  // 深層連結：偵測 ?dish=id，自動打開對應 Modal
+  const params = new URLSearchParams(window.location.search);
+  const dishParam = params.get('dish');
+  if (dishParam) {
+    const dish = dishes.value.find(d => String(d.id) === dishParam);
+    if (dish) {
+      if (dish.categoryId) currentCategory.value = dish.categoryId;
+      openModal(dish);
+    }
+  }
 });
 onUnmounted(() => {
   clearInterval(_refreshTimer);
@@ -893,10 +1052,8 @@ onUnmounted(() => {
   background-color: var(--eat-surface-high);
   border-radius: 16px;
   overflow: hidden;
-  /* 3D 傾斜基礎；overflow:hidden 在部分瀏覽器會拍平 preserve-3d，
-     但卡片自身的 rotateX/Y 不受影響，::after glare 以純 2D overlay 實現 */
   will-change: transform;
-  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+  transition: transform 0.3s ease,
               box-shadow 0.3s ease,
               border-color 0.3s;
   display: flex;
@@ -993,11 +1150,106 @@ onUnmounted(() => {
 }
 .fav-btn:hover { transform: scale(1.25); }
 
+/* ── 快速預覽按鈕 ── */
+.preview-btn {
+  position: absolute;
+  bottom: 0.65rem;
+  right: 0.65rem;
+  z-index: 4;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(227, 199, 107, 0.3);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.22s ease, transform 0.22s ease, background 0.2s;
+}
+.dish-card:hover .preview-btn { opacity: 1; transform: scale(1); }
+.preview-btn:hover { background: rgba(0, 0, 0, 0.85); border-color: var(--eat-primary); }
+
+/* ── 快速預覽 Tooltip ── */
+.preview-tip {
+  position: absolute;
+  /* 蓋在圖片上方：圖片高度 200px，tooltip 從頂部往下偏移讓它出現在圖片區域內 */
+  top: 0.75rem;
+  left: 0.75rem;
+  right: 0.75rem;
+  background: rgba(12, 5, 2, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(227, 199, 107, 0.25);
+  border-radius: 14px;
+  padding: 1rem;
+  z-index: 10;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+.tip-desc {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: rgba(249, 221, 211, 0.75);
+  font-style: italic;
+  line-height: 1.6;
+  margin: 0 0 0.65rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tip-ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+.tip-ing-chip {
+  font-family: var(--font-label);
+  font-size: 0.68rem;
+  padding: 0.15rem 0.55rem;
+  background: rgba(227, 199, 107, 0.08);
+  border: 1px solid rgba(227, 199, 107, 0.2);
+  border-radius: 20px;
+  color: var(--eat-secondary);
+}
+.tip-more {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(227, 199, 107, 0.12);
+  color: var(--eat-primary);
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  text-align: right;
+  transition: opacity 0.15s;
+  padding-top: 0.6rem;
+  margin-top: 0.1rem;
+}
+.tip-more:hover { opacity: 0.75; }
+
+/* Tooltip 進退場動畫 */
+.preview-tip-enter-active { transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1); }
+.preview-tip-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
+.preview-tip-enter-from   { opacity: 0; transform: translateY(6px) scale(0.97); }
+.preview-tip-leave-to     { opacity: 0; transform: translateY(3px) scale(0.98); }
+
+@media (max-width: 768px) {
+  .preview-btn { display: none; }
+}
+
 .dish-img-wrap {
   position: relative;
   height: 200px;
   overflow: hidden;
   background-color: #251813;
+  --sx: 50%;
+  --sy: 50%;
+  --spotlight-opacity: 0;
 }
 .dish-img-wrap img {
   width: 100%; height: 100%;
@@ -1005,6 +1257,26 @@ onUnmounted(() => {
   transition: transform 1s ease;
 }
 .dish-card:hover .dish-img-wrap img { transform: scale(1.1); }
+
+/* Spotlight 光暈層 */
+.dish-img-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle 60px at var(--sx) var(--sy),
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.06) 45%,
+    transparent 100%
+  );
+  opacity: var(--spotlight-opacity);
+  transition: opacity 0.3s ease;
+  z-index: 4;
+  mix-blend-mode: screen;
+}
+/* 售完卡片不顯示光暈 */
+.is-soldout .dish-img-wrap::after { display: none; }
 
 .img-placeholder {
   width: 100%; height: 100%;
@@ -1077,10 +1349,35 @@ onUnmounted(() => {
 }
 .dish-price {
   font-family: var(--font-label);
-  color: var(--eat-secondary);
   font-size: 0.9rem;
   font-weight: 500; margin-top: 0.25rem;
   white-space: nowrap; margin-left: 0.5rem;
+  /* 光澤掃過基礎設定 */
+  background: linear-gradient(
+    90deg,
+    #c9a84c 0%,
+    #f5e27a 35%,
+    #ffffff 50%,
+    #f5e27a 65%,
+    #c9a84c 100%
+  );
+  background-size: 200% auto;
+  background-position: 100% center;   /* 預設停在右側（看不到光澤）*/
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* hover 時觸發一次掃光，結束後停在右側（回到金色） */
+.dish-card:hover .dish-price {
+  animation: price-shimmer 0.65s ease forwards;
+  animation-iteration-count: 1;
+}
+
+@keyframes price-shimmer {
+  0%   { background-position: 100% center; }
+  100% { background-position: -100% center; }
 }
 .dish-desc {
   font-family: var(--font-body);
@@ -1159,6 +1456,42 @@ onUnmounted(() => {
   transition: background 0.2s;
 }
 .modal-close:hover { background: rgba(0,0,0,0.8); }
+.share-wrap { position: absolute; top: 1rem; right: 3.5rem; z-index: 3; }
+.modal-share {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(0,0,0,0.5); border: none; color: rgba(255,255,255,0.8);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s, color 0.2s;
+}
+.modal-share:hover { background: rgba(0,0,0,0.8); color: var(--eat-primary); }
+.share-menu {
+  position: absolute; top: calc(100% + 0.45rem); right: 0;
+  background: rgba(18, 8, 4, 0.96); backdrop-filter: blur(16px);
+  border: 1px solid rgba(227, 199, 107, 0.22); border-radius: 12px;
+  padding: 0.35rem; display: flex; flex-direction: column; gap: 0.15rem;
+  min-width: 148px; box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+}
+.share-item {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.48rem 0.7rem; border: none; background: none; border-radius: 8px;
+  color: rgba(249, 221, 211, 0.82); font-family: var(--font-label);
+  font-size: 0.78rem; letter-spacing: 0.04em; cursor: pointer;
+  transition: background 0.15s; white-space: nowrap; width: 100%; text-align: left;
+}
+.share-item:hover { background: rgba(255,255,255,0.06); }
+.share-icon {
+  width: 22px; height: 22px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 700; flex-shrink: 0; line-height: 1;
+}
+.si-line { background: #06C755; color: white; border-radius: 6px; font-size: 0.62rem; }
+.si-fb   { background: #1877F2; color: white; border-radius: 50%; font-size: 0.88rem; }
+.si-x    { background: #0f0f0f; color: white; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); font-size: 0.75rem; }
+.si-copy { background: rgba(227,199,107,0.12); color: var(--eat-primary); border: 1px solid rgba(227,199,107,0.3); border-radius: 6px; }
+.share-menu-enter-active { transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1); }
+.share-menu-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
+.share-menu-enter-from   { opacity: 0; transform: scale(0.88) translateY(-8px); transform-origin: top right; }
+.share-menu-leave-to     { opacity: 0; transform: scale(0.92) translateY(-4px); transform-origin: top right; }
 .modal-badge-group {
   position: absolute; bottom: 1rem; left: 1.25rem;
   display: flex; gap: 0.4rem; z-index: 2;
@@ -1355,43 +1688,6 @@ onUnmounted(() => {
 }
 .retry-btn:hover { background-color: var(--eat-primary); color: var(--eat-surface); }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── 分頁列 ── */
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: 3rem;
-  flex-wrap: wrap;
-}
-.page-btn {
-  min-width: 2.2rem;
-  height: 2.2rem;
-  padding: 0 0.6rem;
-  background: none;
-  border: 1px solid rgba(227, 199, 107, 0.15);
-  border-radius: 6px;
-  color: rgba(249, 221, 211, 0.5);
-  font-family: var(--font-label);
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.page-btn:hover:not(:disabled) {
-  border-color: rgba(227, 199, 107, 0.4);
-  color: var(--eat-primary);
-}
-.page-btn.active {
-  background: rgba(227, 199, 107, 0.12);
-  border-color: rgba(227, 199, 107, 0.5);
-  color: var(--eat-primary);
-  font-weight: 600;
-}
-.page-btn:disabled {
-  opacity: 0.25;
-  cursor: not-allowed;
-}
 
 /* ── 回到頂端按鈕 ── */
 .back-top-btn {
