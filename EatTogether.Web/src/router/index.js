@@ -36,9 +36,9 @@ const routes = [
         component: () => import("@/views/Menu/Limited.vue"),
     },
     {
-        path: "/In",
+        path: "/in",
         name: "DineIn",
-        component: () => import("@/views/Order/In.vue"),
+        component: () => import("@/views/order/In.vue"),
         meta: { hideChrome: true },
     },
     // 攔截尚未實作的路由，避免 null component crash
