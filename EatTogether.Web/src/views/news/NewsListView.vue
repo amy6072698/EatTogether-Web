@@ -30,9 +30,9 @@
                         :class="{ active: selectedCategory === cat.id }"
                         href="#"
                         @click.prevent="selectCategory(cat.id)"
-                    >
-                        <span class="material-symbols-outlined">{{ cat.icon }}</span>
-                        <span>{{ cat.label }}</span>
+                    >                        
+                        <span class="news-sidebar-label">{{ cat.label }}</span>
+                        <span class="news-sidebar-en">{{ cat.en }}</span>
                     </a>
                 </nav>
             </div>
@@ -60,15 +60,17 @@
                     >
                         <!-- 圖片欄 -->
                         <div class="news-card-img-wrap">
-                            <img
-                                v-if="article.coverImageUrl"
-                                :src="article.coverImageUrl"
-                                :alt="article.title"
-                                class="news-card-img"
-                            />
-                            <div v-else class="news-card-img-placeholder">
-                                <span class="material-symbols-outlined">article</span>
-                            </div>
+                            <RouterLink :to="{ name: 'NewsDetail', params: { id: article.id } }">
+                                <img
+                                    v-if="article.coverImageUrl"
+                                    :src="article.coverImageUrl"
+                                    :alt="article.title"
+                                    class="news-card-img"
+                                />
+                                <div v-else class="news-card-img-placeholder">
+                                    <span style="opacity:0.3; letter-spacing:0.2em;">NO IMAGE</span>
+                                </div>
+                            </RouterLink>
                         </div>
  
                         <!-- 文字欄 -->
@@ -80,24 +82,26 @@
                                 {{ formatDateBg(article.publishDate) }}
                             </div>
                             <span class="news-card-category">{{ article.categoryName }}</span>
-                            <h3 class="news-card-title">{{ article.title }}</h3>
+                            <RouterLink :to="{ name: 'NewsDetail', params: { id: article.id } }">
+                                <h3 class="news-card-title">{{ article.title }}</h3>
+                            </RouterLink>
                             <p class="news-card-summary">{{ stripTags(article.summary) }}</p>
                             <div class="news-card-meta">
-                                <span class="material-symbols-outlined news-card-meta-icon">visibility</span>
+                                <span class="">閱覽數</span>
                                 <span>{{ article.viewCount }}</span>
                             </div>
                             <RouterLink
-                                :to="`/news/${article.id}`"
+                                :to="{
+                                    name: 'NewsDetail', params: { id: article.id }
+                                }"
                                 class="news-card-link"
                                 :class="index % 2 !== 0 ? 'news-card-link--reverse' : ''"
                             >
                                 <template v-if="index % 2 !== 0">
-                                    <span class="material-symbols-outlined">arrow_back</span>
-                                    閱讀全文
+                                    閱讀全文 →
                                 </template>
                                 <template v-else>
-                                    閱讀全文
-                                    <span class="material-symbols-outlined">arrow_forward</span>
+                                    ← 閱讀全文
                                 </template>
                             </RouterLink>
                         </div>
@@ -123,7 +127,7 @@
                         :disabled="page === 1"
                         @click="changePage(page - 1)"
                     >
-                        <span class="material-symbols-outlined">chevron_left</span>
+                        <span class="">↼</span>
                     </button>
                     <div class="news-page-numbers">
                         <span
@@ -139,7 +143,7 @@
                         :disabled="page === totalPages"
                         @click="changePage(page + 1)"
                     >
-                        <span class="material-symbols-outlined">chevron_right</span>
+                        <span class="">⇀</span>
                     </button>
                 </div>
             </template>
@@ -154,13 +158,13 @@ import apiFetch from '@/utils/apiFetch.js'
  
 // ── 分類（對應後台 ArticleCategory 名稱）
 const categories = [
-    { id: null,     label: '所有消息', icon: 'dashboard' },
-    { id: '活動介紹', label: '活動介紹', icon: 'event' },
-    { id: '餐廳公告', label: '餐廳公告', icon: 'campaign' },
-    { id: '季節限定', label: '季節限定', icon: 'thermostat_arrow_up' },
-    { id: '品牌故事', label: '品牌故事', icon: 'history' },
-    { id: '新品上市', label: '新品上市', icon: 'new_releases' },
-    { id: '媒體報導', label: '媒體報導', icon: 'menu_book' },
+    { id: null,     label: '所有消息', en: 'ALL' },
+    { id: '活動介紹', label: '活動介紹', en: 'EVENT' },
+    { id: '餐廳公告', label: '餐廳公告', en: 'NOTICE' },
+    { id: '季節限定', label: '季節限定', en: 'SEASON' },
+    { id: '品牌故事', label: '品牌故事', en: 'STORY' },
+    { id: '新品上市', label: '新品上市', en: 'NEW' },
+    { id: '媒體報導', label: '媒體報導', en: 'MEDIA' },
 ]
  
 // ── 狀態
@@ -329,14 +333,28 @@ onMounted(fetchNews)
     transform: translateX(6px);
 }
 .news-sidebar-link.active { font-weight: 600; }
-.news-sidebar-link .material-symbols-outlined { font-size: 1.1rem; }
+
+.news-sidebar-label {
+    font-style: italic;
+}
+
+.news-sidebar-en {
+    font-family: var(--font-headline);
+    font-style: italic;
+    font-size: 0.8rem;
+    opacity: 0.8;
+    letter-spacing: 0.1em;
+    min-width: 3.5rem;
+    margin-left: 0.5rem;
+}
+
  
 /* ── Articles ─────────────────────────────────────── */
 .news-articles {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 5rem;
+    gap: 4rem;
 }
  
 /* ── Card ─────────────────────────────────────────── */
@@ -344,7 +362,7 @@ onMounted(fetchNews)
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2.5rem;
+    gap: 0rem;
 }
 @media (min-width: 768px) {
     .news-card--normal  { flex-direction: row; }
@@ -357,13 +375,16 @@ onMounted(fetchNews)
     border-radius: var(--eat-radius);
     box-shadow: 0 25px 50px -12px rgba(24, 11, 6, 0.5);
     flex-shrink: 0;
+    align-self: stretch;
+    aspect-ratio: 4 / 3;
 }
 @media (min-width: 768px) {
-    .news-card-img-wrap { width: 48%; }
+    .news-card-img-wrap { width: 45%; }
 }
 .news-card-img {
     width: 100%;
-    height: 380px;
+    height: 100%;
+    min-height: 280px;
     object-fit: cover;
     display: block;
     transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
@@ -372,7 +393,8 @@ onMounted(fetchNews)
  
 .news-card-img-placeholder {
     width: 100%;
-    height: 380px;
+    height: 100%;
+    min-height: 280px;
     background: var(--eat-surface-high);
     display: flex;
     align-items: center;
@@ -380,7 +402,6 @@ onMounted(fetchNews)
     color: var(--eat-on-surface-variant);
     opacity: 0.25;
 }
-.news-card-img-placeholder .material-symbols-outlined { font-size: 3rem; }
  
 .news-card-body {
     width: 100%;
@@ -400,7 +421,7 @@ onMounted(fetchNews)
     font-size: 2rem;
     font-style: italic;
     color: var(--eat-on-surface);
-    opacity: 0.08;
+    opacity: 0.25;
     pointer-events: none;
     user-select: none;
 }
@@ -424,6 +445,17 @@ onMounted(fetchNews)
     color: var(--eat-on-surface);
     line-height: 1.35;
     margin-bottom: 1.25rem;
+}
+a .news-card-title {
+    color: var(--eat-on-surface);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover .news-card-title {
+    color: var(--eat-primary);
+    text-decoration: underline;
+    text-underline-offset: 4px;
 }
 .news-card-summary {
     font-family: var(--font-body);
@@ -461,10 +493,37 @@ onMounted(fetchNews)
     text-transform: uppercase;
     color: var(--eat-primary);
     text-decoration: none;
-    transition: gap 0.3s ease;
+    transition: transform 0.3s ease;
 }
-.news-card-link:hover { gap: 0.85rem; }
+.news-card-link:hover { 
+    gap: 0.85rem;
+    transform: translateX(6px);   /* ← 正方向往右浮動 */
+ }
 .news-card-link--reverse { flex-direction: row-reverse; }
+.news-card-link--reverse:hover {
+    transform: translateX(-6px);  /* ← reverse 往左浮動 */
+}
+
+/* 圖片容器：右側圓角拿掉 */
+.news-card--normal .news-card-img-wrap {
+    border-radius: var(--eat-radius) 0 0 var(--eat-radius);
+}
+
+/* 文字容器：左側圓角拿掉 */
+.news-card--normal .news-card-body {
+    border-radius: 0 var(--eat-radius) var(--eat-radius) 0;
+}
+
+/* reverse 版本相反 */
+.news-card--reverse .news-card-img-wrap {
+    border-radius: 0 var(--eat-radius) var(--eat-radius) 0;
+}
+.news-card--reverse .news-card-body {
+    border-radius: var(--eat-radius) 0 0 var(--eat-radius);
+}
+
+
+
  
 /* ── Divider ──────────────────────────────────────── */
 .news-divider {

@@ -48,7 +48,7 @@ namespace EatTogether.API.Controllers
 					Summary = n.Description != null
 							  ? (n.Description.Length > 100 ? n.Description.Substring(0, 100) + "…" : n.Description)
 							  : "",
-					CoverImageUrl = n.CoverImageUrl != null   // ← 修這行
+					CoverImageUrl = n.CoverImageUrl != null   
 								? "/images/articles/" + n.CoverImageUrl
 								: "",
 					PublishDate = n.PublishDate,
@@ -88,7 +88,7 @@ namespace EatTogether.API.Controllers
 					CategoryName = n.Category.Name,
 					Title = n.Title,
 					Description = n.Description,
-					CoverImageUrl = n.CoverImageUrl != null   // ← 修這行
+					CoverImageUrl = n.CoverImageUrl != null   
 									? "/images/articles/" + n.CoverImageUrl
 									: "",
 					PublishDate = n.PublishDate,
