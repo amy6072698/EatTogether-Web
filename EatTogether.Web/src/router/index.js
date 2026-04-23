@@ -70,15 +70,53 @@ const routes = [
         meta: { hideChrome: true },
     },
 
+    // ── 訂位 ────────────────────────────────────────────
+    {
+        path: '/reservation',
+        name: 'Reservation',
+        component: () => import('@/views/reservation/BookingView.vue'),
+    },
+    {
+        path: '/reservation/query',
+        name: 'ReservationQuery',
+        component: () => import('@/views/reservation/ReservationQueryView.vue'),
+    },
+    {
+        path: '/member/reservations',
+        name: 'MyReservations',
+        component: () => import('@/views/reservation/MyReservationsView.vue'),
+        meta: { requiresAuth: true },
+    },
+
+    // ── 優惠券 ──────────────────────────────────────────
+    {
+        path: '/coupons',
+        name: 'CouponList',
+        component: () => import('@/views/coupon/CouponListView.vue'),
+    },
+    {
+        path: '/member/coupons',
+        name: 'MyCoupons',
+        component: () => import('@/views/coupon/MyCouponsView.vue'),
+        meta: { requiresAuth: true },
+    },
+    {
+        path: '/member/coupon-usage',
+        name: 'CouponUsage',
+        component: () => import('@/views/coupon/CouponUsageView.vue'),
+        meta: { requiresAuth: true },
+    },
+
+    // ── 最新消息 ─────────────────────────────────────────
     {
         path: '/news',
         name: 'NewsList',
-        component: () => import('@/views/news/NewsListView.vue'),
+        component:()=> import('@/views/news/NewsListView.vue'),
     },
     {
         path: '/news/:id',
         name: 'NewsDetail',
-        component: () => import('@/views/news/NewsDetailView.vue'),
+        component:()=> import('@/views/news/NewsDetailView.vue'),
     },
 
     // ── 404 Not Found ─────────────────────────────────────
