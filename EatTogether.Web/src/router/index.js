@@ -4,51 +4,24 @@ import { useAuthStore } from '@/stores/auth.js'
 
 const routes = [
     {
-        path: '/',
-        name: 'Home',
-        component: () => import('@/views/Home.vue'),
+        path: "/",
+        component: () => import("@/views/Home.vue"),
     },
-    {
-        path: '/verify-email',
-        name: 'VerifyEmail',
-        component: () => import('@/views/auth/VerifyEmail.vue'),
-    },
-    {
-        path: '/forgot-password',
-        name: 'ForgotPassword',
-        component: () => import('@/views/auth/ForgotPassword.vue'),
-    },
-    {
-        path: '/reset-password',
-        name: 'ResetPassword',
-        component: () => import('@/views/auth/ResetPassword.vue'),
-    },
-    {
-        path: '/auth/google/callback',
-        name: 'GoogleCallback',
-        component: () => import('@/views/auth/GoogleCallback.vue'),
-    },
-
-    // ── 會員專區（需登入）────────────────────────────────
-    {
-        path: '/member/profile',
-        name: 'MemberProfile',
-        component: () => import('@/views/member/Profile.vue'),
-        meta: { requiresAuth: true },
-    },
-    {
-        path: '/member/favorites',
-        name: 'MemberFavorites',
-        component: () => import('@/views/member/Favorites.vue'),
-        meta: { requiresAuth: true },
-    },
-    {
-        path: '/member/orders',
-        name: 'MemberOrders',
-        component: () => import('@/views/member/OrderHistory.vue'),
-        meta: { requiresAuth: true },
-    },
-
+    // {
+    //     path: "/login",
+    //     component: () => import("@/views/auth/Login.vue"),
+    //     meta: { guestOnly: true },
+    // },
+    // {
+    //     path: "/register",
+    //     component: () => import("@/views/auth/Register.vue"),
+    //     meta: { guestOnly: true },
+    // },
+    // {
+    //     path: "/member",
+    //     component: () => import("@/views/member/Member.vue"),
+    //     meta: { requiresAuth: true },
+    // },
     {
         path: "/menu",
         name: "Menu",
@@ -70,6 +43,8 @@ const routes = [
         component: () => import("@/views/order/In.vue"),
         meta: { hideChrome: true },
     },
+    // 攔截尚未實作的路由，避免 null component crash
+    { path: '/:pathMatch(.*)*', redirect: '/' },
 
     {
         path: '/news',
@@ -110,22 +85,5 @@ const router = createRouter({
 // ── 路由守衛（0-F8）────────────────────────────────────
 router.beforeEach(async (to) => {
     const authStore = useAuthStore()
-
-    // 等待 App.vue onMounted 的 checkAuth 完成（isLoading 由 false → true → false）
-    // 首次進入時 isLoading 可能尚未被設定為 true，因此搭配 App.vue onMounted 使用
-    while (authStore.isLoading) {
-        await nextTick()
-    }
-
-    // 不需登入的頁面直接放行
-    if (!to.meta.requiresAuth) return true
-
-    // 需登入但未登入 → 導回首頁，並帶上 redirect query 供登入後跳回
-    if (!authStore.isLoggedIn) {
-        return { name: 'Home', query: { redirect: to.fullPath } }
-    }
-
-    return true
-})
 
 export default router;

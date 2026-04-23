@@ -1,10 +1,12 @@
 ﻿using EatTogether.API.Models.EfModels;
+using Microsoft.EntityFrameworkCore;
 
 namespace EatTogether.Models.Repositories
 {
     public interface IOrderRepository 
     {
         Task AddWithPaymentAsync(Order order, Payment payment);
+        Task<List<Order>> GetRecentByMemberIdAsync(int memberId, int take = 5);
     }
     public class OrderRepository : IOrderRepository 
     {
@@ -24,6 +26,16 @@ namespace EatTogether.Models.Repositories
             // 回填 Payment.OrderId
             payment.OrderId = order.Id;
             await _context.SaveChangesAsync();
+        }
+        public async Task<List<Order>> GetRecentByMemberIdAsync(int memberId, int take = 5)
+        {
+            return await _context.Orders
+                .Include(o => o.OrderDetails)
+                .Include(o => o.PreOrder)   // ← 加這行
+                .Where(o => o.MemberId == memberId)
+                .OrderByDescending(o => o.OrderAt)
+                .Take(take)
+                .ToListAsync();
         }
     }
 }

@@ -10,7 +10,10 @@ namespace EatTogether.Models.Repositories
 		Task<MemberDetailDto?> GetByIdAsync(int id);
 		Task UpdateBlacklistAsync(int id, bool isBlacklisted, string? reason);
 		Task<MemberListDto?> GetByPhoneAsync(string phone);
-	}
+
+        // -----內用點餐頁用------------------------------
+        Task<Member?> GetByEmailAsync(string email);
+    }
 
 	public class MemberRepository : IMemberRepository
 	{
@@ -107,17 +110,17 @@ namespace EatTogether.Models.Repositories
 				.Where(m => m.Phone == trimmed && !m.IsDeleted)
 				.Select(m => new MemberListDto
 				{
-					Id           = m.Id,
-					Name         = m.Name,
-					Account      = m.Account,
-					Email        = m.Email,
-					Phone        = m.Phone,
-					BirthDate    = m.BirthDate,
-					CreatedAt    = m.CreatedAt,
-					IsConfirmed  = m.IsConfirmed,
-					IsBlacklisted= m.IsBlacklisted,
-					IsDeleted    = m.IsDeleted,
-					DeletedAt    = m.DeletedAt,
+					Id = m.Id,
+					Name = m.Name,
+					Account = m.Account,
+					Email = m.Email,
+					Phone = m.Phone,
+					BirthDate = m.BirthDate,
+					CreatedAt = m.CreatedAt,
+					IsConfirmed = m.IsConfirmed,
+					IsBlacklisted = m.IsBlacklisted,
+					IsDeleted = m.IsDeleted,
+					DeletedAt = m.DeletedAt,
 					BlacklistReason = m.BlacklistReason,
 				})
 				.FirstOrDefaultAsync();
@@ -133,6 +136,14 @@ namespace EatTogether.Models.Repositories
 			member.BlacklistReason = isBlacklisted ? reason : null;
 
 			await _context.SaveChangesAsync();
+		}
+
+		// -----內用點餐頁用------------------------------
+		public async Task<Member?> GetByEmailAsync(string email)
+		{
+			return await _context.Members
+				.AsNoTracking()
+				.FirstOrDefaultAsync(m => m.Email == email && !m.IsDeleted);
 		}
 	}
 }
