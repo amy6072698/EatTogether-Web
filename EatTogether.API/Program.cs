@@ -196,8 +196,6 @@ namespace EatTogether.API
             }
             else
             {
-				Console.WriteLine($"StaticFilesRoot = {staticRoot}");
-				Console.WriteLine($"Exists = {Directory.Exists(staticRoot)}");
 				app.UseStaticFiles();
             }
 			// CSP Header：縱深防禦，限制瀏覽器可載入的資源來源
