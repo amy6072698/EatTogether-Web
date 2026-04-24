@@ -92,14 +92,13 @@ namespace EatTogether.Models.Repositories
 
         public async Task<List<EventApplicableDto>> GetApplicableEventsAsync(int amount)
         {
-            var today    = DateTime.Today;
-            var tomorrow = today.AddDays(1);
+            var today = DateTime.Today;
 
             var rows = await _context.Events
                 .AsNoTracking()
                 .Where(e => e.Status == 1
                          && e.IsAutoDiscount == 1
-                         && e.StartDate < tomorrow
+                         && e.StartDate <= today
                          && (e.EndDate == null || e.EndDate >= today)
                          && e.MinSpend  <= amount)
                 .OrderByDescending(e => e.MinSpend)
@@ -293,14 +292,13 @@ namespace EatTogether.Models.Repositories
         // -----前台點餐頁用-----
         public async Task<List<EventApplicableDto>> GetNearThresholdAutoEventsAsync(int amount, int nearGap = 100)
         {
-            var today    = DateTime.Today;
-            var tomorrow = today.AddDays(1);
+            var today = DateTime.Today;
 
             var rows = await _context.Events
                 .AsNoTracking()
                 .Where(e => e.Status == 1
                          && e.IsAutoDiscount == 1
-                         && e.StartDate < tomorrow
+                         && e.StartDate <= today
                          && (e.EndDate == null || e.EndDate >= today)
                          && e.MinSpend > amount
                          && e.MinSpend - amount <= nearGap)
@@ -349,13 +347,12 @@ namespace EatTogether.Models.Repositories
         public async Task<List<EventApplicableDto>> GetNotifyEventsAsync(int amount)
         {
             var today = DateTime.Today;
-            var tomorrow = today.AddDays(1);
 
             var rows = await _context.Events
                 .AsNoTracking()
                 .Where(e => e.Status == 1
                          && e.IsAutoDiscount == 0
-                         && e.StartDate < tomorrow
+                         && e.StartDate <= today
                          && (e.EndDate == null || e.EndDate >= today))
                 .OrderByDescending(e => e.MinSpend)
                 .Select(e => new

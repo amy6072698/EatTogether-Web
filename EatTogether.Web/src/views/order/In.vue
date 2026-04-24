@@ -719,39 +719,36 @@
                         "
                     >
                         <div style="display: flex; flex-direction: column; gap: 0.3rem">
-                            <!-- 自動活動折扣列（已登入會員才顯示） -->
-                            <template v-if="isLoggedIn">
-                                <div
-                                    v-for="ev in autoEvents"
-                                    :key="ev.id"
+                            <!-- 自動活動折扣列（已登入會員，只顯示最佳活動） -->
+                            <div
+                                v-if="isLoggedIn && bestAutoEvent"
+                                style="
+                                    display: flex;
+                                    justify-content: space-between;
+                                    align-items: center;
+                                "
+                            >
+                                <span
+                                    class="font-label"
                                     style="
-                                        display: flex;
-                                        justify-content: space-between;
-                                        align-items: center;
+                                        font-size: 0.8rem;
+                                        color: rgba(227, 199, 107, 0.75);
+                                        letter-spacing: 0.05em;
                                     "
                                 >
-                                    <span
-                                        class="font-label"
-                                        style="
-                                            font-size: 0.8rem;
-                                            color: rgba(227, 199, 107, 0.75);
-                                            letter-spacing: 0.05em;
-                                        "
-                                    >
-                                        🎉 {{ ev.title }}
-                                    </span>
-                                    <span
-                                        class="font-label"
-                                        style="
-                                            font-size: 0.8rem;
-                                            color: #e3c76b;
-                                            letter-spacing: 0.06em;
-                                        "
-                                    >
-                                        {{ ev.discountDescription }}
-                                    </span>
-                                </div>
-                            </template>
+                                    🎉 {{ bestAutoEvent.title }}
+                                </span>
+                                <span
+                                    class="font-label"
+                                    style="
+                                        font-size: 0.8rem;
+                                        color: #e3c76b;
+                                        letter-spacing: 0.06em;
+                                    "
+                                >
+                                    {{ bestAutoEvent.discountDescription }}
+                                </span>
+                            </div>
                             <!-- 優惠券折扣列 -->
                             <div
                                 v-if="couponOk && couponDiscount > 0"
@@ -868,15 +865,34 @@
                     <div
                         v-for="toast in notifyToasts"
                         :key="toast.key"
-                        :class="['notify-toast-card', toast.ev.isEligible ? 'eligible' : 'near']"
+                        :class="[
+                            'notify-toast-card',
+                            toast.type === 'other-auto'
+                                ? 'other-auto'
+                                : toast.ev.isEligible
+                                  ? 'eligible'
+                                  : 'near',
+                        ]"
                     >
-                        <button class="notify-toast-close" @click="dismissToast(toast.key)">✕</button>
-                        <div class="notify-toast-icon">{{ toast.ev.isEligible ? '🎁' : '🔥' }}</div>
+                        <button class="notify-toast-close" @click="dismissToast(toast.key)">
+                            ✕
+                        </button>
+                        <div class="notify-toast-icon">
+                            {{
+                                toast.type === 'other-auto'
+                                    ? '🎉'
+                                    : toast.ev.isEligible
+                                      ? '🎁'
+                                      : '🔥'
+                            }}
+                        </div>
                         <p class="font-body notify-toast-msg">
                             {{
-                                toast.ev.isEligible
-                                    ? `金額已達門檻，可參加「${toast.ev.title}」活動！`
-                                    : `再消費 NT$${toast.ev.minSpend - total} 即可參加「${toast.ev.title}」活動！`
+                                toast.type === 'other-auto'
+                                    ? `「${toast.ev.title}」也符合條件，已套用最優惠方案`
+                                    : toast.ev.isEligible
+                                      ? `金額已達門檻，可參加「${toast.ev.title}」活動！`
+                                      : `再消費 NT$${toast.ev.minSpend - total} 即可參加「${toast.ev.title}」活動！`
                             }}
                         </p>
                     </div>
@@ -1288,21 +1304,35 @@ const total = computed(() =>
 )
 
 // ── 活動 ──────────────────────────────────────────────────────────
-const autoEvents     = ref([]) // IsAutoDiscount=1，已達門檻，自動折扣
-const notifyEvents   = ref([]) // IsAutoDiscount=0，通知型活動
+const autoEvents = ref([]) // IsAutoDiscount=1，已達門檻，自動折扣
+const notifyEvents = ref([]) // IsAutoDiscount=0，通知型活動
 const nearAutoEvents = ref([]) // IsAutoDiscount=1，差額 ≤ 100，快到門檻提示
 
-// ── Notify Toast（IsAutoDiscount=0 活動，右下角通知）──
-const notifyToasts       = ref([])       // [{ key, ev }]
-const _shownNotifyStates = new Map()     // id → 'near' | 'eligible'，狀態改變才再跳
-let   _toastKeySeq       = 0
+// ── Notify Toast（右下角通知）──
+const notifyToasts = ref([]) // [{ key, ev, persistent?, type? }]
+const _shownNotifyStates = new Map() // id / 'auto-{id}' → 'near'|'eligible'|'other'，狀態改變才再彈
+let _toastKeySeq = 0
 
 function dismissToast(key) {
-    notifyToasts.value = notifyToasts.value.filter(t => t.key !== key)
+    notifyToasts.value = notifyToasts.value.filter((t) => t.key !== key)
+}
+function pushToast(ev, opts = {}) {
+    const key = ++_toastKeySeq
+    notifyToasts.value.push({ key, ev: { ...ev }, ...opts })
+    if (!opts.persistent) setTimeout(() => dismissToast(key), 8000)
 }
 
+// ── 最佳自動活動：MinSpend 最高，同門檻取折扣最大 ──
+const bestAutoEvent = computed(() => {
+    if (!autoEvents.value.length) return null
+    return [...autoEvents.value].sort((a, b) => {
+        if (b.minSpend !== a.minSpend) return b.minSpend - a.minSpend
+        return (b.calculatedDiscount ?? 0) - (a.calculatedDiscount ?? 0)
+    })[0]
+})
+
 const autoEventDiscount = computed(() =>
-    isLoggedIn.value ? autoEvents.value.reduce((s, e) => s + (e.calculatedDiscount ?? 0), 0) : 0
+    isLoggedIn.value && bestAutoEvent.value ? (bestAutoEvent.value.calculatedDiscount ?? 0) : 0
 )
 
 async function fetchActiveEvents() {
@@ -1310,26 +1340,34 @@ async function fetchActiveEvents() {
         const res = await apiFetch(`/Orders/ActiveEvents?amount=${total.value}`)
         if (!res.ok) return
         const data = await res.json()
-        autoEvents.value     = data.autoEvents     ?? []
-        notifyEvents.value   = data.notifyEvents   ?? []
+        autoEvents.value = data.autoEvents ?? []
+        notifyEvents.value = data.notifyEvents ?? []
         nearAutoEvents.value = data.nearAutoEvents ?? []
 
-        // 找出符合條件 or 差額≤100，且狀態與上次不同的 notify 活動才彈
-        const newNotify = notifyEvents.value.filter(ev => {
-            const isRelevant   = ev.isEligible || (ev.minSpend - total.value) <= 100
+        // ── 其餘自動活動（非最佳）→ persistent toast ──
+        if (bestAutoEvent.value && autoEvents.value.length > 1) {
+            autoEvents.value
+                .filter((ev) => ev.id !== bestAutoEvent.value.id)
+                .forEach((ev) => {
+                    const mapKey = `auto-${ev.id}`
+                    if (_shownNotifyStates.get(mapKey) !== 'other') {
+                        _shownNotifyStates.set(mapKey, 'other')
+                        pushToast(ev, { persistent: true, type: 'other-auto' })
+                    }
+                })
+        }
+
+        // ── 通知型活動（IsAutoDiscount=0），狀態改變才彈，8s 自動消失 ──
+        const newNotify = notifyEvents.value.filter((ev) => {
+            const isRelevant = ev.isEligible || ev.minSpend - total.value <= 100
             if (!isRelevant) return false
             const currentState = ev.isEligible ? 'eligible' : 'near'
-            return _shownNotifyStates.get(ev.id) !== currentState // 狀態改變才彈
+            return _shownNotifyStates.get(ev.id) !== currentState
         })
-        if (newNotify.length) {
-            newNotify.forEach(ev => {
-                _shownNotifyStates.set(ev.id, ev.isEligible ? 'eligible' : 'near')
-                const key = ++_toastKeySeq
-                notifyToasts.value.push({ key, ev: { ...ev } })
-                // 8 秒後自動消失
-                setTimeout(() => dismissToast(key), 8000)
-            })
-        }
+        newNotify.forEach((ev) => {
+            _shownNotifyStates.set(ev.id, ev.isEligible ? 'eligible' : 'near')
+            pushToast(ev, { persistent: true })
+        })
     } catch {
         /* 靜默失敗 */
     }
@@ -1339,8 +1377,8 @@ watch(total, (val) => {
     if (val > 0) {
         fetchActiveEvents()
     } else {
-        autoEvents.value     = []
-        notifyEvents.value   = []
+        autoEvents.value = []
+        notifyEvents.value = []
         nearAutoEvents.value = []
     }
 })
@@ -1583,15 +1621,31 @@ html:has(.gate-wrap) footer {
     border: 1px solid rgba(255, 160, 80, 0.45);
     border-left: 3px solid #ff9f4a;
 }
-.notify-toast-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 0.05rem; }
+.notify-toast-card.other-auto {
+    background: #221a0e;
+    border: 1px solid rgba(227, 199, 107, 0.35);
+    border-left: 3px solid #e3c76b;
+}
+.notify-toast-card.other-auto .notify-toast-msg {
+    color: rgba(227, 199, 107, 0.8);
+}
+.notify-toast-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+}
 .notify-toast-msg {
     font-size: 0.78rem;
     line-height: 1.5;
     margin: 0;
     color: #f9ddd3;
 }
-.notify-toast-card.eligible .notify-toast-msg { color: #c4eda0; }
-.notify-toast-card.near     .notify-toast-msg { color: #ffd0a0; }
+.notify-toast-card.eligible .notify-toast-msg {
+    color: #c4eda0;
+}
+.notify-toast-card.near .notify-toast-msg {
+    color: #ffd0a0;
+}
 .notify-toast-close {
     position: absolute;
     top: 0.4rem;
@@ -1605,14 +1659,32 @@ html:has(.gate-wrap) footer {
     transition: color 0.2s;
     line-height: 1;
 }
-.notify-toast-close:hover { color: rgba(208, 197, 181, 0.8); }
+.notify-toast-close:hover {
+    color: rgba(208, 197, 181, 0.8);
+}
 
 /* TransitionGroup */
-.notify-toast-enter-active { transition: opacity 0.3s, transform 0.3s; }
-.notify-toast-leave-active  { transition: opacity 0.25s, transform 0.25s; }
-.notify-toast-enter-from    { opacity: 0; transform: translateX(40px); }
-.notify-toast-leave-to      { opacity: 0; transform: translateX(40px); }
-.notify-toast-leave-active  { position: absolute; }
+.notify-toast-enter-active {
+    transition:
+        opacity 0.3s,
+        transform 0.3s;
+}
+.notify-toast-leave-active {
+    transition:
+        opacity 0.25s,
+        transform 0.25s;
+}
+.notify-toast-enter-from {
+    opacity: 0;
+    transform: translateX(40px);
+}
+.notify-toast-leave-to {
+    opacity: 0;
+    transform: translateX(40px);
+}
+.notify-toast-leave-active {
+    position: absolute;
+}
 </style>
 
 <style scoped>
