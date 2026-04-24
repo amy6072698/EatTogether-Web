@@ -6,14 +6,18 @@ namespace EatTogether.Models.Repositories
 {
 	public interface IMemberRepository
 	{
-		Task<IEnumerable<MemberListDto>> GetAllAsync(MemberSearchDto search);
 		Task<MemberDetailDto?> GetByIdAsync(int id);
-		Task UpdateBlacklistAsync(int id, bool isBlacklisted, string? reason);
 		Task<MemberListDto?> GetByPhoneAsync(string phone);
+		// -----內用點餐頁用------------------------------
+		Task<Member?> GetByEmailAsync(string email);
 
-        // -----內用點餐頁用------------------------------
-        Task<Member?> GetByEmailAsync(string email);
-    }
+		// -----前台會員註冊用------------------------------
+		Task<bool> IsAccountExistsAsync(string account);
+		Task<bool> IsEmailExistsAsync(string email);
+		Task CreateMemberAsync(Member member);
+		Task<bool> HasPendingConfirmTokenAsync(int memberId);
+		Task CreateConfirmTokenAsync(MemberConfirmToken token);
+	}
 
 	public class MemberRepository : IMemberRepository
 	{
@@ -23,58 +27,6 @@ namespace EatTogether.Models.Repositories
 		{
 			_context = context;
 		}
-
-
-		// 查詢會員列表（含篩選 / 排序）
-		public async Task<IEnumerable<MemberListDto>> GetAllAsync(MemberSearchDto search)
-		{
-			var query = _context.Members.AsNoTracking();
-
-			// 文字搜尋
-			if (!string.IsNullOrWhiteSpace(search.Name))
-				query = query.Where(m => m.Name.Contains(search.Name.Trim()));
-
-			if (!string.IsNullOrWhiteSpace(search.Account))
-				query = query.Where(m => m.Account.Contains(search.Account.Trim()));
-
-			if (!string.IsNullOrWhiteSpace(search.Email))
-				query = query.Where(m => m.Email.Contains(search.Email.Trim()));
-
-			if (!string.IsNullOrWhiteSpace(search.Phone))
-				query = query.Where(m => m.Phone != null && m.Phone.Contains(search.Phone.Trim()));
-
-			// 狀態篩選
-			query = search.Status switch
-			{
-				"Normal" => query.Where(m => m.IsConfirmed && !m.IsBlacklisted && !m.IsDeleted),
-				"Unconfirmed" => query.Where(m => !m.IsConfirmed && !m.IsDeleted),
-				"Blacklisted" => query.Where(m => m.IsBlacklisted && !m.IsDeleted),
-				"Deleted" => query.Where(m => m.IsDeleted),
-				_ => query   // "All"
-			};
-
-			// 排序
-			query = search.SortBy == "CreatedAt_Asc"
-				? query.OrderBy(m => m.CreatedAt)
-				: query.OrderByDescending(m => m.CreatedAt);
-
-			return await query.Select(m => new MemberListDto
-			{
-				Id = m.Id,
-				Name = m.Name,
-				Account = m.Account,
-				Email = m.Email,
-				Phone = m.Phone,
-				BirthDate = m.BirthDate,
-				CreatedAt = m.CreatedAt,
-				IsConfirmed = m.IsConfirmed,
-				IsBlacklisted = m.IsBlacklisted,
-				IsDeleted = m.IsDeleted,
-				DeletedAt = m.DeletedAt,
-				BlacklistReason = m.BlacklistReason,
-			}).ToListAsync();
-		}
-
 
 		// 取單筆詳情
 		public async Task<MemberDetailDto?> GetByIdAsync(int id)
@@ -126,17 +78,6 @@ namespace EatTogether.Models.Repositories
 				.FirstOrDefaultAsync();
 		}
 
-		// 更新黑名單狀態
-		public async Task UpdateBlacklistAsync(int id, bool isBlacklisted, string? reason)
-		{
-			var member = await _context.Members.FindAsync(id);
-			if (member is null) return;
-
-			member.IsBlacklisted = isBlacklisted;
-			member.BlacklistReason = isBlacklisted ? reason : null;
-
-			await _context.SaveChangesAsync();
-		}
 
 		// -----內用點餐頁用------------------------------
 		public async Task<Member?> GetByEmailAsync(string email)
@@ -144,6 +85,42 @@ namespace EatTogether.Models.Repositories
 			return await _context.Members
 				.AsNoTracking()
 				.FirstOrDefaultAsync(m => m.Email == email && !m.IsDeleted);
+		}
+
+		// -----前台會員註冊用------------------------------
+
+		// 帳號唯一性檢查（含軟刪除會員，避免違反 Unique Index）
+		public async Task<bool> IsAccountExistsAsync(string account)
+		{
+			return await _context.Members.AnyAsync(m => m.Account == account);
+		}
+
+		// Email 唯一性檢查（含軟刪除會員，避免違反 Unique Index）
+		public async Task<bool> IsEmailExistsAsync(string email)
+		{
+			return await _context.Members.AnyAsync(m => m.Email == email);
+		}
+
+		public async Task CreateMemberAsync(Member member)
+		{
+			_context.Members.Add(member);
+			await _context.SaveChangesAsync();
+		}
+
+		// 寄信保護：查詢是否已有未過期且未使用的註冊驗證 token
+		public async Task<bool> HasPendingConfirmTokenAsync(int memberId)
+		{
+			return await _context.MemberConfirmTokens.AnyAsync(t =>
+				t.MemberId == memberId &&
+				!t.IsUsed &&
+				t.ExpiresAt > DateTime.Now &&
+				t.NewEmail == null);
+		}
+
+		public async Task CreateConfirmTokenAsync(MemberConfirmToken token)
+		{
+			_context.MemberConfirmTokens.Add(token);
+			await _context.SaveChangesAsync();
 		}
 	}
 }
