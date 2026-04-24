@@ -1,6 +1,7 @@
 <template>
     <div class="menu-page">
         <header class="menu-header">
+            <div class="menu-header-bg" ref="headerBgRef"></div>
             <div class="container">
                 <span class="menu-eyebrow">Signature Flavors</span>
                 <h1 class="eat-h1">精選菜單</h1>
@@ -39,6 +40,7 @@
                         class="filter-chip"
                         :class="{ active: filterVeg }"
                         @click="filterVeg = !filterVeg"
+                        @mousedown="ripple"
                     >
                         🥬 素食
                     </button>
@@ -46,6 +48,7 @@
                         class="filter-chip"
                         :class="{ active: filterSpicy }"
                         @click="filterSpicy = !filterSpicy"
+                        @mousedown="ripple"
                     >
                         🌶️ 有辣
                     </button>
@@ -53,6 +56,7 @@
                         class="filter-chip"
                         :class="{ active: filterRec }"
                         @click="filterRec = !filterRec"
+                        @mousedown="ripple"
                     >
                         ⭐ 主廚推薦
                     </button>
@@ -60,6 +64,7 @@
                         class="filter-chip"
                         :class="{ active: filterFav }"
                         @click="filterFav = !filterFav"
+                        @mousedown="ripple"
                     >
                         ❤️ 我的最愛
                     </button>
@@ -67,6 +72,7 @@
                         class="filter-chip"
                         :class="{ active: filterAvailable }"
                         @click="filterAvailable = !filterAvailable"
+                        @mousedown="ripple"
                     >
                         ✅ 供應中
                     </button>
@@ -129,9 +135,8 @@
                     class="dish-card"
                     :class="{ 'is-soldout': dish.stockStatus === 2 }"
                     @click="openModal(dish)"
-                    @mousemove="handleMouseMove($event, dish.id)"
-                    @mouseleave="handleMouseLeave(dish.id)"
-                    :style="tiltStyles[dish.id]"
+                    @mousemove="handleMouseMove($event)"
+                    @mouseleave="handleMouseLeave"
                 >
                     <div class="dish-img-wrap">
                         <img
@@ -220,10 +225,19 @@
             </div>
         </main>
 
+        <ToastContainer />
+
+        <!-- ── Return to SetMeal button ── -->
+        <Transition name="return-btn">
+            <button v-if="returnTo" class="return-setmeal-btn" @click="router.push(returnTo)">
+                ← 返回套餐
+            </button>
+        </Transition>
+
         <!-- ── Modal ── -->
         <Transition name="modal">
             <div v-if="isModalOpen && selectedDish" class="modal-overlay" @click.self="closeModal">
-                <div class="modal-box">
+                <div class="modal-box" ref="modalBoxRef">
                     <!-- 圖片區 -->
                     <div class="modal-img-wrap">
                         <img
@@ -236,7 +250,6 @@
                             <span>{{ selectedDish.dishName.charAt(0) }}</span>
                         </div>
                         <div class="modal-img-gradient"></div>
-                        <button class="modal-close" @click="closeModal">✕</button>
                         <div class="modal-badge-group">
                             <span v-if="selectedDish.isRecommended" class="badge badge-rec"
                                 >推薦</span
@@ -246,6 +259,30 @@
                                 >素食</span
                             >
                         </div>
+                    </div>
+
+                    <!-- 浮動按鈕 (position:fixed, JS 定位) -->
+                    <button class="modal-close" :style="{ top: btnPos.top, right: btnPos.closeRight }" @click="closeModal">✕</button>
+                    <div class="share-wrap" ref="shareWrapRef" :style="{ top: btnPos.top, right: btnPos.shareRight }">
+                        <button class="modal-share" @click.stop="shareMenuOpen = !shareMenuOpen" aria-label="分享">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                                <polyline points="16 6 12 2 8 6"/>
+                                <line x1="12" y1="2" x2="12" y2="15"/>
+                            </svg>
+                        </button>
+                        <Transition name="share-menu">
+                            <div v-if="shareMenuOpen" class="share-menu">
+                                <button class="share-item" @click="openShareItem('line')"><span class="share-icon si-line">L</span>LINE</button>
+                                <button class="share-item" @click="openShareItem('facebook')"><span class="share-icon si-fb">f</span>Facebook</button>
+                                <button class="share-item" @click="openShareItem('x')"><span class="share-icon si-x">𝕏</span>X</button>
+                                <button class="share-item" @click="openShareItem('copy')">
+                                    <span class="share-icon si-copy">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    </span>複製連結
+                                </button>
+                            </div>
+                        </Transition>
                     </div>
 
                     <!-- 資訊區 -->
@@ -274,12 +311,15 @@
                                 class="text-primary font-headline font-bold text-sm mb-4 tracking-widest"
                             >
                                 精選食材
+                                <span class="ingredient-hint">點擊食材了解詳情</span>
                             </h3>
-                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
                                 <div
                                     v-for="item in parseIngredients(selectedDish.ingredientsJson)"
                                     :key="item.name"
-                                    class="bg-surface-container-low p-4 rounded-xl transition-all"
+                                    class="bg-surface-container-low p-4 rounded-xl transition-all ingredient-card"
+                                    :class="{ 'is-active': activeIngredient === item.name }"
+                                    @click="fetchIngredientInfo(item.name)"
                                 >
                                     <span
                                         class="text-on-surface font-headline font-bold text-xs block mb-1"
@@ -291,6 +331,16 @@
                                     >
                                 </div>
                             </div>
+                            <!-- AI 食材資訊面板 -->
+                            <Transition name="ingredient-panel">
+                                <div v-if="activeIngredient" class="ingredient-info-panel mb-8">
+                                    <div class="ingredient-info-title">✦ {{ activeIngredient }}</div>
+                                    <div v-if="loadingIngredient" class="ingredient-loading">
+                                        <span class="ingredient-spinner"></span> 正在查詢食材資料...
+                                    </div>
+                                    <pre v-else class="ingredient-info-text">{{ ingredientInfo }}</pre>
+                                </div>
+                            </Transition>
                         </div>
 
                         <!-- 屬性列 -->
@@ -348,7 +398,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import ToastContainer from '@/components/common/ToastContainer.vue'
+import { useToast } from '@/composables/useToast.js'
 
 // ── 安全解析食材 JSON ────────────────────────────────
 const parseIngredients = (jsonString) => {
@@ -361,31 +414,88 @@ const parseIngredients = (jsonString) => {
     }
 }
 
-// ── 3D Tilt ──────────────────────────────────────────
-const tiltStyles = reactive({})
+const { show } = useToast()
 
-const handleMouseMove = (event, dishId) => {
+// ── Route / Router ────────────────────────────────────
+const route = useRoute()
+const router = useRouter()
+const returnTo = computed(() => route.query.returnTo || null)
+
+// ── Share ─────────────────────────────────────────────
+const shareMenuOpen = ref(false)
+const shareWrapRef = ref(null)
+
+const openShareItem = async (type) => {
+    const dish = selectedDish.value
+    if (!dish) return
+    const dishUrl     = `${window.location.origin}/menu?dish=${dish.id}`
+    const encodedUrl  = encodeURIComponent(dishUrl)
+    const encodedText = encodeURIComponent(`${dish.dishName} NT$${dish.price.toLocaleString()}`)
+    switch (type) {
+        case 'line':     window.open(`https://social-plugins.line.me/lineit/share?url=${encodedUrl}`, '_blank'); break
+        case 'facebook': window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, '_blank'); break
+        case 'x':        window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`, '_blank'); break
+        case 'copy':
+            try {
+                await navigator.clipboard.writeText(dishUrl)
+                show('🔗 連結已複製！', 'success')
+            } catch {
+                show('複製失敗，請手動複製', 'error')
+            }
+            break
+    }
+    shareMenuOpen.value = false
+}
+
+const handleShareClickOutside = (e) => {
+    if (shareMenuOpen.value && shareWrapRef.value && !shareWrapRef.value.contains(e.target)) {
+        shareMenuOpen.value = false
+    }
+}
+
+// ── Ingredient AI info ────────────────────────────────
+const activeIngredient = ref(null)
+const ingredientInfo = ref('')
+const loadingIngredient = ref(false)
+
+const fetchIngredientInfo = async (name) => {
+    if (activeIngredient.value === name) {
+        activeIngredient.value = null
+        return
+    }
+    activeIngredient.value = name
+    ingredientInfo.value = ''
+    loadingIngredient.value = true
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
+    try {
+        const res = await fetch(`${API_BASE}/Ingredients/info`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ingredientName: name }),
+        })
+        if (!res.ok) throw new Error()
+        const data = await res.json()
+        ingredientInfo.value = data.text || ''
+    } catch {
+        ingredientInfo.value = '無法取得食材資訊，請稍後再試。'
+    } finally {
+        loadingIngredient.value = false
+    }
+}
+
+// ── Card mouse tracking (reflection + glare, no tilt) ─
+const handleMouseMove = (event) => {
     const card = event.currentTarget
     const rect = card.getBoundingClientRect()
-    const relX = (event.clientX - rect.left) / rect.width - 0.5
-    const relY = (event.clientY - rect.top) / rect.height - 0.5
-    // --glare-x/y 讓 ::after 偽元素能跟著游標移動
-    card.style.setProperty('--glare-x', `${((relX + 0.5) * 100).toFixed(1)}%`)
-    card.style.setProperty('--glare-y', `${((relY + 0.5) * 100).toFixed(1)}%`)
-    tiltStyles[dishId] = {
-        transform: `rotateX(${(-relY * 15).toFixed(2)}deg) rotateY(${(relX * 15).toFixed(2)}deg) translateY(-10px) scale(1.02)`,
-        transition: 'transform 0.08s ease',
-        boxShadow: `${(-relX * 20).toFixed(1)}px ${(relY * 20 + 16).toFixed(1)}px 40px rgba(0,0,0,0.55), 0 0 0 1px rgba(227,199,107,0.18)`,
-    }
+    const relX = (event.clientX - rect.left) / rect.width
+    const relY = (event.clientY - rect.top) / rect.height
+    card.style.setProperty('--glare-x', `${(relX * 100).toFixed(1)}%`)
+    card.style.setProperty('--glare-y', `${(relY * 100).toFixed(1)}%`)
+    card.style.setProperty('--mx', `${(relX * 100).toFixed(1)}%`)
+    card.style.setProperty('--my', `${(relY * 100).toFixed(1)}%`)
 }
 
-const handleMouseLeave = (dishId) => {
-    tiltStyles[dishId] = {
-        transform: 'rotateX(0deg) rotateY(0deg) translateY(0) scale(1)',
-        transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.6s ease',
-        boxShadow: '',
-    }
-}
+const handleMouseLeave = () => {}
 
 // ── 倒數計時 ─────────────────────────────────────────
 const currentTime = ref(new Date())
@@ -472,9 +582,44 @@ const toggleFavorite = (dishId) => {
     localStorage.setItem('menu-favorites', JSON.stringify(favorites.value))
 }
 
+// ── Filter chip ripple ────────────────────────────────
+const ripple = (e) => {
+    const btn = e.currentTarget
+    const circle = document.createElement('span')
+    const rect = btn.getBoundingClientRect()
+    circle.className = 'ripple-wave'
+    circle.style.left = `${e.clientX - rect.left}px`
+    circle.style.top = `${e.clientY - rect.top}px`
+    btn.appendChild(circle)
+    circle.addEventListener('animationend', () => circle.remove())
+}
+
+// ── Header parallax ───────────────────────────────────
+const headerBgRef = ref(null)
+const handleParallax = () => {
+    if (!headerBgRef.value) return
+    headerBgRef.value.style.transform = `translateY(${window.scrollY * 0.4}px)`
+}
+
 // Modal
 const isModalOpen = ref(false)
 const selectedDish = ref(null)
+const modalBoxRef = ref(null)
+
+const btnPos = reactive({ top: '1rem', closeRight: '1rem', shareRight: '3.5rem' })
+const updateBtnPos = () => {
+    if (!modalBoxRef.value) return
+    const r = modalBoxRef.value.getBoundingClientRect()
+    btnPos.top        = `${r.top  + 16}px`
+    btnPos.closeRight = `${window.innerWidth - r.right + 16}px`
+    btnPos.shareRight = `${window.innerWidth - r.right + 56}px`
+}
+
+watch(isModalOpen, async (open) => {
+    if (!open) return
+    await nextTick()
+    updateBtnPos()
+})
 
 const categories = [
     { id: 0, name: '全部' },
@@ -495,6 +640,8 @@ const openModal = (dish) => {
 const closeModal = () => {
     isModalOpen.value = false
     selectedDish.value = null
+    shareMenuOpen.value = false
+    activeIngredient.value = null
     document.body.style.overflow = ''
 }
 
@@ -520,7 +667,7 @@ const fetchMenu = async () => {
     error.value = null
     const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
     try {
-        const res = await fetch(`${API_BASE}/Dishes/GetActiveJson`)
+        const res = await fetch(`${API_BASE}/Dishes/active`)
         if (!res.ok) throw new Error(`抓取失敗 (${res.status})`)
         dishes.value = await res.json()
     } catch (err) {
@@ -575,7 +722,24 @@ const filteredDishes = computed(() => {
     }
 })
 
-onMounted(fetchMenu)
+onMounted(async () => {
+    await fetchMenu()
+    window.addEventListener('scroll', handleParallax, { passive: true })
+    document.addEventListener('click', handleShareClickOutside)
+    window.addEventListener('resize', updateBtnPos)
+
+    // 深層連結：?dish=id 自動開 Modal
+    const dishParam = new URLSearchParams(window.location.search).get('dish')
+    if (dishParam) {
+        const dish = dishes.value.find(d => String(d.id) === dishParam)
+        if (dish) openModal(dish)
+    }
+})
+onUnmounted(() => {
+    window.removeEventListener('scroll', handleParallax)
+    document.removeEventListener('click', handleShareClickOutside)
+    window.removeEventListener('resize', updateBtnPos)
+})
 </script>
 
 <style scoped>
@@ -589,7 +753,19 @@ onMounted(fetchMenu)
 .menu-header {
     padding: 8rem 0 4rem;
     text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+.menu-header-bg {
+    position: absolute;
+    inset: -40% 0;
     background: linear-gradient(to bottom, rgba(24, 11, 6, 0.95), var(--eat-surface));
+    will-change: transform;
+    z-index: 0;
+}
+.menu-header .container {
+    position: relative;
+    z-index: 1;
 }
 
 .menu-eyebrow {
@@ -709,6 +885,21 @@ onMounted(fetchMenu)
     padding: 0.45rem 1rem;
     cursor: pointer;
     transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+.ripple-wave {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(227, 199, 107, 0.5);
+    transform: translate(-50%, -50%) scale(0);
+    animation: ripple-expand 0.55s ease-out forwards;
+    pointer-events: none;
+}
+@keyframes ripple-expand {
+    to { transform: translate(-50%, -50%) scale(20); opacity: 0; }
 }
 .filter-chip:hover {
     border-color: rgba(227, 199, 107, 0.35);
@@ -796,7 +987,6 @@ onMounted(fetchMenu)
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 2.5rem;
-    perspective: 1000px;
 }
 
 /* ── List ── */
@@ -804,7 +994,6 @@ onMounted(fetchMenu)
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    perspective: 1000px;
 }
 .menu-list .dish-card {
     flex-direction: row;
@@ -850,13 +1039,10 @@ onMounted(fetchMenu)
     background-color: var(--eat-surface-high);
     border-radius: 16px;
     overflow: hidden;
-    /* 3D 傾斜基礎；overflow:hidden 在部分瀏覽器會拍平 preserve-3d，
-     但卡片自身的 rotateX/Y 不受影響，::after glare 以純 2D overlay 實現 */
-    transform-style: preserve-3d;
     will-change: transform;
     transition:
-        transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
-        box-shadow 0.3s ease,
+        transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.4s ease,
         border-color 0.3s;
     display: flex;
     flex-direction: column;
@@ -866,6 +1052,29 @@ onMounted(fetchMenu)
 }
 .dish-card:hover {
     border-color: rgba(227, 199, 107, 0.2);
+    transform: translateY(-10px);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(227, 199, 107, 0.18), 0 0 24px rgba(227, 199, 107, 0.08);
+}
+
+/* ── Reflection layer ── */
+.dish-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+        circle at var(--mx, 50%) var(--my, 50%),
+        rgba(227, 199, 107, 0.10) 0%,
+        rgba(227, 199, 107, 0.03) 40%,
+        transparent 65%
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 4;
+}
+.dish-card:hover::before {
+    opacity: 1;
 }
 .dish-card.is-soldout {
     opacity: 0.6;
@@ -977,6 +1186,16 @@ onMounted(fetchMenu)
     font-weight: 600;
     letter-spacing: 0.1em;
     backdrop-filter: blur(4px);
+    display: inline-block;
+    animation: badge-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.badge:hover {
+    transform: scale(1.2) !important;
+}
+@keyframes badge-pop {
+    from { opacity: 0; transform: scale(0.6); }
+    to   { opacity: 1; transform: scale(1); }
 }
 .badge-rec {
     background-color: rgba(227, 199, 107, 0.9);
@@ -1054,6 +1273,21 @@ onMounted(fetchMenu)
     font-size: 1.25rem;
     margin: 0;
     font-style: italic;
+    position: relative;
+    display: inline-block;
+}
+.dish-name::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    height: 1.5px;
+    width: 0;
+    background: var(--eat-primary);
+    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dish-card:hover .dish-name::after {
+    width: 100%;
 }
 .dish-price {
     font-family: var(--font-label);
@@ -1063,6 +1297,24 @@ onMounted(fetchMenu)
     margin-top: 0.25rem;
     white-space: nowrap;
     margin-left: 0.5rem;
+    position: relative;
+    transition: color 0.3s ease;
+}
+.dish-price::before {
+    content: '';
+    position: absolute;
+    inset: -2px -6px;
+    border-radius: 6px;
+    background: rgba(227, 199, 107, 0.12);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+}
+.dish-card:hover .dish-price {
+    color: var(--eat-primary);
+}
+.dish-card:hover .dish-price::before {
+    transform: scaleX(1);
 }
 .dish-desc {
     font-family: var(--font-body);
@@ -1175,9 +1427,8 @@ onMounted(fetchMenu)
     background: linear-gradient(to top, #1e100b, transparent);
 }
 .modal-close {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
+    position: fixed;
+    z-index: 1100;
     width: 32px;
     height: 32px;
     border-radius: 50%;
@@ -1192,7 +1443,7 @@ onMounted(fetchMenu)
     transition: background 0.2s;
 }
 .modal-close:hover {
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.9);
 }
 .modal-badge-group {
     position: absolute;
@@ -1453,6 +1704,140 @@ onMounted(fetchMenu)
         grid-template-columns: repeat(3, 1fr);
     }
 }
+
+/* ── Share button (同 SetMeal 樣式) ── */
+.share-wrap { position: fixed; z-index: 1100; }
+.modal-share {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5); border: none; color: rgba(255, 255, 255, 0.8);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s, color 0.2s;
+}
+.modal-share:hover { background: rgba(0, 0, 0, 0.8); color: var(--eat-primary); }
+.share-menu {
+    position: absolute; top: calc(100% + 0.45rem); right: 0;
+    background: rgba(18, 8, 4, 0.96); backdrop-filter: blur(16px);
+    border: 1px solid rgba(227, 199, 107, 0.22); border-radius: 12px;
+    padding: 0.35rem; display: flex; flex-direction: column; gap: 0.15rem;
+    min-width: 148px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+.share-item {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.48rem 0.7rem; border: none; background: none; border-radius: 8px;
+    color: rgba(249, 221, 211, 0.82); font-family: var(--font-label);
+    font-size: 0.78rem; letter-spacing: 0.04em; cursor: pointer;
+    transition: background 0.15s; white-space: nowrap; width: 100%; text-align: left;
+}
+.share-item:hover { background: rgba(255, 255, 255, 0.06); }
+.share-icon {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.72rem; font-weight: 700; flex-shrink: 0; line-height: 1;
+}
+.si-line { background: #06C755; color: white; border-radius: 50%; }
+.si-fb   { background: #1877F2; color: white; border-radius: 50%; font-size: 0.88rem; }
+.si-x    { background: #0f0f0f; color: white; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); font-size: 0.75rem; }
+.si-copy { background: rgba(227,199,107,0.12); color: var(--eat-primary); border: 1px solid rgba(227,199,107,0.3); border-radius: 6px; }
+.share-menu-enter-active { transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1); }
+.share-menu-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
+.share-menu-enter-from   { opacity: 0; transform: scale(0.88) translateY(-8px); transform-origin: top right; }
+.share-menu-leave-to     { opacity: 0; transform: scale(0.92) translateY(-4px); transform-origin: top right; }
+
+/* ── Ingredient AI panel ── */
+.ingredient-hint {
+    font-family: var(--font-body);
+    font-size: 0.68rem;
+    font-weight: 400;
+    font-style: italic;
+    opacity: 0.4;
+    margin-left: 0.6rem;
+    letter-spacing: 0.02em;
+}
+.ingredient-card {
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: border-color 0.2s, background-color 0.2s, transform 0.2s;
+}
+.ingredient-card:hover {
+    border-color: rgba(227, 199, 107, 0.2);
+    transform: translateY(-2px);
+}
+.ingredient-card.is-active {
+    border-color: rgba(227, 199, 107, 0.45);
+    background-color: var(--eat-surface-high) !important;
+}
+.ingredient-info-panel {
+    background: rgba(227, 199, 107, 0.04);
+    border: 1px solid rgba(227, 199, 107, 0.15);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+}
+.ingredient-info-title {
+    font-family: var(--font-headline);
+    font-style: italic;
+    color: var(--eat-primary);
+    font-size: 0.95rem;
+    margin-bottom: 0.6rem;
+}
+.ingredient-loading {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--font-label);
+    font-size: 0.8rem;
+    color: rgba(249, 221, 211, 0.5);
+}
+.ingredient-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid rgba(227, 199, 107, 0.2);
+    border-top-color: var(--eat-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+}
+.ingredient-info-text {
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    line-height: 1.8;
+    color: rgba(249, 221, 211, 0.75);
+    white-space: pre-wrap;
+    margin: 0;
+}
+.ingredient-panel-enter-active { transition: opacity 0.3s, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+.ingredient-panel-leave-active { transition: opacity 0.2s, transform 0.2s; }
+.ingredient-panel-enter-from   { opacity: 0; transform: translateY(-8px); }
+.ingredient-panel-leave-to     { opacity: 0; transform: translateY(-4px); }
+
+/* ── Return to SetMeal button ── */
+.return-setmeal-btn {
+    position: fixed;
+    bottom: 2rem;
+    left: 2rem;
+    z-index: 1100;
+    background: rgba(30, 16, 10, 0.92);
+    border: 1px solid rgba(227, 199, 107, 0.45);
+    border-radius: 30px;
+    color: var(--eat-primary);
+    font-family: var(--font-label);
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    padding: 0.55rem 1.4rem;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    transition: background 0.25s, border-color 0.25s, transform 0.2s;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+.return-setmeal-btn:hover {
+    background: rgba(227, 199, 107, 0.12);
+    border-color: var(--eat-primary);
+    transform: translateX(-2px);
+}
+.return-btn-enter-active { transition: opacity 0.3s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.return-btn-leave-active { transition: opacity 0.2s, transform 0.2s ease; }
+.return-btn-enter-from  { opacity: 0; transform: translateX(-12px); }
+.return-btn-leave-to    { opacity: 0; transform: translateX(-8px); }
 
 @media (max-width: 768px) {
     .menu-header {
