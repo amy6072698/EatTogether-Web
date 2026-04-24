@@ -51,8 +51,8 @@
     /news/:id          → NewsDetailView.vue
 
 
-[working]add 最新消息列表頁
-  [working]NewsListView.vue
+[V]add 最新消息列表頁
+  [V]NewsListView.vue
     [V]onMounted 呼叫 GET api/News
     [V]ref() 存 articles 陣列、分頁資訊
     [V]v-for 渲染文章卡片
@@ -61,15 +61,14 @@
     [V]分頁切換（點擊頁碼重新 fetch）
     [V]置頂文章（IsPinned）可加視覺標記
     [V]套入 Stitch 切版樣式
-    [working]icon套用
 
-[]add 單篇文章詳細頁
-  []NewsDetailView.vue
-    []onMounted 呼叫 GET api/News/{id}
-    []找不到（404）導回列表頁或顯示錯誤訊息
-    []v-html 渲染 Description（Quill.js 產出的 HTML）
-    []顯示點閱數
-    []onMounted 同時呼叫 PATCH api/News/{id}/view 累加點閱數
+[V]add 單篇文章詳細頁
+  [V]NewsDetailView.vue
+    [V]onMounted 呼叫 GET api/News/{id}
+    [V]找不到（404）導回列表頁或顯示錯誤訊息
+    [V]v-html 渲染 Description（Quill.js 產出的 HTML）
+    [V]顯示點閱數
+    [working]onMounted 同時呼叫 PATCH api/News/{id}/view 累加點閱數
     []套入 Stitch 切版樣式
 
 

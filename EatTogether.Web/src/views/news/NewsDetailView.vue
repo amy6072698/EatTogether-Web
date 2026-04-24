@@ -1,16 +1,14 @@
 <template>
     <div class="detail-root">
-
-        <div v-if="loading" class="detail-state" style="padding-top: 8rem;">
+        <div v-if="loading" class="detail-state" style="padding-top: 8rem">
             <span class="detail-state-text">載入中…</span>
         </div>
 
-        <div v-else-if="error" class="detail-state" style="padding-top: 8rem;">
+        <div v-else-if="error" class="detail-state" style="padding-top: 8rem">
             <span class="detail-state-text">文章載入失敗，請稍後再試。</span>
         </div>
 
         <template v-else>
-
             <!-- Intro：圖左文右 -->
             <header class="detail-intro">
                 <div class="detail-intro-img">
@@ -47,8 +45,12 @@
 
                 <div class="detail-divider">
                     <svg width="200" height="20" viewBox="0 0 200 20" fill="none">
-                        <path d="M0 10C50 10 70 2 100 2C130 2 150 18 200 18"
-                            stroke="#C9A96E" stroke-width="0.5" stroke-dasharray="4 4"/>
+                        <path
+                            d="M0 10C50 10 70 2 100 2C130 2 150 18 200 18"
+                            stroke="#C9A96E"
+                            stroke-width="0.5"
+                            stroke-dasharray="4 4"
+                        />
                     </svg>
                 </div>
 
@@ -88,7 +90,6 @@
                     <RouterLink to="/news" class="detail-back-btn">回列表頁</RouterLink>
                 </div>
             </main>
-
         </template>
     </div>
 </template>
@@ -106,22 +107,22 @@ const article = ref({
     description: '',
     coverImageUrl: null,
     publishDate: null,
-    viewCount: 0
+    viewCount: 0,
 })
 const prevArticle = ref(null)
 const nextArticle = ref(null)
 const loading = ref(false)
-const error   = ref(false)
+const error = ref(false)
 
 async function fetchDetail(id) {
     loading.value = true
-    error.value   = false
+    error.value = false
     try {
-        const res  = await apiFetch(`/News/${id}`)
+        const res = await apiFetch(`/News/${id}`)
         const data = await res.json()
-        article.value     = data
-        prevArticle.value = null
-        nextArticle.value = null
+        article.value = data.article
+        prevArticle.value = data.prev ?? null
+        nextArticle.value = data.next ?? null
     } catch (e) {
         console.error('載入文章失敗', e)
         error.value = true
@@ -136,9 +137,12 @@ function formatDate(dateStr) {
     return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
 }
 
-watch(() => route.params.id, (id) => {
-    if (id) fetchDetail(id)
-})
+watch(
+    () => route.params.id,
+    (id) => {
+        if (id) fetchDetail(id)
+    }
+)
 
 onMounted(() => {
     fetchDetail(route.params.id)
@@ -257,9 +261,10 @@ onMounted(() => {
     color: var(--eat-on-surface-variant);
     opacity: 0.5;
     margin-left: 0.5rem;
-
 }
-.detail-sep { opacity: 0.4; }
+.detail-sep {
+    opacity: 0.4;
+}
 
 /* ── 麵包屑 ───────────────────────────────────────── */
 .detail-breadcrumb {
@@ -283,8 +288,13 @@ onMounted(() => {
     text-decoration: none;
     transition: color 0.2s;
 }
-.detail-bc-link:hover { color: var(--eat-primary); opacity: 1; }
-.detail-bc-sep { opacity: 0.3; }
+.detail-bc-link:hover {
+    color: var(--eat-primary);
+    opacity: 1;
+}
+.detail-bc-sep {
+    opacity: 0.3;
+}
 .detail-bc-current {
     white-space: nowrap;
     overflow: hidden;
@@ -307,15 +317,37 @@ onMounted(() => {
     color: var(--eat-on-surface);
     opacity: 0.85;
 }
-.detail-body :deep(p)       { margin-bottom: 3rem; }
-.detail-body :deep(strong)  { font-weight: 600; }
-.detail-body :deep(em)      { font-style: italic; color: var(--eat-secondary); }
-.detail-body :deep(u)       { text-underline-offset: 4px; }
-.detail-body :deep(a)       { color: var(--eat-primary); text-decoration: underline; text-underline-offset: 3px; transition: opacity 0.2s; }
-.detail-body :deep(a:hover) { opacity: 0.7; }
-.detail-body :deep(.ql-size-small) { font-size: 0.85rem; }
-.detail-body :deep(.ql-size-large) { font-size: 1.3rem; }
-.detail-body :deep(.ql-size-huge)  { font-size: 1.6rem; }
+.detail-body :deep(p) {
+    margin-bottom: 3rem;
+}
+.detail-body :deep(strong) {
+    font-weight: 600;
+}
+.detail-body :deep(em) {
+    font-style: italic;
+    color: var(--eat-secondary);
+}
+.detail-body :deep(u) {
+    text-underline-offset: 4px;
+}
+.detail-body :deep(a) {
+    color: var(--eat-primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: opacity 0.2s;
+}
+.detail-body :deep(a:hover) {
+    opacity: 0.7;
+}
+.detail-body :deep(.ql-size-small) {
+    font-size: 0.85rem;
+}
+.detail-body :deep(.ql-size-large) {
+    font-size: 1.3rem;
+}
+.detail-body :deep(.ql-size-huge) {
+    font-size: 1.6rem;
+}
 
 /* ── 分隔線 ───────────────────────────────────────── */
 .detail-divider {
@@ -340,7 +372,9 @@ onMounted(() => {
     background: var(--eat-surface-high);
     color: var(--eat-on-surface-variant);
     border-radius: var(--eat-radius);
-    transition: background 0.2s, color 0.2s;
+    transition:
+        background 0.2s,
+        color 0.2s;
 }
 .detail-tag:hover {
     background: var(--eat-surface-highest);
@@ -367,15 +401,27 @@ onMounted(() => {
     transition: all 0.25s ease;
     max-width: 45%;
 }
-.detail-nav-link:hover { opacity: 1; color: var(--eat-primary); }
-.detail-nav-link--right { flex-direction: row; justify-content: flex-end; }
+.detail-nav-link:hover {
+    opacity: 1;
+    color: var(--eat-primary);
+}
+.detail-nav-link--right {
+    flex-direction: row;
+    justify-content: flex-end;
+}
 .detail-nav-arrow {
     font-size: 1.1rem;
     flex-shrink: 0;
     color: var(--eat-secondary);
 }
-.detail-nav-info { display: flex; flex-direction: column; gap: 0.2rem; }
-.detail-nav-info--right { text-align: right; }
+.detail-nav-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+.detail-nav-info--right {
+    text-align: right;
+}
 .detail-nav-label {
     font-family: var(--font-label);
     font-size: 0.62rem;
@@ -395,7 +441,10 @@ onMounted(() => {
 }
 
 /* ── 回列表 ───────────────────────────────────────── */
-.detail-back-wrap { display: flex; justify-content: center; }
+.detail-back-wrap {
+    display: flex;
+    justify-content: center;
+}
 .detail-back-btn {
     display: inline-block;
     padding: 0.7rem 3rem;
@@ -415,7 +464,10 @@ onMounted(() => {
 }
 
 /* ── 載入/錯誤 ────────────────────────────────────── */
-.detail-state { padding: 6rem 0; text-align: center; }
+.detail-state {
+    padding: 6rem 0;
+    text-align: center;
+}
 .detail-state-text {
     font-family: var(--font-body);
     font-style: italic;
@@ -425,13 +477,31 @@ onMounted(() => {
 
 /* ── RWD ──────────────────────────────────────────── */
 @media (max-width: 767px) {
-    .detail-intro           { margin-top: 1.5rem; padding: 0 1rem; }
-    .detail-main            { padding: 1.5rem 1.25rem 4rem; }
-    .detail-body            { font-size: 1rem; }
-    .detail-nav             { flex-direction: column; gap: 1.5rem; }
-    .detail-nav-link        { max-width: 100%; }
-    .detail-nav-link--right { justify-content: flex-start; }
-    .detail-nav-info--right { text-align: left; }
-    .detail-bc-current      { max-width: 160px; }
+    .detail-intro {
+        margin-top: 1.5rem;
+        padding: 0 1rem;
+    }
+    .detail-main {
+        padding: 1.5rem 1.25rem 4rem;
+    }
+    .detail-body {
+        font-size: 1rem;
+    }
+    .detail-nav {
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    .detail-nav-link {
+        max-width: 100%;
+    }
+    .detail-nav-link--right {
+        justify-content: flex-start;
+    }
+    .detail-nav-info--right {
+        text-align: left;
+    }
+    .detail-bc-current {
+        max-width: 160px;
+    }
 }
 </style>

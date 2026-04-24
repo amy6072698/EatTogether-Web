@@ -96,12 +96,29 @@ namespace EatTogether.API.Controllers
 				})
 				.FirstOrDefaultAsync();
 
-			if (news == null)
-			{
-				return NotFound();
-			}
+			if (news == null) return NotFound();
 
-			return Ok(news);
+			// 上一篇：發佈日期比當前文章晚的最舊一篇
+			var prev = await _context.Articles
+				.Where(n => n.Status == 1 && n.PublishDate <= now && n.PublishDate > news.PublishDate)
+				.OrderBy(n => n.PublishDate)
+				.Select(n => new { n.Id, n.Title })
+				.FirstOrDefaultAsync();
+				
+
+			// 下一篇：發佈日期比當前文章早的最新一篇
+			var next = await _context.Articles
+				.Where(n => n.Status == 1 && n.PublishDate <= now && n.PublishDate < news.PublishDate)
+				.OrderByDescending(n => n.PublishDate)
+				.Select(n => new { n.Id, n.Title })
+				.FirstOrDefaultAsync();
+
+			return Ok(new
+			{
+				article = news,
+				prev,
+				next
+			});
 		}
 
 	}
