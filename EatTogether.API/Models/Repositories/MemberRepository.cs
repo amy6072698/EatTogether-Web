@@ -11,7 +11,7 @@ namespace EatTogether.Models.Repositories
 		Task UpdateBlacklistAsync(int id, bool isBlacklisted, string? reason);
 		Task<MemberListDto?> GetByPhoneAsync(string phone);
 
-        // -----內用點餐頁用------------------------------
+        // -----前台點餐頁用-----
         Task<Member?> GetByEmailAsync(string email);
     }
 
@@ -138,7 +138,7 @@ namespace EatTogether.Models.Repositories
 			await _context.SaveChangesAsync();
 		}
 
-		// -----內用點餐頁用------------------------------
+		// -----前台點餐頁用-----
 		public async Task<Member?> GetByEmailAsync(string email)
 		{
 			return await _context.Members
