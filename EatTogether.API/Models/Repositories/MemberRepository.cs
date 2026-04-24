@@ -79,7 +79,7 @@ namespace EatTogether.Models.Repositories
 		}
 
 
-		// -----內用點餐頁用------------------------------
+		// -----前台點餐頁用-----
 		public async Task<Member?> GetByEmailAsync(string email)
 		{
 			return await _context.Members

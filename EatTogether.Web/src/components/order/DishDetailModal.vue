@@ -164,7 +164,6 @@ function onConfirm() {
   border-radius: 0.25rem;
   color: #f9ddd3;
   font-size: 0.95rem;
-  font-style: italic;
   padding: 0.55rem 0.75rem;
   outline: none;
   transition: border-color 0.25s;
@@ -175,7 +174,6 @@ function onConfirm() {
 }
 .detail-note::placeholder {
   color: rgba(208,197,181,0.28);
-  font-style: italic;
 }
 
 /* 底部按鈕 */

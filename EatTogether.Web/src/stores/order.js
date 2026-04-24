@@ -4,7 +4,7 @@ import { ref, reactive, computed } from 'vue';
 export const useOrderStore = defineStore('order', () => {
   const cart    = reactive({});   // { productId: qty }
   const notes   = reactive({});   // { productId: noteString }
-  const pax     = ref(2);
+  const pax     = ref(0);   // 0 = 尚未填寫（必填）
   const specialRequest = ref('');
 
   const cartItems = computed(() =>
@@ -41,6 +41,7 @@ export const useOrderStore = defineStore('order', () => {
   function clearOrder() {
     Object.keys(cart).forEach(k => delete cart[k]);
     Object.keys(notes).forEach(k => delete notes[k]);
+    pax.value = 0;
     specialRequest.value = '';
   }
 

@@ -1,7 +1,7 @@
 <template>
   <div class="setmeal-page">
     <header class="setmeal-header">
-      <div class="setmeal-header-bg"></div>
+      <div class="setmeal-header-bg" ref="setmealHeaderBgRef"></div>
       <div class="setmeal-header-overlay"></div>
       <div class="container" style="position:relative;z-index:2;">
         <span class="setmeal-eyebrow">Set Menus</span>
@@ -33,6 +33,7 @@
           class="meal-card"
           :class="{ 'is-comparing': compareList.includes(meal.id) }"
           @click="openModal(meal)"
+          @mousemove="onCardMove($event)"
           @mouseleave="activePreview = null"
         >
           <div
@@ -293,7 +294,7 @@
               <div class="modal-section-label">套餐內容</div>
               <div class="fixed-items">
                 <div v-for="item in fixedItems(selectedMeal)" :key="item.dishId" class="fixed-item" :class="{ 'is-soldout': dishStock(item.dishId) === 2 }">
-                  <span class="item-name">{{ item.dishName }}</span>
+                  <span class="item-name dish-link" @click.stop="goToDish(item.dishId)">{{ item.dishName }}</span>
                   <span class="item-qty">× {{ item.quantity }}</span>
                   <span v-if="dishStock(item.dishId) === 2" class="item-soldout-tag">已售完</span>
                   <span v-else class="item-price">NT$ {{ item.dishPrice.toLocaleString() }}</span>
@@ -311,7 +312,7 @@
               </div>
               <div class="option-items">
                 <div v-for="item in group.items" :key="item.dishId" class="option-item" :class="{ 'is-soldout': dishStock(item.dishId) === 2 }">
-                  <span class="option-name">{{ item.dishName }}</span>
+                  <span class="option-name dish-link" @click.stop="goToDish(item.dishId)">{{ item.dishName }}</span>
                   <span v-if="dishStock(item.dishId) === 2" class="option-soldout-tag">已售完</span>
                   <span v-else class="option-price">NT$ {{ item.dishPrice.toLocaleString() }}</span>
                   <div class="qty-control">
@@ -393,9 +394,11 @@
 
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 import ToastContainer from '@/components/common/ToastContainer.vue';
 import { useToast } from '@/composables/useToast.js';
 const { show } = useToast();
+const router = useRouter();
 
 // ── Intersection Observer 進場 ──────────────────────
 const vReveal = {
@@ -414,6 +417,7 @@ const vReveal = {
           el.style.transform = ''
           el.style.transition = ''
           el.style.transitionDelay = ''
+          el.classList.add('is-revealed')
         }, 400 + delay)
         observer.disconnect()
       }
@@ -437,6 +441,13 @@ const onSpotlight = (e) => {
 const offSpotlight = (e) => {
   e.currentTarget.style.setProperty('--spotlight-opacity', '0')
 }
+
+const onCardMove = (e) => {
+  const card = e.currentTarget;
+  const rect = card.getBoundingClientRect();
+  card.style.setProperty('--mx', `${((e.clientX - rect.left) / rect.width * 100).toFixed(1)}%`);
+  card.style.setProperty('--my', `${((e.clientY - rect.top) / rect.height * 100).toFixed(1)}%`);
+};
 
 // ── 庫存進度條 ──────────────────────────────────────
 const stockWidth = (id) => {
@@ -746,6 +757,12 @@ const openModal = (meal) => {
   });
 };
 
+const goToDish = (dishId) => {
+  const returnTo = '/setmeal?meal=' + selectedMeal.value.id;
+  closeModal();
+  router.push('/menu?dish=' + dishId + '&returnTo=' + encodeURIComponent(returnTo));
+};
+
 const closeModal = () => {
   if (_syncWatcher) { _syncWatcher(); _syncWatcher = null; }
   isModalOpen.value = false;
@@ -754,15 +771,24 @@ const closeModal = () => {
   document.body.style.overflow = '';
 };
 
+const setmealHeaderBgRef = ref(null);
+const handleParallax = () => {
+  if (setmealHeaderBgRef.value) {
+    setmealHeaderBgRef.value.style.transform = `translateY(${window.scrollY * 0.4}px)`;
+  }
+};
+
 const handleEsc = (e) => { if (e.key === 'Escape') closeModal(); };
 onMounted(() => {
   window.addEventListener('keydown', handleEsc);
   window.addEventListener('resize', updateBtnPos);
+  window.addEventListener('scroll', handleParallax, { passive: true });
   document.addEventListener('click', handleShareClickOutside);
 });
 onUnmounted(() => {
   window.removeEventListener('keydown', handleEsc);
   window.removeEventListener('resize', updateBtnPos);
+  window.removeEventListener('scroll', handleParallax);
   document.removeEventListener('click', handleShareClickOutside);
 });
 
@@ -839,6 +865,7 @@ onUnmounted(() => {
   background-image: url('https://images.unsplash.com/photo-1544025162-d76694265947?w=1400&q=80');
   background-size: cover;
   background-position: center 40%;
+  will-change: transform;
 }
 .setmeal-header-overlay {
   position: absolute;
@@ -882,11 +909,12 @@ onUnmounted(() => {
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid rgba(227, 199, 107, 0.05);
+  --mx: 50%; --my: 50%;
   cursor: pointer;
   position: relative;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 0.3s,
-              box-shadow 0.3s;
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.45s ease,
+              border-color 0.3s;
   display: flex;
   flex-direction: column;
 }
@@ -914,10 +942,23 @@ onUnmounted(() => {
   border-radius: 4px;
   background: rgba(227, 199, 107, 0.06);
 }
+.meal-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at var(--mx) var(--my),
+    rgba(255, 255, 255, 0.08) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.meal-card:hover::before { opacity: 1; }
 .meal-card:hover {
-  transform: translateY(-6px);
+  transform: translateY(-10px);
   border-color: rgba(227, 199, 107, 0.2);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 8px 20px rgba(227, 199, 107, 0.12);
 }
 .meal-card.is-comparing {
   border-color: rgba(227, 199, 107, 0.7);
@@ -1316,8 +1357,21 @@ onUnmounted(() => {
   font-weight: 600;
   letter-spacing: 0.1em;
   backdrop-filter: blur(4px);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.badge-rec { background-color: rgba(227, 199, 107, 0.9); color: var(--eat-surface); }
+.badge:hover { transform: scale(1.2) !important; }
+.is-revealed .badge-group .badge {
+  animation: badge-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.is-revealed .badge-group .badge:nth-child(1) { animation-delay: 0ms; }
+.is-revealed .badge-group .badge:nth-child(2) { animation-delay: 60ms; }
+.is-revealed .badge-group .badge:nth-child(3) { animation-delay: 120ms; }
+@keyframes badge-pop {
+  from { transform: scale(0); opacity: 0; }
+  80%  { transform: scale(1.1); opacity: 1; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.badge-rec { background-color: #e8a800; color: #1a0800; box-shadow: 0 1px 6px rgba(232,168,0,0.45); }
 .badge-pop { background-color: rgba(217, 83, 79, 0.9);  color: white; }
 
 .meal-info { padding: 1.5rem; flex-grow: 1; display: flex; flex-direction: column; gap: 0.75rem; }
@@ -1331,12 +1385,35 @@ onUnmounted(() => {
   color: var(--eat-primary);
   font-size: 1.3rem;
   margin: 0; font-style: italic;
+  position: relative;
+  display: inline-block;
+}
+.meal-name::after {
+  content: '';
+  position: absolute;
+  bottom: -2px; left: 0;
+  width: 0; height: 1.5px;
+  background: var(--eat-primary);
+  transition: width 0.35s ease;
+}
+.meal-card:hover .meal-name::after {
+  width: 100%;
 }
 .meal-price {
   font-family: var(--font-label);
   color: var(--eat-secondary);
   font-size: 0.95rem;
   white-space: nowrap; padding-top: 0.2rem;
+  position: relative;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+.meal-card:hover .meal-price {
+  background: rgba(227, 199, 107, 0.15);
+  border-color: rgba(227, 199, 107, 0.25);
+  color: var(--eat-primary);
 }
 
 .meal-tags { display: flex; gap: 0.5rem; flex-wrap: wrap; }
@@ -1691,6 +1768,43 @@ onUnmounted(() => {
 }
 .retry-btn:hover { background-color: var(--eat-primary); color: var(--eat-surface); }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 餐點名稱可點擊 ── */
+.dish-link {
+  position: relative;
+  cursor: pointer;
+  transition: text-decoration-color 0.2s;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+.dish-link:hover {
+  text-decoration-color: var(--eat-primary);
+}
+.dish-link::before {
+  content: '點擊即可查看餐點 →';
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  background: rgba(12, 5, 2, 0.92);
+  border: 1px solid rgba(227, 199, 107, 0.28);
+  color: var(--eat-secondary);
+  font-family: var(--font-label);
+  font-size: 0.66rem;
+  letter-spacing: 0.07em;
+  padding: 0.22rem 0.65rem;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 20;
+}
+.dish-link:hover::before {
+  opacity: 1;
+  transform: translateY(0);
+}
 
 /* ── Utils ── */
 .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }

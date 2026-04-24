@@ -84,6 +84,7 @@ namespace EatTogether.Models.Services
             return await _memberCouponRepo.GetByMemberAsync(memberId);
         }
 
+        // -----前台點餐頁用-----
         // ─── 折扣碼驗證（只驗不核銷）────────────────────────────────
         public async Task<CouponValidateDto> ValidateCouponAsync(
             string code, int? memberId, decimal orderAmount)
@@ -103,11 +104,19 @@ namespace EatTogether.Models.Services
             if (orderAmount < coupon.MinSpend)
                 return fail($"消費金額未達最低門檻 NT${coupon.MinSpend}");
 
-            if (memberId.HasValue)
-            {
-                var mc = await _memberCouponRepo.GetByMemberAndCouponAsync(memberId.Value, coupon.Id);
-                if (mc != null && mc.IsUsed) return fail("您已使用過此折扣碼");
-            }
+            // 必須已登入會員才能使用優惠券
+            if (!memberId.HasValue)
+                return fail("請先登入會員以使用優惠券");
+
+            var mc = await _memberCouponRepo.GetByMemberAndCouponAsync(memberId.Value, coupon.Id);
+
+            // 必須已領取
+            if (mc == null)
+                return fail("您尚未領取此優惠券");
+
+            // 必須未使用
+            if (mc.IsUsed)
+                return fail("此優惠券已使用過");
 
             var discount = coupon.DiscountType == 0
                 ? coupon.DiscountValue
