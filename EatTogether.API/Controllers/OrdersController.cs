@@ -1,7 +1,9 @@
 ﻿using EatTogether.Models.DTOs;
+using EatTogether.Models.Repositories;
 using EatTogether.Models.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace EatTogether.API.Controllers
 {
@@ -9,11 +11,15 @@ namespace EatTogether.API.Controllers
     [Route("api/[controller]")]
     public class OrdersController : Controller
     {
-        private readonly IOrderService _service;
+        private readonly IOrderService     _service;
+        private readonly CouponService     _couponService;
+        private readonly IEventRepository  _eventRepo;
 
-        public OrdersController(IOrderService service)
+        public OrdersController(IOrderService service, CouponService couponService, IEventRepository eventRepo)
         {
-            _service = service;
+            _service       = service;
+            _couponService = couponService;
+            _eventRepo     = eventRepo;
         }
 
         [HttpGet("Tables")]
@@ -61,18 +67,6 @@ namespace EatTogether.API.Controllers
             }
         }
 
-        //[HttpGet("Favorites")]
-        //[Authorize]
-        //public async Task<IActionResult> GetFavorites()
-        //{
-        //    var memberIdClaim = User.FindFirst("userId")?.Value;
-        //    if (!int.TryParse(memberIdClaim, out var memberId))
-        //        return Unauthorized();
-
-        //    var favorites = await _service.GetFavoritesAsync(memberId);
-        //    return Ok(favorites);
-        //}
-        // 先這樣
         [HttpGet("Favorites")]
         [AllowAnonymous] // 暫時改成 AllowAnonymous
         public async Task<IActionResult> GetFavorites([FromQuery] int? memberId)
@@ -88,6 +82,31 @@ namespace EatTogether.API.Controllers
 
             var favorites = await _service.GetFavoritesAsync(id);
             return Ok(favorites);
+        }
+
+        // GET /api/Orders/ActiveEvents?amount={amount} — 點餐頁活動查詢
+        [HttpGet("ActiveEvents")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetActiveEvents([FromQuery] int amount = 0)
+        {
+            var autoEvents      = await _eventRepo.GetApplicableEventsAsync(amount);
+            var notifyEvents    = await _eventRepo.GetNotifyEventsAsync(amount);
+            var nearAutoEvents  = await _eventRepo.GetNearThresholdAutoEventsAsync(amount);
+            return Ok(new { autoEvents, notifyEvents, nearAutoEvents });
+        }
+
+        // POST /api/Orders/ValidateCoupon — 點餐頁優惠券驗證
+        [HttpPost("ValidateCoupon")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ValidateCoupon([FromBody] ValidateCouponRequest req)
+        {
+            // TODO: 之後改為從 JWT cookie 取得登入會員 ID
+            // var memberIdStr = User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+            // int? memberId = int.TryParse(memberIdStr, out var mid) ? mid : null;
+            int? memberId = 61; // 暫時固定為冷明輝（MemberId=61）
+
+            var result = await _couponService.ValidateCouponAsync(req.Code, memberId, req.OrderAmount);
+            return Ok(result);
         }
 
         // 會員歷史訂單
