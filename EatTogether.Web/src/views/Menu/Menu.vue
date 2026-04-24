@@ -37,32 +37,35 @@
           />
           <button v-if="searchQuery" class="search-clear" @click="searchQuery = ''">✕</button>
         </div>
-        <div class="filter-chips">
-          <button
-            class="filter-chip"
-            :class="{ active: filterVeg }"
-            @click="filterVeg = !filterVeg"
-          >🥬 素食</button>
-          <button
-            class="filter-chip"
-            :class="{ active: filterSpicy }"
-            @click="filterSpicy = !filterSpicy"
-          >🌶️ 有辣</button>
-          <button
-            class="filter-chip"
-            :class="{ active: filterRec }"
-            @click="filterRec = !filterRec"
-          >⭐ 主廚推薦</button>
-          <button
-            class="filter-chip"
-            :class="{ active: filterFav }"
-            @click="filterFav = !filterFav"
-          >❤️ 我的最愛</button>
-          <button
-            class="filter-chip"
-            :class="{ active: filterAvailable }"
-            @click="filterAvailable = !filterAvailable"
-          >✅ 供應中</button>
+        <div class="filter-chips-wrap">
+          <span class="filter-label">篩選</span>
+          <div class="filter-chips">
+            <button
+              class="filter-chip"
+              :class="{ active: filterPop }"
+              @click="filterPop = !filterPop"
+            >👑 人氣餐點</button>
+            <button
+              class="filter-chip"
+              :class="{ active: filterRec }"
+              @click="filterRec = !filterRec"
+            >⭐ 主廚推薦</button>
+            <button
+              class="filter-chip"
+              :class="{ active: filterSpicy }"
+              @click="filterSpicy = !filterSpicy"
+            >🌶️ 有辣</button>
+            <button
+              class="filter-chip"
+              :class="{ active: filterVeg }"
+              @click="filterVeg = !filterVeg"
+            >🥬 素食</button>
+            <button
+              class="filter-chip"
+              :class="{ active: filterFav }"
+              @click="filterFav = !filterFav"
+            >❤️ 我的最愛</button>
+          </div>
         </div>
         <div class="view-toggle">
           <button class="view-btn" :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'" title="卡片模式">⊞</button>
@@ -199,7 +202,7 @@
       <div
         v-if="!loading && !error && filteredDishes.length === 0"
         class="state-container empty-state"
-        :key="`empty-${searchQuery}-${filterVeg}-${filterSpicy}-${filterRec}-${filterFav}-${filterAvailable}-${currentCategory}`"
+        :key="`empty-${searchQuery}-${filterVeg}-${filterSpicy}-${filterRec}-${filterFav}-${filterPop}-${currentCategory}`"
       >
         <svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none">
           <!-- 盤子陰影 -->
@@ -291,16 +294,29 @@
             <!-- 精選食材 -->
             <div v-if="parseIngredients(selectedDish.ingredientsJson).length" class="modal-section">
               <h3 class="text-primary font-headline font-bold text-sm mb-4 tracking-widest">精選食材</h3>
-              <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
                 <div
                   v-for="item in parseIngredients(selectedDish.ingredientsJson)"
                   :key="item.name"
-                  class="bg-surface-container-low p-4 rounded-xl transition-all"
+                  class="bg-surface-container-low p-4 rounded-xl transition-all ing-chip-clickable"
+                  :class="{ 'ing-chip-active': activeIngredient === item.name }"
+                  @click="activeIngredient = activeIngredient === item.name ? null : item.name"
                 >
-                  <span class="text-on-surface font-headline font-bold text-xs block mb-1">{{ item.name }}</span>
+                  <span class="text-on-surface font-headline font-bold text-xs block mb-1">
+                    {{ item.name }}<span class="ing-info-icon">🔍</span>
+                  </span>
                   <span class="text-on-surface-variant font-body text-[10px] italic">{{ item.subDesc }}</span>
                 </div>
               </div>
+              <Transition name="ing-card-slide">
+                <IngredientCard
+                  v-if="activeIngredient"
+                  :key="activeIngredient"
+                  :ingredientName="activeIngredient"
+                  @close="activeIngredient = null"
+                  class="mb-8"
+                />
+              </Transition>
             </div>
 
             <!-- 屬性列 -->
@@ -340,6 +356,16 @@
       </div>
     </Transition>
 
+    <!-- 返回套餐 -->
+    <Transition name="back-top">
+      <button
+        v-if="returnTo"
+        class="return-setmeal-btn"
+        @click="router.push(returnTo)"
+        aria-label="返回套餐"
+      >← 返回套餐</button>
+    </Transition>
+
     <!-- 回到頂端 -->
     <Transition name="back-top">
       <button v-if="showBackTop" class="back-top-btn" @click="scrollToTop" aria-label="回到頂端">
@@ -353,9 +379,15 @@
 
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import ToastContainer from '@/components/common/ToastContainer.vue';
+import IngredientCard from '@/components/common/menu/IngredientCard.vue';
 import { useToast } from '@/composables/useToast.js';
 const { show } = useToast();
+
+const route = useRoute();
+const router = useRouter();
+const returnTo = computed(() => route.query.returnTo || null);
 
 // ── Intersection Observer 進場 ───────────────────────
 const vReveal = {
@@ -513,7 +545,7 @@ const filterVeg = ref(false);
 const filterSpicy = ref(false);
 const filterRec = ref(false);
 const filterFav = ref(false);
-const filterAvailable = ref(false);
+const filterPop = ref(false);
 const sortOrder = ref('default');
 const viewMode = ref('grid');
 
@@ -552,6 +584,7 @@ const toggleFavorite = (dishId) => {
 const isModalOpen = ref(false);
 const selectedDish = ref(null);
 const activePreview = ref(null);
+const activeIngredient = ref(null);
 const modalBodyRef = ref(null);
 const modalImgRef = ref(null);
 
@@ -627,7 +660,7 @@ const clearFilters = () => {
   filterSpicy.value = false
   filterRec.value = false
   filterFav.value = false
-  filterAvailable.value = false
+  filterPop.value = false
   currentCategory.value = 0
   sortOrder.value = 'default'
 }
@@ -674,6 +707,7 @@ const closeModal = () => {
   isModalOpen.value = false;
   selectedDish.value = null;
   shareMenuOpen.value = false;
+  activeIngredient.value = null;
   document.body.style.overflow = '';
 };
 
@@ -737,7 +771,7 @@ const hasActiveFilter = computed(() =>
   filterSpicy.value ||
   filterRec.value ||
   filterFav.value ||
-  filterAvailable.value ||
+  filterPop.value ||
   currentCategory.value !== 0 ||
   sortOrder.value !== 'default'
 );
@@ -754,7 +788,7 @@ const filteredDishes = computed(() => {
     if (filterSpicy.value && !(d.spicyLevel > 0)) return false;
     if (filterRec.value && !d.isRecommended) return false;
     if (filterFav.value && !favorites.value.includes(d.id)) return false;
-    if (filterAvailable.value && d.stockStatus === 2) return false;
+    if (filterPop.value && !d.isPopular) return false;
     return true;
   });
 
@@ -931,6 +965,20 @@ onUnmounted(() => {
   padding: 0;
 }
 
+.filter-chips-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.filter-label {
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(249, 221, 211, 0.45);
+  white-space: nowrap;
+  align-self: center;
+}
 .filter-chips { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .filter-chip {
   background: none;
@@ -1303,7 +1351,7 @@ onUnmounted(() => {
   letter-spacing: 0.1em;
   backdrop-filter: blur(4px);
 }
-.badge-rec       { background-color: rgba(227, 199, 107, 0.9); color: var(--eat-surface); }
+.badge-rec       { background-color: #e8a800; color: #1a0800; text-shadow: none; box-shadow: 0 1px 6px rgba(232,168,0,0.45); }
 .badge-pop       { background-color: rgba(217, 83, 79, 0.9);  color: white; }
 .badge-veg       { background-color: rgba(80, 160, 80, 0.85); color: white; }
 .badge-low-stock { background-color: rgba(200, 100, 0, 0.9);  color: white; }
@@ -1553,6 +1601,45 @@ onUnmounted(() => {
 .transition-all            { transition: background-color 0.3s ease, transform 0.3s ease; }
 .bg-surface-container-low:hover { background-color: var(--eat-surface-high); }
 
+.ing-chip-clickable {
+  cursor: pointer;
+}
+.ing-chip-clickable:hover {
+  border: 1px solid rgba(227, 199, 107, 0.5);
+  background-color: var(--eat-surface-high);
+}
+.ing-chip-active {
+  border: 1px solid rgba(227, 199, 107, 0.6) !important;
+  background-color: rgba(227, 199, 107, 0.07) !important;
+}
+.ing-info-icon {
+  font-size: 0.6rem;
+  margin-left: 0.3rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+  vertical-align: middle;
+}
+.ing-chip-clickable:hover .ing-info-icon,
+.ing-chip-active .ing-info-icon {
+  opacity: 0.75;
+}
+
+/* IngredientCard slide transition */
+.ing-card-slide-enter-active {
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ing-card-slide-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.ing-card-slide-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+.ing-card-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
 .modal-section { margin-bottom: 1.25rem; }
 .modal-section-label {
   font-family: var(--font-label);
@@ -1690,6 +1777,31 @@ onUnmounted(() => {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ── 回到頂端按鈕 ── */
+.return-setmeal-btn {
+  position: fixed;
+  bottom: 2.5rem;
+  left: 2rem;
+  padding: 0.55rem 1.2rem;
+  border-radius: 24px;
+  background: rgba(24, 11, 6, 0.88);
+  border: 1px solid rgba(227, 199, 107, 0.4);
+  color: var(--eat-primary);
+  font-family: var(--font-label);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.2s, transform 0.2s, background 0.2s;
+  z-index: 1100;
+  white-space: nowrap;
+}
+.return-setmeal-btn:hover {
+  border-color: var(--eat-primary);
+  background: rgba(24, 11, 6, 0.97);
+  transform: translateY(-2px);
+}
+
 .back-top-btn {
   position: fixed;
   bottom: 2.5rem;

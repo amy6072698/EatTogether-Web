@@ -700,7 +700,7 @@ onUnmounted(() => {
 /* ── Header ──────────────────────────────────────── */
 .limited-header {
   position: relative;
-  padding: 8rem 0 4rem;
+  padding: 8rem 0 1.5rem;
   text-align: center;
   overflow: hidden;
 }
@@ -1076,7 +1076,7 @@ onUnmounted(() => {
   0%, 100% { filter: brightness(1)   drop-shadow(0 0 0px rgba(227,199,107,0)); }
   50%       { filter: brightness(1.3) drop-shadow(0 0 8px rgba(227,199,107,0.8)); }
 }
-.badge-rec { background: rgba(227, 199, 107, 0.22); border: 1px solid rgba(227,199,107,0.5); color: var(--eat-primary); }
+.badge-rec { background: #e8a800; color: #1a0800; border: none; box-shadow: 0 1px 6px rgba(232,168,0,0.45); }
 .badge-pop { background: rgba(217, 83, 79, 0.88);  color: white; }
 .badge-low { background: rgba(200, 100, 0, 0.9);   color: white; }
 
@@ -1676,13 +1676,13 @@ onUnmounted(() => {
   padding: 0 2rem;
 }
 .py-main {
-  padding-top: 3rem;
+  padding-top: 1.5rem;
   padding-bottom: 6rem;
 }
 
 /* ── RWD ─────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .limited-header { padding: 6rem 0 3rem; }
+  .limited-header { padding: 6rem 0 1.5rem; }
   .limited-grid { grid-template-columns: 1fr; }
   .countdown-badge { font-size: 0.65rem; }
 }

@@ -293,7 +293,7 @@
               <div class="modal-section-label">套餐內容</div>
               <div class="fixed-items">
                 <div v-for="item in fixedItems(selectedMeal)" :key="item.dishId" class="fixed-item" :class="{ 'is-soldout': dishStock(item.dishId) === 2 }">
-                  <span class="item-name">{{ item.dishName }}</span>
+                  <span class="item-name dish-link" @click.stop="goToDish(item.dishId)">{{ item.dishName }}</span>
                   <span class="item-qty">× {{ item.quantity }}</span>
                   <span v-if="dishStock(item.dishId) === 2" class="item-soldout-tag">已售完</span>
                   <span v-else class="item-price">NT$ {{ item.dishPrice.toLocaleString() }}</span>
@@ -311,7 +311,7 @@
               </div>
               <div class="option-items">
                 <div v-for="item in group.items" :key="item.dishId" class="option-item" :class="{ 'is-soldout': dishStock(item.dishId) === 2 }">
-                  <span class="option-name">{{ item.dishName }}</span>
+                  <span class="option-name dish-link" @click.stop="goToDish(item.dishId)">{{ item.dishName }}</span>
                   <span v-if="dishStock(item.dishId) === 2" class="option-soldout-tag">已售完</span>
                   <span v-else class="option-price">NT$ {{ item.dishPrice.toLocaleString() }}</span>
                   <div class="qty-control">
@@ -393,9 +393,11 @@
 
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 import ToastContainer from '@/components/common/ToastContainer.vue';
 import { useToast } from '@/composables/useToast.js';
 const { show } = useToast();
+const router = useRouter();
 
 // ── Intersection Observer 進場 ──────────────────────
 const vReveal = {
@@ -744,6 +746,12 @@ const openModal = (meal) => {
     animatedSingleTotal.value = val;
     animatedSavings.value = Math.max(0, val - (selectedMeal.value?.setPrice ?? 0));
   });
+};
+
+const goToDish = (dishId) => {
+  const returnTo = '/setmeal?meal=' + selectedMeal.value.id;
+  closeModal();
+  router.push('/menu?dish=' + dishId + '&returnTo=' + encodeURIComponent(returnTo));
 };
 
 const closeModal = () => {
@@ -1317,7 +1325,7 @@ onUnmounted(() => {
   letter-spacing: 0.1em;
   backdrop-filter: blur(4px);
 }
-.badge-rec { background-color: rgba(227, 199, 107, 0.9); color: var(--eat-surface); }
+.badge-rec { background-color: #e8a800; color: #1a0800; box-shadow: 0 1px 6px rgba(232,168,0,0.45); }
 .badge-pop { background-color: rgba(217, 83, 79, 0.9);  color: white; }
 
 .meal-info { padding: 1.5rem; flex-grow: 1; display: flex; flex-direction: column; gap: 0.75rem; }
@@ -1691,6 +1699,43 @@ onUnmounted(() => {
 }
 .retry-btn:hover { background-color: var(--eat-primary); color: var(--eat-surface); }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 餐點名稱可點擊 ── */
+.dish-link {
+  position: relative;
+  cursor: pointer;
+  transition: text-decoration-color 0.2s;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+.dish-link:hover {
+  text-decoration-color: var(--eat-primary);
+}
+.dish-link::before {
+  content: '點擊即可查看餐點 →';
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  background: rgba(12, 5, 2, 0.92);
+  border: 1px solid rgba(227, 199, 107, 0.28);
+  color: var(--eat-secondary);
+  font-family: var(--font-label);
+  font-size: 0.66rem;
+  letter-spacing: 0.07em;
+  padding: 0.22rem 0.65rem;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 20;
+}
+.dish-link:hover::before {
+  opacity: 1;
+  transform: translateY(0);
+}
 
 /* ── Utils ── */
 .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
