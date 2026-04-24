@@ -19,8 +19,11 @@
                     />
                     <div v-else class="detail-intro-img-placeholder"></div>
                 </div>
-                <div class="detail-intro-text" :data-date="formatDate(article.publishDate)">
-                    <h1 class="detail-title">{{ article.title }}</h1>
+                <div class="detail-intro-text">
+                    <div class="detail-title-row">
+                        <i v-if="article.isPinned" class="bi bi-pin-fill detail-pin-icon"></i>
+                        <h1 class="detail-title">{{ article.title }}</h1>
+                    </div>
                     <span class="detail-eyebrow">{{ article.categoryName }}</span>
                     <div class="detail-meta-row">
                         <span>{{ formatDate(article.publishDate) }}</span>
@@ -41,7 +44,9 @@
 
             <!-- 主體 -->
             <main class="detail-main">
+                <!-- eslint-disable-next-line vue/no-v-html -->
                 <article class="detail-body" v-html="article.description"></article>
+                <!-- 這裡保留是文章非純文字會含有html標籤，使用v-html呈現。以白名單方式預防XSS攻擊，後端會過濾掉不安全的標籤與屬性。 -->
 
                 <div class="detail-divider">
                     <svg width="200" height="20" viewBox="0 0 200 20" fill="none">
@@ -119,6 +124,11 @@ async function fetchDetail(id) {
     error.value = false
     try {
         const res = await apiFetch(`/News/${id}`)
+        if (!res.ok) {
+            // 404、500 都會在這裡被攔截
+            error.value = true
+            return
+        }
         const data = await res.json()
         article.value = data.article
         prevArticle.value = data.prev ?? null
@@ -206,20 +216,6 @@ onMounted(() => {
     border-radius: 0;
 }
 
-.detail-intro-text::before {
-    content: attr(data-date);
-    position: absolute;
-    top: 1.5rem;
-    right: 2rem;
-    font-family: var(--font-headline);
-    font-size: 2rem;
-    font-style: italic;
-    color: var(--eat-on-surface);
-    opacity: 0.12;
-    pointer-events: none;
-    user-select: none;
-}
-
 /* RWD：手機才改直排 */
 @media (max-width: 767px) {
     .detail-intro {
@@ -247,9 +243,24 @@ onMounted(() => {
     font-family: var(--font-headline);
     font-size: clamp(1.6rem, 3.5vw, 2.6rem);
     color: var(--eat-on-surface);
-    line-height: 4;
+    line-height: 3.5;
     font-style: italic;
     margin: 0;
+}
+
+.detail-title-row {
+    position: relative;
+    padding-left: 0;
+}
+
+.detail-pin-icon {
+    position: absolute;
+    top: -1rem; /* 在標題上方 */
+    left: 0.5rem;
+    font-size: 1rem;
+    color: var(--eat-secondary);
+    opacity: 0.8;
+    rotate: 45deg;
 }
 
 .detail-meta-row {
@@ -349,6 +360,19 @@ onMounted(() => {
     font-size: 1.6rem;
 }
 
+/* ── Quill文字大小 ───────────────────────────────────────── */
+.ql-size-small {
+    font-size: 0.75em;
+}
+
+.ql-size-large {
+    font-size: 1.5em;
+}
+
+.ql-size-huge {
+    font-size: 2.5em;
+}
+
 /* ── 分隔線 ───────────────────────────────────────── */
 .detail-divider {
     display: flex;
@@ -436,6 +460,7 @@ onMounted(() => {
     line-height: 1.4;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }

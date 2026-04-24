@@ -197,11 +197,12 @@ async function fetchNews() {
         }
         const res = await apiFetch(`/News?${params}`)
         const data = await res.json()
-        articles.value = data.data // 不再前端 filter
+        articles.value = data.data
         totalPages.value = data.totalPages // 後端給的才是正確的
     } catch (e) {
         console.error('載入最新消息失敗', e)
         articles.value = []
+        totalPages.value = 1
     } finally {
         loading.value = false
     }
@@ -486,6 +487,7 @@ onMounted(fetchNews)
     color: var(--eat-on-surface);
     line-height: 1.35;
     margin-bottom: 1.25rem;
+    text-align: left;
 }
 a .news-card-title {
     color: var(--eat-on-surface);
@@ -508,6 +510,7 @@ a:hover .news-card-title {
     margin-bottom: 1.25rem;
     display: -webkit-box;
     -webkit-line-clamp: 3;
+    line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }

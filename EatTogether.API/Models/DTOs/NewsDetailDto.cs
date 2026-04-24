@@ -16,6 +16,9 @@
 
 		public int ViewCount { get; set; }
 
+		public bool IsPinned { get; set; }
+
+
 
 	}
 }

@@ -48,9 +48,9 @@ namespace EatTogether.API.Controllers
 					Summary = n.Description != null
 							  ? (n.Description.Length > 100 ? n.Description.Substring(0, 100) + "…" : n.Description)
 							  : "",
-					CoverImageUrl = n.CoverImageUrl != null   
+					CoverImageUrl = !string.IsNullOrWhiteSpace(n.CoverImageUrl)
 								? "/images/articles/" + n.CoverImageUrl
-								: "",
+								: "/images/articles/article-00.jpg",
 					PublishDate = n.PublishDate,
 					IsPinned = n.IsPinned,
 					ViewCount = n.ViewCount
@@ -88,11 +88,12 @@ namespace EatTogether.API.Controllers
 					CategoryName = n.Category.Name,
 					Title = n.Title,
 					Description = n.Description,
-					CoverImageUrl = n.CoverImageUrl != null   
+					CoverImageUrl = !string.IsNullOrWhiteSpace(n.CoverImageUrl)
 									? "/images/articles/" + n.CoverImageUrl
-									: "",
+									: "/images/articles/article-00.jpg",
 					PublishDate = n.PublishDate,
-					ViewCount = n.ViewCount
+					ViewCount = n.ViewCount,
+					IsPinned = n.IsPinned
 				})
 				.FirstOrDefaultAsync();
 
