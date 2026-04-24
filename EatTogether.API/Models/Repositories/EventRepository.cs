@@ -219,6 +219,7 @@ namespace EatTogether.Models.Repositories
             return result;
         }
 
+
         public async Task<List<EventApplicableDto>> GetEventsByIdsAsync(IEnumerable<int> ids)
         {
             var idSet = ids.ToHashSet();
@@ -286,6 +287,133 @@ namespace EatTogether.Models.Repositories
 
             if (ev == null) return null;
             return (ev.DiscountType, ev.RewardDishName);
+        }
+
+
+        // -----前台點餐頁用-----
+        public async Task<List<EventApplicableDto>> GetNearThresholdAutoEventsAsync(int amount, int nearGap = 100)
+        {
+            var today    = DateTime.Today;
+            var tomorrow = today.AddDays(1);
+
+            var rows = await _context.Events
+                .AsNoTracking()
+                .Where(e => e.Status == 1
+                         && e.IsAutoDiscount == 1
+                         && e.StartDate < tomorrow
+                         && (e.EndDate == null || e.EndDate >= today)
+                         && e.MinSpend > amount
+                         && e.MinSpend - amount <= nearGap)
+                .OrderBy(e => e.MinSpend)
+                .Select(e => new
+                {
+                    e.Id, e.Title, e.Summary, e.MinSpend,
+                    e.DiscountType, e.DiscountValue, e.RewardDishId,
+                    DishName = e.RewardDishId != null
+                        ? _context.Dishes.Where(d => d.Id == e.RewardDishId).Select(d => d.DishName).FirstOrDefault()
+                        : null
+                })
+                .ToListAsync();
+
+            var result = new List<EventApplicableDto>();
+            foreach (var e in rows)
+            {
+                var dishName = e.DishName ?? "";
+                string desc;
+                if (e.DiscountType == "FixedAmount")
+                    desc = $"折抵 NT${(int)e.DiscountValue}";
+                else if (e.DiscountType == "Percent")
+                    desc = $"打折 {e.DiscountValue}%";
+                else
+                    desc = $"贈送：{dishName}";
+
+                result.Add(new EventApplicableDto
+                {
+                    Id                  = e.Id,
+                    Title               = e.Title,
+                    Summary             = e.Summary ?? string.Empty,
+                    DiscountType        = e.DiscountType,
+                    DiscountValue       = e.DiscountValue,
+                    RewardDishId        = e.RewardDishId,
+                    RewardDishName      = string.IsNullOrEmpty(dishName) ? null : dishName,
+                    MinSpend            = e.MinSpend,
+                    CalculatedDiscount  = 0,
+                    DiscountDescription = desc,
+                    IsEligible          = false
+                });
+            }
+            return result;
+        }
+
+        // -----前台點餐頁用-----
+        public async Task<List<EventApplicableDto>> GetNotifyEventsAsync(int amount)
+        {
+            var today = DateTime.Today;
+            var tomorrow = today.AddDays(1);
+
+            var rows = await _context.Events
+                .AsNoTracking()
+                .Where(e => e.Status == 1
+                         && e.IsAutoDiscount == 0
+                         && e.StartDate < tomorrow
+                         && (e.EndDate == null || e.EndDate >= today))
+                .OrderByDescending(e => e.MinSpend)
+                .Select(e => new
+                {
+                    e.Id,
+                    e.Title,
+                    e.Summary,
+                    e.MinSpend,
+                    e.DiscountType,
+                    e.DiscountValue,
+                    e.RewardDishId,
+                    DishName = e.RewardDishId != null
+                        ? _context.Dishes.Where(d => d.Id == e.RewardDishId).Select(d => d.DishName).FirstOrDefault()
+                        : null
+                })
+                .ToListAsync();
+
+            var result = new List<EventApplicableDto>();
+            foreach (var e in rows)
+            {
+                bool eligible = e.MinSpend <= amount;
+                int calculated = 0;
+                string desc;
+                var dishName = e.DishName ?? "";
+
+                if (e.DiscountType == "FixedAmount")
+                {
+                    calculated = (int)e.DiscountValue;
+                    desc = $"折抵 NT${calculated}";
+                }
+                else if (e.DiscountType == "Percent")
+                {
+                    calculated = eligible ? (int)Math.Floor(amount * e.DiscountValue / 100m) : 0;
+                    desc = eligible
+                        ? $"打折 {e.DiscountValue}%，省 NT${calculated}"
+                        : $"打折 {e.DiscountValue}%";
+                }
+                else
+                {
+                    desc = $"贈送：{dishName}";
+                }
+
+                result.Add(new EventApplicableDto
+                {
+                    Id = e.Id,
+                    Title = e.Title,
+                    Summary = e.Summary ?? string.Empty,
+                    DiscountType = e.DiscountType,
+                    DiscountValue = e.DiscountValue,
+                    RewardDishId = e.RewardDishId,
+                    RewardDishName = string.IsNullOrEmpty(dishName) ? null : dishName,
+                    MinSpend = e.MinSpend,
+                    CalculatedDiscount = calculated,
+                    DiscountDescription = desc,
+                    IsEligible = eligible
+                });
+            }
+            return result;
         }
     }
 }

@@ -15,7 +15,7 @@ namespace EatTogether.Models.Services
 		Task<Result> ResetPasswordAsync(string token, string newPassword);
 		Task<bool> ValidateResetTokenAsync(string token);
 
-        // -----內用點餐頁用------------------------------
+        // -----前台點餐頁用------------------------------
         Task<Result<MemberLoginDto>> MemberLoginAsync(string email, string password);
     }
 
@@ -27,7 +27,7 @@ namespace EatTogether.Models.Services
 		private readonly IRoleFunctionRepository _roleFuncRepo;
 		private readonly IPasswordResetEmailService _emailService;
 		private readonly IHttpContextAccessor _httpContextAccessor;
-        // -----內用點餐頁用------------------------------
+        // -----前台點餐頁用------------------------------
         private readonly IMemberRepository _memberRepo;
 
         public AuthService(
@@ -171,7 +171,7 @@ namespace EatTogether.Models.Services
 			return Result.Success();
 		}
 
-        // -----內用點餐頁用------------------------------
+        // -----前台點餐頁用------------------------------
         public async Task<Result<MemberLoginDto>> MemberLoginAsync(string email, string password)
         {
             var member = await _memberRepo.GetByEmailAsync(email);

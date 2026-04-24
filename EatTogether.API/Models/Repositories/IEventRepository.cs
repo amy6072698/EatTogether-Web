@@ -10,9 +10,15 @@ namespace EatTogether.Models.Repositories
 		Task<EventEditDto> GetEditByIdAsync(int id);
 		Task<List<EventApplicableDto>> GetApplicableEventsAsync(int amount);
 		Task<List<EventApplicableDto>> GetManualEventsAsync(int amount);
+        
         /// <summary>回傳活動類型與贈品名稱（含 RewardDish Join），用於結帳頁手動套用 Gift 活動時建立贈品明細。</summary>
         Task<(string DiscountType, string? RewardDishName)?> GetEventGiftInfoAsync(int eventId);
         /// <summary>依 ID 清單取回活動 DTO（不限門檻），用於顯示使用中但已不符目前金額門檻的活動。</summary>
         Task<List<EventApplicableDto>> GetEventsByIdsAsync(IEnumerable<int> ids);
-	}
+
+        // -----前台點餐頁用-----
+        Task<List<EventApplicableDto>> GetNotifyEventsAsync(int amount);
+        /// <summary>回傳距門檻差額 ≤ nearGap 的自動折扣活動（IsAutoDiscount=1，但尚未達門檻）。</summary>
+        Task<List<EventApplicableDto>> GetNearThresholdAutoEventsAsync(int amount, int nearGap = 100);
+    }
 }
