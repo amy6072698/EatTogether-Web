@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using System.Text;
 using System.Text.Json;
 
@@ -11,12 +12,16 @@ namespace EatTogether.API.Controllers;
 public class IngredientsController : ControllerBase
 {
     private readonly IConfiguration _config;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IMemoryCache _cache;
 
     private const string Model = "gemini-2.5-flash";
 
-    public IngredientsController(IConfiguration config)
+    public IngredientsController(IConfiguration config, IHttpClientFactory httpClientFactory, IMemoryCache cache)
     {
         _config = config;
+        _httpClientFactory = httpClientFactory;
+        _cache = cache;
     }
 
     // POST /api/Ingredients/info
@@ -25,6 +30,10 @@ public class IngredientsController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(req.IngredientName))
             return BadRequest(new { error = "ingredientName 不得為空" });
+
+        var cacheKey = $"ingredient:{req.IngredientName.Trim().ToLower()}";
+        if (_cache.TryGetValue(cacheKey, out string? cached))
+            return Ok(new { text = cached });
 
         var apiKey = _config["Gemini:ApiKey"];
         if (string.IsNullOrEmpty(apiKey))
@@ -40,14 +49,13 @@ public class IngredientsController : ControllerBase
             }
         });
 
-        using var client = new HttpClient();
-        client.Timeout = TimeSpan.FromSeconds(30);
+        var client = _httpClientFactory.CreateClient();
+        client.Timeout = TimeSpan.FromSeconds(20);
 
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{Model}:generateContent?key={apiKey}";
-        var content = new StringContent(payload, Encoding.UTF8, "application/json");
 
         // 503 = Google 端暫時過載，等待後重試（最多 3 次）
-        int[] retryDelays = [2000, 5000, 10000];
+        int[] retryDelays = [1000, 3000, 6000];
         string? lastError = null;
 
         for (int attempt = 0; attempt <= retryDelays.Length; attempt++)
@@ -55,7 +63,7 @@ public class IngredientsController : ControllerBase
             if (attempt > 0)
                 await Task.Delay(retryDelays[attempt - 1]);
 
-            content = new StringContent(payload, Encoding.UTF8, "application/json");
+            var content = new StringContent(payload, Encoding.UTF8, "application/json");
             var httpRes = await client.PostAsync(url, content);
 
             if (httpRes.IsSuccessStatusCode)
@@ -72,12 +80,16 @@ public class IngredientsController : ControllerBase
                 var firstBracket = text?.IndexOf('【') ?? -1;
                 if (firstBracket > 0) text = text![firstBracket..];
 
+                _cache.Set(cacheKey, text, TimeSpan.FromHours(24));
                 return Ok(new { text });
             }
 
             lastError = await httpRes.Content.ReadAsStringAsync();
-            if ((int)httpRes.StatusCode != 503)
-                return StatusCode(502, new { error = $"Gemini API 回傳錯誤 ({(int)httpRes.StatusCode})", detail = lastError });
+            var sc = (int)httpRes.StatusCode;
+            if (sc == 429)
+                return StatusCode(429, new { error = "AI 食材介紹今日使用量已達上限，請明天再試。" });
+            if (sc != 503)
+                return StatusCode(502, new { error = $"Gemini API 回傳錯誤 ({sc})", detail = lastError });
         }
 
         return StatusCode(503, new { error = "Gemini 服務暫時忙碌，請稍後再試。", detail = lastError });

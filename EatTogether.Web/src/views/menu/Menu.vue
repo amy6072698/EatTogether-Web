@@ -2,7 +2,8 @@
     <div class="menu-page">
         <header class="menu-header">
             <div class="menu-header-bg" ref="headerBgRef"></div>
-            <div class="container">
+            <div class="menu-header-overlay"></div>
+            <div class="container" style="position:relative;z-index:2;">
                 <span class="menu-eyebrow">Signature Flavors</span>
                 <h1 class="eat-h1">精選菜單</h1>
 
@@ -38,19 +39,11 @@
                 <div class="filter-chips">
                     <button
                         class="filter-chip"
-                        :class="{ active: filterVeg }"
-                        @click="filterVeg = !filterVeg"
+                        :class="{ active: filterPopular }"
+                        @click="filterPopular = !filterPopular"
                         @mousedown="ripple"
                     >
-                        🥬 素食
-                    </button>
-                    <button
-                        class="filter-chip"
-                        :class="{ active: filterSpicy }"
-                        @click="filterSpicy = !filterSpicy"
-                        @mousedown="ripple"
-                    >
-                        🌶️ 有辣
+                        👑 人氣餐點
                     </button>
                     <button
                         class="filter-chip"
@@ -62,19 +55,27 @@
                     </button>
                     <button
                         class="filter-chip"
+                        :class="{ active: filterSpicy }"
+                        @click="filterSpicy = !filterSpicy"
+                        @mousedown="ripple"
+                    >
+                        🌶️ 有辣
+                    </button>
+                    <button
+                        class="filter-chip"
+                        :class="{ active: filterVeg }"
+                        @click="filterVeg = !filterVeg"
+                        @mousedown="ripple"
+                    >
+                        🥬 素食
+                    </button>
+                    <button
+                        class="filter-chip"
                         :class="{ active: filterFav }"
                         @click="filterFav = !filterFav"
                         @mousedown="ripple"
                     >
                         ❤️ 我的最愛
-                    </button>
-                    <button
-                        class="filter-chip"
-                        :class="{ active: filterAvailable }"
-                        @click="filterAvailable = !filterAvailable"
-                        @mousedown="ripple"
-                    >
-                        ✅ 供應中
                     </button>
                 </div>
                 <div class="view-toggle">
@@ -402,6 +403,7 @@ import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from
 import { useRoute, useRouter } from 'vue-router'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 import { useToast } from '@/composables/useToast.js'
+import apiFetch from '@/utils/apiFetch.js'
 
 // ── 安全解析食材 JSON ────────────────────────────────
 const parseIngredients = (jsonString) => {
@@ -466,11 +468,9 @@ const fetchIngredientInfo = async (name) => {
     activeIngredient.value = name
     ingredientInfo.value = ''
     loadingIngredient.value = true
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
     try {
-        const res = await fetch(`${API_BASE}/Ingredients/info`, {
+        const res = await apiFetch('/Ingredients/info', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ingredientName: name }),
         })
         if (!res.ok) throw new Error()
@@ -550,7 +550,7 @@ const filterVeg = ref(false)
 const filterSpicy = ref(false)
 const filterRec = ref(false)
 const filterFav = ref(false)
-const filterAvailable = ref(false)
+const filterPopular = ref(false)
 const sortOrder = ref('default')
 const viewMode = ref('grid')
 
@@ -561,10 +561,8 @@ const hoverStar = ref(0)
 const submitRating = (dishId, star) => {
     userRatings[dishId] = star
     localStorage.setItem('menu-ratings', JSON.stringify(userRatings))
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
-    fetch(`${API_BASE}/Dishes/${dishId}/Rate`, {
+    apiFetch(`/Dishes/${dishId}/Rate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ score: star }),
     }).catch(() => {}) // fire-and-forget，忽略錯誤
 }
@@ -665,9 +663,8 @@ const formatImageUrl = (url) => {
 const fetchMenu = async () => {
     loading.value = true
     error.value = null
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
     try {
-        const res = await fetch(`${API_BASE}/Dishes/active`)
+        const res = await apiFetch('/Dishes/active')
         if (!res.ok) throw new Error(`抓取失敗 (${res.status})`)
         dishes.value = await res.json()
     } catch (err) {
@@ -686,7 +683,7 @@ const hasActiveFilter = computed(
         filterSpicy.value ||
         filterRec.value ||
         filterFav.value ||
-        filterAvailable.value ||
+        filterPopular.value ||
         currentCategory.value !== 0 ||
         sortOrder.value !== 'default'
 )
@@ -704,7 +701,7 @@ const filteredDishes = computed(() => {
         if (filterSpicy.value && !(d.spicyLevel > 0)) return false
         if (filterRec.value && !d.isRecommended) return false
         if (filterFav.value && !favorites.value.includes(d.id)) return false
-        if (filterAvailable.value && d.stockStatus === 2) return false
+        if (filterPopular.value && !d.isPopular) return false
         return true
     })
 
@@ -751,21 +748,28 @@ onUnmounted(() => {
 }
 
 .menu-header {
-    padding: 8rem 0 4rem;
+    padding: 8rem 0 2rem;
     text-align: center;
     position: relative;
     overflow: hidden;
 }
 .menu-header-bg {
     position: absolute;
-    inset: -40% 0;
-    background: linear-gradient(to bottom, rgba(24, 11, 6, 0.95), var(--eat-surface));
+    inset: 0;
+    background-image: url('https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=1400&q=80');
+    background-size: cover;
+    background-position: center 40%;
     will-change: transform;
-    z-index: 0;
 }
-.menu-header .container {
-    position: relative;
-    z-index: 1;
+.menu-header-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to bottom,
+        rgba(24, 11, 6, 0.80) 0%,
+        rgba(24, 11, 6, 0.70) 55%,
+        var(--eat-surface) 100%
+    );
 }
 
 .menu-eyebrow {
@@ -1008,6 +1012,7 @@ onUnmounted(() => {
 }
 .menu-list .dish-desc {
     -webkit-line-clamp: unset;
+    line-clamp: unset;
     display: block;
     overflow: visible;
 }
@@ -1326,6 +1331,7 @@ onUnmounted(() => {
     font-style: italic;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -1611,13 +1617,6 @@ onUnmounted(() => {
 .star-btn:hover {
     transform: scale(1.2);
 }
-.star-btn:not(:hover) {
-    /* 讓未 hover 的保持原色 */
-}
-/* ☆ 未達評分 → 降低不透明度 */
-.star-btn:has(+ .star-btn) {
-    /* 非最後一顆，靠 v-bind 控制 */
-}
 
 .star-voted {
     font-family: var(--font-label);
@@ -1694,7 +1693,7 @@ onUnmounted(() => {
     padding: 0 2rem;
 }
 .py-5 {
-    padding-top: 4rem;
+    padding-top: 2rem;
     padding-bottom: 6rem;
 }
 
