@@ -1,7 +1,7 @@
 <template>
   <div class="menu-page">
     <header class="menu-header">
-      <div class="menu-header-bg"></div>
+      <div class="menu-header-bg" ref="menuHeaderBgRef"></div>
       <div class="menu-header-overlay"></div>
       <div class="container" style="position:relative;z-index:2;">
         <span class="menu-eyebrow">Signature Flavors</span>
@@ -44,26 +44,31 @@
               class="filter-chip"
               :class="{ active: filterPop }"
               @click="filterPop = !filterPop"
+              @mousedown="ripple"
             >👑 人氣餐點</button>
             <button
               class="filter-chip"
               :class="{ active: filterRec }"
               @click="filterRec = !filterRec"
+              @mousedown="ripple"
             >⭐ 主廚推薦</button>
             <button
               class="filter-chip"
               :class="{ active: filterSpicy }"
               @click="filterSpicy = !filterSpicy"
+              @mousedown="ripple"
             >🌶️ 有辣</button>
             <button
               class="filter-chip"
               :class="{ active: filterVeg }"
               @click="filterVeg = !filterVeg"
+              @mousedown="ripple"
             >🥬 素食</button>
             <button
               class="filter-chip"
               :class="{ active: filterFav }"
               @click="filterFav = !filterFav"
+              @mousedown="ripple"
             >❤️ 我的最愛</button>
           </div>
         </div>
@@ -107,6 +112,7 @@
           class="dish-card"
           :class="{ 'is-soldout': dish.stockStatus === 2 }"
           @click="openModal(dish)"
+          @mousemove="dish.stockStatus !== 2 && onCardMove($event)"
           @mouseleave="activePreview = null"
         >
           <div
@@ -406,6 +412,7 @@ const vReveal = {
           el.style.transform = ''
           el.style.transition = ''
           el.style.transitionDelay = ''
+          el.classList.add('is-revealed')
         }, 400 + delay)
         observer.disconnect()
       }
@@ -447,6 +454,14 @@ const parseIngredients = (jsonString) => {
   }
 };
 
+// ── 反光座標更新 ─────────────────────────────────────
+const onCardMove = (e) => {
+  const card = e.currentTarget;
+  const rect = card.getBoundingClientRect();
+  card.style.setProperty('--mx', `${((e.clientX - rect.left) / rect.width * 100).toFixed(1)}%`);
+  card.style.setProperty('--my', `${((e.clientY - rect.top) / rect.height * 100).toFixed(1)}%`);
+};
+
 // ── 3D Tilt ──────────────────────────────────────────
 const tiltStyles = reactive({});
 
@@ -455,9 +470,10 @@ const handleMouseMove = (event, dishId) => {
   const rect = card.getBoundingClientRect();
   const relX = (event.clientX - rect.left) / rect.width - 0.5;
   const relY = (event.clientY - rect.top) / rect.height - 0.5;
-  // --glare-x/y 讓 ::after 偽元素能跟著游標移動
   card.style.setProperty('--glare-x', `${((relX + 0.5) * 100).toFixed(1)}%`);
   card.style.setProperty('--glare-y', `${((relY + 0.5) * 100).toFixed(1)}%`);
+  card.style.setProperty('--mx', `${((relX + 0.5) * 100).toFixed(1)}%`);
+  card.style.setProperty('--my', `${((relY + 0.5) * 100).toFixed(1)}%`);
   tiltStyles[dishId] = {
     transform: `rotateX(${(-relY * 15).toFixed(2)}deg) rotateY(${(relX * 15).toFixed(2)}deg) translateY(-10px) scale(1.02)`,
     transition: 'transform 0.08s ease',
@@ -757,12 +773,30 @@ const fetchMenu = async () => {
 };
 
 // ── 回到頂端 ──────────────────────────────────────────
+const menuHeaderBgRef = ref(null);
 const showBackTop = ref(false);
 const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
-const handleScroll = () => { showBackTop.value = window.scrollY > 400; };
+const handleScroll = () => {
+  showBackTop.value = window.scrollY > 400;
+  if (menuHeaderBgRef.value) {
+    menuHeaderBgRef.value.style.transform = `translateY(${window.scrollY * 0.4}px)`;
+  }
+};
 onMounted(() => window.addEventListener('scroll', handleScroll, { passive: true }));
 onUnmounted(() => window.removeEventListener('scroll', handleScroll));
+
+// ── Ripple ───────────────────────────────────────────
+const ripple = (e) => {
+  const btn = e.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  const span = document.createElement('span');
+  span.className = 'ripple';
+  span.style.left = `${e.clientX - rect.left}px`;
+  span.style.top = `${e.clientY - rect.top}px`;
+  btn.appendChild(span);
+  span.addEventListener('animationend', () => span.remove());
+};
 
 // ── Computed ─────────────────────────────────────────
 const hasActiveFilter = computed(() =>
@@ -842,6 +876,7 @@ onUnmounted(() => {
   background-image: url('https://images.unsplash.com/photo-1473093226795-af9932fe5856?w=1400&q=80');
   background-size: cover;
   background-position: center 60%;
+  will-change: transform;
 }
 .menu-header-overlay {
   position: absolute;
@@ -990,6 +1025,22 @@ onUnmounted(() => {
   padding: 0.45rem 1rem;
   cursor: pointer;
   transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.ripple {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(227, 199, 107, 0.7);
+  transform: translate(-50%, -50%) scale(0);
+  animation: ripple-expand 600ms ease-out forwards;
+  pointer-events: none;
+}
+@keyframes ripple-expand {
+  from { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+  to   { transform: translate(-50%, -50%) scale(10); opacity: 0; }
 }
 .filter-chip:hover { border-color: rgba(227, 199, 107, 0.35); color: rgba(249, 221, 211, 0.8); }
 .filter-chip.active {
@@ -1101,8 +1152,9 @@ onUnmounted(() => {
   border-radius: 16px;
   overflow: hidden;
   will-change: transform;
-  transition: transform 0.3s ease,
-              box-shadow 0.3s ease,
+  --mx: 50%; --my: 50%;
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.45s ease,
               border-color 0.3s;
   display: flex;
   flex-direction: column;
@@ -1110,8 +1162,27 @@ onUnmounted(() => {
   border: 1px solid rgba(227, 199, 107, 0.05);
   cursor: pointer;
 }
+.dish-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at var(--mx) var(--my),
+    rgba(255, 255, 255, 0.08) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.dish-card:not(.is-soldout):hover::before { opacity: 1; }
 .dish-card:hover {
   border-color: rgba(227, 199, 107, 0.2);
+  transform: translateY(-10px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 8px 20px rgba(227, 199, 107, 0.12);
+}
+.dish-card.is-soldout:hover {
+  transform: none;
+  box-shadow: none;
 }
 .dish-card.is-soldout {
   opacity: 0.75;
@@ -1350,6 +1421,19 @@ onUnmounted(() => {
   font-weight: 600;
   letter-spacing: 0.1em;
   backdrop-filter: blur(4px);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.badge:hover { transform: scale(1.2) !important; }
+.is-revealed .badge-group .badge {
+  animation: badge-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.is-revealed .badge-group .badge:nth-child(1) { animation-delay: 0ms; }
+.is-revealed .badge-group .badge:nth-child(2) { animation-delay: 60ms; }
+.is-revealed .badge-group .badge:nth-child(3) { animation-delay: 120ms; }
+@keyframes badge-pop {
+  from { transform: scale(0); opacity: 0; }
+  80%  { transform: scale(1.1); opacity: 1; }
+  to   { transform: scale(1); opacity: 1; }
 }
 .badge-rec       { background-color: #e8a800; color: #1a0800; text-shadow: none; box-shadow: 0 1px 6px rgba(232,168,0,0.45); }
 .badge-pop       { background-color: rgba(217, 83, 79, 0.9);  color: white; }
@@ -1394,12 +1478,28 @@ onUnmounted(() => {
   color: var(--eat-primary);
   font-size: 1.25rem;
   margin: 0; font-style: italic;
+  position: relative;
+  display: inline-block;
+}
+.dish-name::after {
+  content: '';
+  position: absolute;
+  bottom: -2px; left: 0;
+  width: 0; height: 1.5px;
+  background: var(--eat-primary);
+  transition: width 0.35s ease;
+}
+.dish-card:hover .dish-name::after {
+  width: 100%;
 }
 .dish-price {
   font-family: var(--font-label);
   font-size: 0.9rem;
   font-weight: 500; margin-top: 0.25rem;
   white-space: nowrap; margin-left: 0.5rem;
+  position: relative;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
   /* 光澤掃過基礎設定 */
   background: linear-gradient(
     90deg,
@@ -1415,6 +1515,21 @@ onUnmounted(() => {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
+}
+
+.dish-price::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: background 0.3s ease, border-color 0.3s ease;
+  pointer-events: none;
+}
+.dish-card:hover .dish-price::before {
+  background: rgba(227, 199, 107, 0.15);
+  border-color: rgba(227, 199, 107, 0.25);
 }
 
 /* hover 時觸發一次掃光，結束後停在右側（回到金色） */
