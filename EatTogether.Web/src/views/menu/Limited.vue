@@ -5,7 +5,7 @@
        Header
     ════════════════════════════════════════════ -->
     <header class="limited-header">
-      <div class="header-bg"></div>
+      <div class="header-bg" ref="headerBgRef"></div>
       <div class="header-overlay"></div>
       <div class="container header-content">
         <span class="limited-eyebrow">Limited Edition</span>
@@ -102,6 +102,7 @@
           }"
           :style="{ '--glow-delay': `${(index % 3) * 1.4}s` }"
           @click="openModal(dish)"
+          @mousemove="dish.stockStatus !== 2 && !isUpcoming(dish) && onCardMove($event)"
           @mouseleave="activePreview = null"
         >
           <!-- ── 圖片區 ── -->
@@ -365,6 +366,7 @@ const vReveal = {
           el.style.transform = ''
           el.style.transition = ''
           el.style.transitionDelay = ''
+          el.classList.add('is-revealed')
         }, 400 + delay)
         observer.disconnect()
       }
@@ -376,6 +378,13 @@ const vReveal = {
 }
 
 // ── 工具函式 ─────────────────────────────────────────
+const onCardMove = (e) => {
+  const card = e.currentTarget;
+  const rect = card.getBoundingClientRect();
+  card.style.setProperty('--mx', `${((e.clientX - rect.left) / rect.width * 100).toFixed(1)}%`);
+  card.style.setProperty('--my', `${((e.clientY - rect.top) / rect.height * 100).toFixed(1)}%`);
+};
+
 const stockWidth = (id) => {
   const n = typeof id === 'number' ? id : String(id).split('').reduce((a, c) => a + c.charCodeAt(0), 0)
   return 20 + (n % 16)
@@ -646,11 +655,19 @@ const fetchLimited = async () => {
 }
 
 // ── 生命週期 ──────────────────────────────────────────
+const headerBgRef = ref(null)
+const handleParallax = () => {
+  if (headerBgRef.value) {
+    headerBgRef.value.style.transform = `translateY(${window.scrollY * 0.4}px)`
+  }
+}
+
 onMounted(async () => {
   await fetchLimited()
   _refreshTimer = setInterval(fetchLimited, 10_000)
   _clockTimer   = setInterval(() => { currentTime.value = new Date() }, 1000)
   window.addEventListener('keydown', handleEsc)
+  window.addEventListener('scroll', handleParallax, { passive: true })
   document.addEventListener('click', handleShareClickOutside)
 
   // 深層連結：偵測 ?dish=id，自動打開對應 Modal
@@ -684,6 +701,7 @@ onUnmounted(() => {
   clearInterval(_refreshTimer)
   clearInterval(_clockTimer)
   window.removeEventListener('keydown', handleEsc)
+  window.removeEventListener('scroll', handleParallax)
   document.removeEventListener('click', handleShareClickOutside)
 })
 </script>
@@ -700,7 +718,7 @@ onUnmounted(() => {
 /* ── Header ──────────────────────────────────────── */
 .limited-header {
   position: relative;
-  padding: 8rem 0 4rem;
+  padding: 8rem 0 1.5rem;
   text-align: center;
   overflow: hidden;
 }
@@ -710,6 +728,7 @@ onUnmounted(() => {
   background-image: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1400&q=80');
   background-size: cover;
   background-position: center 40%;
+  will-change: transform;
 }
 .header-overlay {
   position: absolute;
@@ -880,10 +899,11 @@ onUnmounted(() => {
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid rgba(227, 199, 107, 0.08);
+  --mx: 50%; --my: 50%;
   display: flex;
   flex-direction: column;
   cursor: pointer;
-  transition: border-color 0.35s, transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s;
+  transition: border-color 0.35s, transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.45s ease;
   position: relative;
 }
 /* 售完 / 即將上架 → 禁止點擊游標 */
@@ -912,14 +932,29 @@ onUnmounted(() => {
 }
 
 /* ── Hover：大幅拉起 + 強光暈 ── */
+.limited-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at var(--mx) var(--my),
+    rgba(255, 255, 255, 0.08) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.limited-card:not(.is-soldout):not(.is-upcoming):hover::before { opacity: 1; }
 .limited-card:hover {
   border-color: rgba(227, 199, 107, 0.6) !important;
-  transform: translateY(-12px) scale(1.025);
-  box-shadow:
-    0 24px 60px rgba(0, 0, 0, 0.55),
-    0 0 40px rgba(227, 199, 107, 0.2),
-    inset 0 0 30px rgba(227, 199, 107, 0.05);
-  animation-play-state: paused; /* hover 時停止脈衝避免閃爍 */
+  transform: translateY(-10px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 8px 20px rgba(227, 199, 107, 0.12);
+  animation-play-state: paused;
+}
+.limited-card.is-soldout:hover,
+.limited-card.is-upcoming:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 /* ── 圖片掃光（hover 時從左到右掃一次）── */
@@ -1065,6 +1100,19 @@ onUnmounted(() => {
   letter-spacing: 0.1em;
   backdrop-filter: blur(6px);
   display: inline-block;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.badge:hover { transform: scale(1.2) !important; }
+.is-revealed .badge-group .badge {
+  animation: badge-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.is-revealed .badge-group .badge:nth-child(1) { animation-delay: 0ms; }
+.is-revealed .badge-group .badge:nth-child(2) { animation-delay: 60ms; }
+.is-revealed .badge-group .badge:nth-child(3) { animation-delay: 120ms; }
+@keyframes badge-pop {
+  from { transform: scale(0); opacity: 0; }
+  80%  { transform: scale(1.1); opacity: 1; }
+  to   { transform: scale(1); opacity: 1; }
 }
 .badge-lim {
   background: rgba(227, 199, 107, 0.92);
@@ -1076,7 +1124,7 @@ onUnmounted(() => {
   0%, 100% { filter: brightness(1)   drop-shadow(0 0 0px rgba(227,199,107,0)); }
   50%       { filter: brightness(1.3) drop-shadow(0 0 8px rgba(227,199,107,0.8)); }
 }
-.badge-rec { background: rgba(227, 199, 107, 0.22); border: 1px solid rgba(227,199,107,0.5); color: var(--eat-primary); }
+.badge-rec { background: #e8a800; color: #1a0800; border: none; box-shadow: 0 1px 6px rgba(232,168,0,0.45); }
 .badge-pop { background: rgba(217, 83, 79, 0.88);  color: white; }
 .badge-low { background: rgba(200, 100, 0, 0.9);   color: white; }
 
@@ -1130,6 +1178,19 @@ onUnmounted(() => {
   font-style: italic;
   margin: 0;
   line-height: 1.3;
+  position: relative;
+  display: inline-block;
+}
+.card-name::after {
+  content: '';
+  position: absolute;
+  bottom: -2px; left: 0;
+  width: 0; height: 1.5px;
+  background: var(--eat-primary);
+  transition: width 0.35s ease;
+}
+.limited-card:hover .card-name::after {
+  width: 100%;
 }
 .card-price {
   font-family: var(--font-label);
@@ -1137,6 +1198,16 @@ onUnmounted(() => {
   color: var(--eat-secondary);
   white-space: nowrap;
   padding-top: 0.2rem;
+  position: relative;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+.limited-card:hover .card-price {
+  background: rgba(227, 199, 107, 0.15);
+  border-color: rgba(227, 199, 107, 0.25);
+  color: var(--eat-primary);
 }
 
 .card-desc {
@@ -1676,13 +1747,13 @@ onUnmounted(() => {
   padding: 0 2rem;
 }
 .py-main {
-  padding-top: 3rem;
+  padding-top: 1.5rem;
   padding-bottom: 6rem;
 }
 
 /* ── RWD ─────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .limited-header { padding: 6rem 0 3rem; }
+  .limited-header { padding: 6rem 0 1.5rem; }
   .limited-grid { grid-template-columns: 1fr; }
   .countdown-badge { font-size: 0.65rem; }
 }
