@@ -254,7 +254,7 @@ async function fetchTableAvailability() {
   try {
     const res = await apiFetch(`/Reservations/TableAvailability?date=${encodeURIComponent(dt.toISOString())}`)
     if (res.ok) tableAvailability.value = await res.json()
-  } catch {}
+  } catch { /* 忽略網路錯誤，不影響使用者操作 */ }
 }
 
 async function fetchAvailability() {
@@ -265,7 +265,7 @@ async function fetchAvailability() {
       `/Reservations/Availability?date=${encodeURIComponent(dt.toISOString())}&adults=${form.value.adults}&children=${form.value.children}`
     )
     if (res.ok) availability.value = await res.json()
-  } catch {}
+  } catch { /* 忽略網路錯誤，不影響使用者操作 */ }
 }
 
 function buildDateTime() {
@@ -339,7 +339,7 @@ async function submitBooking() {
       try {
         const err = await res.json()
         message = err.message || message
-      } catch {}
+      } catch { /* 回應非 JSON 時使用預設訊息 */ }
       show(message, 'error')
     }
   } catch {
