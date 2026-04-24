@@ -66,10 +66,13 @@ import { RouterLink } from 'vue-router'
 const route = useRoute()
 
 const navLinks = [
+  { label: '最新消息',   to: '/news' },
   { label: '菜單',   to: '/menu' },
   { label: '套餐',   to: '/setmeal' },
   { label: '本季限定', to: '/limited' },
+  { label: '優惠券',  to: '/coupons' },
   { label: '訂位',   to: '/reservation' },
+  { label: '訂位查詢', to: '/reservation/query' },
   { label: '會員',   to: '/member' },
   { label: '外帶點餐', to: '/takeout' },
   { label: '內用', to: '/In' },

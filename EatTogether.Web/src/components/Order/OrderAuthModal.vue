@@ -5,7 +5,7 @@
 
         <!-- ── 品牌標頭 ── -->
         <div class="auth-brand">
-          <p class="auth-brand-sub font-label">掃碼點餐</p>
+          <p class="auth-brand-sub font-label">內用掃碼點餐</p>
         </div>
 
         <!-- ════ 選擇畫面 ════ -->
@@ -13,8 +13,15 @@
           <h2 class="auth-title font-headline">歡迎光臨</h2>
           <p class="auth-desc font-body">請選擇點餐方式</p>
           <div class="auth-choices">
-            <button class="choice-btn choice-login font-label" @click="step = 'login'">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+            <!-- <button class="choice-btn choice-login font-label" @click="step = 'login'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.03 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+              </svg>
+              登入會員
+            </button> -->
+            <!-- 先帶入Id=61的會員 -->
+            <button class="choice-btn choice-login font-label" @click="$emit('logged-in', { name: '冷明輝', memberId: 61 })">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.03 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
               </svg>
               登入會員

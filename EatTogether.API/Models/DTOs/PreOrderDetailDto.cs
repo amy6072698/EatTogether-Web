@@ -8,5 +8,6 @@
         public decimal UnitPrice { get; set; }
         public bool IsSetMeal { get; set; }
         public int? ParentIndex { get; set; }
+        public string? Note { get; set; }
     }
 }

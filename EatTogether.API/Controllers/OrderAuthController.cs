@@ -22,44 +22,26 @@ namespace EatTogether.API.Controllers
             _memberRepo = memberRepo;
         }
 
-        // POST /api/Auth/Login
-        [HttpPost("Login")]
+        // POST /api/Auth/MemberLogin — 前台會員登入（查 Members 資料表）
+        [HttpPost("MemberLogin")]
         [AllowAnonymous]
-        public async Task<IActionResult> Login([FromBody] LoginRequest req)
+        public async Task<IActionResult> MemberLogin([FromBody] MemberLoginRequest req)
         {
-            if (string.IsNullOrWhiteSpace(req.Account) || string.IsNullOrWhiteSpace(req.Password))
-                return BadRequest(new { message = "帳號與密碼為必填" });
-
-            var result = await _authService.LoginAsync(req.Account, req.Password);
+            var result = await _authService.MemberLoginAsync(req.Email, req.Password);
 
             if (!result.IsSuccess)
-                return Unauthorized(new { message = result.ErrorMessage ?? "帳號或密碼錯誤" });
+                return Unauthorized(new { message = result.ErrorMessage });
 
-            var dto = result.Value!;
-
-            if (dto.MustChangePassword)
-                return Unauthorized(new { message = "請先更改密碼後再登入" });
-
-            // 簽發 access_token cookie
-            var token = _jwtHelper.GenerateAccessToken(dto.UserId, dto.Name);
+            var token = _jwtHelper.GenerateAccessToken(result.Value!.MemberId, result.Value!.Name);
             Response.Cookies.Append("access_token", token, new CookieOptions
             {
                 HttpOnly = true,
-                Secure   = true,
+                Secure = true,
                 SameSite = SameSiteMode.None,
-                Expires  = DateTimeOffset.UtcNow.AddHours(8)
+                Expires = DateTimeOffset.UtcNow.AddHours(8)
             });
-
-            return Ok(new { name = dto.Name });
+            return Ok(new { name = result.Value!.Name });
         }
-
-        // POST /api/Auth/MemberLogin — 前台會員登入（查 Members 資料表）
-        //[HttpPost("MemberLogin")]
-        //[AllowAnonymous]
-        //public async Task<IActionResult> MemberLogin([FromBody] MemberLoginRequest req)
-        //{
-            
-        //}
 
         // GET /api/Auth/Me  — 驗證目前 cookie 是否有效，回傳會員名稱
         [HttpGet("Me")]

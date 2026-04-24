@@ -8,6 +8,18 @@ namespace EatTogether.API.Models.Infra
 		Task SendVerifyEmailAsync(string toEmail, string verifyUrl);
 		Task SendPasswordResetEmailAsync(string toEmail, string resetUrl);
 		Task SendSecurityNoticeAsync(string toEmail, string action);
+
+		// ── 訂位相關 ──
+		Task SendReservationConfirmAsync(string toEmail, string name, string bookingNumber,
+		    DateTime reservationDate, int adults, int children);
+		Task SendReservationCancelAsync(string toEmail, string name,
+		    string bookingNumber, DateTime reservationDate);
+		Task SendReservationReminderAsync(string toEmail, string name,
+		    string bookingNumber, DateTime reservationDate);
+
+		// ── 優惠券相關 ──
+		Task SendCouponExpiryNotifyAsync(string toEmail, string name,
+		    string couponName, string code, DateTime endDate);
 	}
 
 	public class EmailService : IEmailService
@@ -111,6 +123,128 @@ namespace EatTogether.API.Models.Infra
         {action}
     </p>
     <p style=""color:#888;font-size:13px;"">若此操作並非您本人執行，請立即登入並修改密碼，或聯繫客服。</p>
+</div>";
+
+			using var smtp = BuildSmtpClient();
+			using var message = BuildMailMessage(toEmail, subject, body);
+			await smtp.SendMailAsync(message);
+		}
+
+		// 寄出訂位確認信
+		public async Task SendReservationConfirmAsync(string toEmail, string name,
+		    string bookingNumber, DateTime reservationDate, int adults, int children)
+		{
+			const string subject = "義起吃 - 訂位確認通知";
+			var body = $@"
+<div style=""font-family:sans-serif;max-width:600px;margin:auto;"">
+    <h2 style=""color:#c0392b;"">義起吃 | 義式料理</h2>
+    <p>{name} 您好，感謝您的訂位，以下是您的訂位資訊：</p>
+    <table style=""width:100%;border-collapse:collapse;margin:16px 0;"">
+        <tr style=""background:#f9f9f9;"">
+            <td style=""padding:10px;border:1px solid #ddd;font-weight:bold;"">訂位單號</td>
+            <td style=""padding:10px;border:1px solid #ddd;"">{bookingNumber}</td>
+        </tr>
+        <tr>
+            <td style=""padding:10px;border:1px solid #ddd;font-weight:bold;"">訂位日期時段</td>
+            <td style=""padding:10px;border:1px solid #ddd;"">{reservationDate:yyyy/MM/dd HH:mm}</td>
+        </tr>
+        <tr style=""background:#f9f9f9;"">
+            <td style=""padding:10px;border:1px solid #ddd;font-weight:bold;"">人數</td>
+            <td style=""padding:10px;border:1px solid #ddd;"">大人 {adults} 位 / 小孩 {children} 位</td>
+        </tr>
+    </table>
+    <p>如需取消訂位，請於訂位時間前 1 小時至官網自助取消，或來電聯繫門市。</p>
+    <p style=""color:#888;font-size:13px;"">義起吃 | 義式料理</p>
+</div>";
+
+			using var smtp = BuildSmtpClient();
+			using var message = BuildMailMessage(toEmail, subject, body);
+			await smtp.SendMailAsync(message);
+		}
+
+		// 寄出訂位取消確認信
+		public async Task SendReservationCancelAsync(string toEmail, string name,
+		    string bookingNumber, DateTime reservationDate)
+		{
+			const string subject = "義起吃 - 訂位取消通知";
+			var body = $@"
+<div style=""font-family:sans-serif;max-width:600px;margin:auto;"">
+    <h2 style=""color:#c0392b;"">義起吃 | 義式料理</h2>
+    <p>{name} 您好，您的訂位已成功取消：</p>
+    <table style=""width:100%;border-collapse:collapse;margin:16px 0;"">
+        <tr style=""background:#f9f9f9;"">
+            <td style=""padding:10px;border:1px solid #ddd;font-weight:bold;"">訂位單號</td>
+            <td style=""padding:10px;border:1px solid #ddd;"">{bookingNumber}</td>
+        </tr>
+        <tr>
+            <td style=""padding:10px;border:1px solid #ddd;font-weight:bold;"">原訂日期時段</td>
+            <td style=""padding:10px;border:1px solid #ddd;"">{reservationDate:yyyy/MM/dd HH:mm}</td>
+        </tr>
+    </table>
+    <p>期待下次再為您服務！</p>
+    <p style=""color:#888;font-size:13px;"">義起吃 | 義式料理</p>
+</div>";
+
+			using var smtp = BuildSmtpClient();
+			using var message = BuildMailMessage(toEmail, subject, body);
+			await smtp.SendMailAsync(message);
+		}
+
+		// 寄出訂位 24hr 提醒信
+		public async Task SendReservationReminderAsync(string toEmail, string name,
+		    string bookingNumber, DateTime reservationDate)
+		{
+			const string subject = "義起吃 - 訂位提醒";
+			var body = $@"
+<div style=""font-family:sans-serif;max-width:600px;margin:auto;"">
+    <h2 style=""color:#c0392b;"">義起吃 | 義式料理</h2>
+    <p>{name} 您好，提醒您明天有一筆訂位：</p>
+    <table style=""width:100%;border-collapse:collapse;margin:16px 0;"">
+        <tr style=""background:#f9f9f9;"">
+            <td style=""padding:10px;border:1px solid #ddd;font-weight:bold;"">訂位單號</td>
+            <td style=""padding:10px;border:1px solid #ddd;"">{bookingNumber}</td>
+        </tr>
+        <tr>
+            <td style=""padding:10px;border:1px solid #ddd;font-weight:bold;"">訂位日期時段</td>
+            <td style=""padding:10px;border:1px solid #ddd;"">{reservationDate:yyyy/MM/dd HH:mm}</td>
+        </tr>
+    </table>
+    <p>期待您的光臨，義起吃全體員工敬上。</p>
+    <p style=""color:#888;font-size:13px;"">義起吃 | 義式料理</p>
+</div>";
+
+			using var smtp = BuildSmtpClient();
+			using var message = BuildMailMessage(toEmail, subject, body);
+			await smtp.SendMailAsync(message);
+		}
+
+		// 寄出優惠券到期提醒信
+		public async Task SendCouponExpiryNotifyAsync(string toEmail, string name,
+		    string couponName, string code, DateTime endDate)
+		{
+			const string subject = "義起吃 - 優惠券即將到期提醒";
+			var body = $@"
+<div style=""font-family:sans-serif;max-width:600px;margin:auto;"">
+    <h2 style=""color:#c0392b;"">義起吃 | 義式料理</h2>
+    <p>{name} 您好，您有一張優惠券即將於 <strong>{endDate:yyyy/MM/dd}</strong> 到期，請把握機會使用！</p>
+    <table style=""width:100%;border-collapse:collapse;margin:16px 0;"">
+        <tr style=""background:#f9f9f9;"">
+            <td style=""padding:10px;border:1px solid #ddd;font-weight:bold;"">優惠券名稱</td>
+            <td style=""padding:10px;border:1px solid #ddd;"">{couponName}</td>
+        </tr>
+        <tr>
+            <td style=""padding:10px;border:1px solid #ddd;font-weight:bold;"">折扣碼</td>
+            <td style=""padding:10px;border:1px solid #ddd;"">
+                <strong style=""font-size:18px;letter-spacing:2px;color:#c0392b;"">{code}</strong>
+            </td>
+        </tr>
+        <tr style=""background:#f9f9f9;"">
+            <td style=""padding:10px;border:1px solid #ddd;font-weight:bold;"">到期日</td>
+            <td style=""padding:10px;border:1px solid #ddd;"">{endDate:yyyy/MM/dd}</td>
+        </tr>
+    </table>
+    <p>立即前往官網點餐，享受您的優惠！</p>
+    <p style=""color:#888;font-size:13px;"">義起吃 | 義式料理</p>
 </div>";
 
 			using var smtp = BuildSmtpClient();

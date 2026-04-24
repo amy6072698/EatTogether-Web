@@ -107,19 +107,21 @@
           <template v-for="(cat, idx) in sidebarCategories" :key="cat.key">
             <!-- 特殊分類(今日推薦/主廚特選)與一般分類(全部/套餐…)之間的分隔線 -->
             <div
-              v-if="idx > 0 && !['今日推薦','主廚特選'].includes(cat.key) && ['今日推薦','主廚特選'].includes(sidebarCategories[idx-1].key)"
+              v-if="idx > 0 && !['今日推薦','主廚特選','我的收藏','歷史訂單'].includes(cat.key) && ['今日推薦','主廚特選','我的收藏','歷史訂單'].includes(sidebarCategories[idx-1].key)"
               class="cat-divider"
             ></div>
             <button
               @click="scrollToSection(cat.key)"
               :class="['cat-link w-full text-left',
                 { active: activeSidebarCat === cat.key },
-                { 'cat-special': ['今日推薦','主廚特選'].includes(cat.key) }
+                { 'cat-special': ['今日推薦','主廚特選','我的收藏','歷史訂單'].includes(cat.key) }
               ]"
             >
               <span>{{
                 cat.key === '今日推薦' ? '今日推薦' :
                 cat.key === '主廚特選' ? '主廚特選' :
+                cat.key === '我的收藏' ? '我的收藏' :
+                cat.key === '歷史訂單' ? '歷史訂單' :
                 cat.label
               }}</span>
               <span class="cat-count">{{ cat.count }}</span>
@@ -221,6 +223,31 @@
               <div class="feather-divider my-5"></div>
             </div>
           </template>
+
+          <!-- 歷史訂單 -->
+          <template v-if="activeSidebarCat === '歷史訂單'">
+            <h2 class="section-title">歷史訂單</h2>
+            <div v-for="order in orderHistory" :key="order.orderNumber" class="history-card">
+              <div class="history-meta">
+                <span class="font-label" style="color:rgba(208,197,181,0.5);font-size:0.7rem;">訂單編號：{{ order.orderNumber }}</span>
+                <span class="font-label" style="color:rgba(208,197,181,0.5);font-size:0.7rem;">
+                  下單時間：{{ new Date(order.orderAt).toLocaleString('zh-TW', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) }}
+                </span>
+              </div>
+              <div class="history-items">
+                <div v-for="item in order.items?.filter(i => i)" :key="item.productName" class="font-body" style="color:#f9ddd3;font-size:0.9rem;">
+                    {{ item.qty }} x {{ item.productName }}
+                    <span v-if="item.note" style="color:rgba(208,197,181,0.5);font-size:0.8rem;">（{{ item.note }}）</span>
+                </div>
+                <!-- 整單備註 -->
+                <div v-if="order.orderNote" class="font-body" style="color:rgba(208,197,181,0.5);font-size:0.8rem;margin-top:0.25rem;">
+                    備註：{{ order.orderNote }}
+                </div>
+              </div>
+              <button class="history-reorder-btn font-label" @click="reorder(order)">再點一次</button>
+            </div>
+          </template>
+
         </div>
       </main>
 
@@ -261,6 +288,14 @@
         <div class="panel-footer">
           <div style="padding:0.75rem 1rem;border-bottom:1px solid rgba(77,70,58,0.2);">
             <textarea v-model="store.specialRequest" class="note-textarea font-body resize-none" rows="2" placeholder="備註：過敏食材、特殊需求…"></textarea>
+            <!-- 優惠券輸入 -->
+            <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                <input v-model="couponCode" type="text" class="input-line font-body" style="flex:1;font-size:0.85rem;" placeholder="輸入優惠券代碼"/>
+                <button @click="applyCoupon" class="font-label" style="padding:0.4rem 0.75rem;background:transparent;border:1px solid rgba(227,199,107,0.5);color:#e3c76b;border-radius:0.25rem;font-size:0.75rem;letter-spacing:0.1em;cursor:pointer;white-space:nowrap;">
+                    套用
+                </button>
+            </div>
+            <p v-if="couponMsg" class="font-label" style="font-size:0.7rem;margin-top:0.25rem;" :style="{ color: couponOk ? '#a3d977' : '#ffb4ab' }">{{ couponMsg }}</p>
           </div>
           <div style="padding:0.75rem 1rem;display:flex;flex-direction:column;gap:0.5rem;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;">
@@ -334,7 +369,7 @@ import { useOrderStore } from '@/stores/order';
 import apiFetch from '@/utils/apiFetch';
 import DishDetailModal from '@/components/Order/DishDetailModal.vue';
 import OrderSuccessModal from '@/components/Order/OrderSuccessModal.vue';
-import AuthModal from '@/components/Order/AuthModal.vue';
+import AuthModal from '@/components/Order/OrderAuthModal.vue';
 
 const route = useRoute();
 const store = useOrderStore();
@@ -370,6 +405,60 @@ const authModalVisible   = ref(false);
 const authModalInitStep  = ref('choice');   // 'choice' | 'login'
 const memberDropdownOpen = ref(false);      // Header 會員下拉選單
 
+// ── 會員收藏
+const favoriteProducts = ref([]);
+
+// async function loadFavorites() {
+//   try {
+//     const res = await apiFetch('/Orders/Favorites');
+//     if (res.ok) favoriteProducts.value = await res.json();
+//   } catch {}
+// }
+// 先這樣
+async function loadFavorites(memberId = null) {
+  try {
+    const url = memberId ? `/Orders/Favorites?memberId=${memberId}` : '/Orders/Favorites';
+    const res = await apiFetch(url);
+    if (res.ok) favoriteProducts.value = await res.json();
+  } catch {}
+}
+
+// 歷史訂單
+const orderHistory = ref([]);
+
+async function loadOrderHistory(memberId = null) {
+  try {
+    const url = memberId ? `/Orders/MemberOrderHistory?memberId=${memberId}` : '/Orders/MemberOrderHistory';
+    const res = await apiFetch(url);
+    if (res.ok) orderHistory.value = await res.json();
+  } catch {}
+}
+
+const couponCode = ref('');
+const couponMsg  = ref('');
+const couponOk   = ref(false);
+const couponId   = ref(null);
+
+async function applyCoupon() {
+  if (!couponCode.value.trim()) return;
+  try {
+    const res = await apiFetch(`/Orders/ValidateCoupon?code=${couponCode.value}&originalAmount=${total.value}`);
+    if (res.ok) {
+      const data = await res.json();
+      couponMsg.value = `折扣 NT$ ${data.discountAmount}`;
+      couponOk.value  = true;
+      couponId.value  = data.couponId;
+    } else {
+      couponMsg.value = '優惠券無效或不符條件';
+      couponOk.value  = false;
+      couponId.value  = null;
+    }
+  } catch {
+    couponMsg.value = '驗證失敗，請稍後再試';
+    couponOk.value  = false;
+  }
+}
+
 // ── 身份驗證：嘗試用現有 cookie token 驗證，失敗則顯示 Modal ──
 async function checkAuth() {
   try {
@@ -377,6 +466,8 @@ async function checkAuth() {
     if (res.ok) {
       const data = await res.json();
       memberName.value = data.name || '會員';
+      loadFavorites();
+      loadOrderHistory();
     } else {
       // 401 → token 無效，顯示選擇 Modal
       authModalInitStep.value = 'choice';
@@ -397,6 +488,8 @@ function onGuestOrder() {
 function onLoggedIn(data) {
   authModalVisible.value = false;
   memberName.value = data.name || data.memberName || data.email || '會員';
+  loadFavorites(data.memberId);// 先帶ID
+  loadOrderHistory(data.memberId);
 }
 
 function openSwitchAccount() {
@@ -479,6 +572,8 @@ const sidebarCategories = computed(() => {
   const specials = [
     { key: '今日推薦', label: '今日推薦', count: products.value.filter(p => p.isRecommended).length },
     { key: '主廚特選', label: '主廚特選', count: products.value.filter(p => p.isPopular).length },
+    { key: '我的收藏', label: '我的收藏', count: favoriteProducts.value.length },
+    { key: '歷史訂單', label: '歷史訂單', count: orderHistory.value.length },
   ].filter(s => s.count > 0);
 
   // ── 一般分類 ──
@@ -513,6 +608,16 @@ const filteredProducts = computed(() => {
 });
 
 const displaySections = computed(() => {
+  // 收藏分類
+  if (activeSidebarCat.value === '我的收藏') {
+    if (!favoriteProducts.value.length) return [];
+    return [{ key: '我的收藏', label: '我的收藏', dishes: favoriteProducts.value }];
+  }
+  // 再點一次
+  if (activeSidebarCat.value === '歷史訂單') {
+  if (!orderHistory.value.length) return [];
+  return [{ key: '歷史訂單', label: '歷史訂單', dishes: [], orders: orderHistory.value }];
+}
   // 搜尋模式：跨所有分類
   if (searchQuery.value.trim()) {
     const dishes = filteredProducts.value;
@@ -592,7 +697,8 @@ async function submitOrder() {
       isAddOrder:     false,
       payMethod:      'Cash',
       note:           store.specialRequest || null,
-      discountAmount: 0,
+      couponId: couponId.value,
+      discountAmount: couponOk.value ? (total.value - /* 折後金額 */ 0) : 0,
       items: cartItemsWithDetails.value.map(i => ({
         productId: i.productId, productName: i.productName,
         qty: i.qty, unitPrice: i.unitPrice, isSetMeal: i.isSetMeal ?? false,
@@ -621,6 +727,17 @@ function showToast(msg) {
   toastVisible.value = true;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toastVisible.value = false; }, 2500);
+}
+
+function reorder(order) {
+  order.items.forEach(item => {
+    const matched = products.value.find(p => p.productName === item.productName);
+    if (matched) {
+      store.cart[matched.productId] = (store.cart[matched.productId] || 0) + item.qty;
+    }
+  });
+  activeSidebarCat.value = '全部';
+  showToast('已加入購物車');
 }
 </script>
 
@@ -987,6 +1104,43 @@ html:has(.gate-wrap) footer {
     height: 1px;
     background: linear-gradient(90deg, rgba(77,70,58,.5), transparent);
     margin: 0.35rem 1.5rem;
+}
+
+/* ═══ 歷史訂單 ═══ */
+.history-card {
+  background: rgba(43,28,22,0.6);
+  border: 1px solid rgba(77,70,58,0.4);
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.history-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.history-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.history-reorder-btn {
+  align-self: flex-end;
+  padding: 0.5rem 1.25rem;
+  background: linear-gradient(to right, #e3c76b, #c6ab53);
+  color: #3b2f00;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+.history-reorder-btn:hover { 
+    filter: brightness(1.08); 
 }
 
 /* ═══ Menu main ═══ */
@@ -1708,4 +1862,9 @@ html:has(.gate-wrap) footer {
 .font-label    { 
     font-family:'Work Sans',sans-serif; 
     }
+
+/* 覆蓋 bootstrap-icons 造成的樣式污染 */
+.btn-success, .btn-danger, .btn-info {
+  display: none !important;
+}
 </style>

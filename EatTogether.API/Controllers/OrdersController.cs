@@ -60,5 +60,50 @@ namespace EatTogether.API.Controllers
                 return BadRequest(ex.Message);
             }
         }
+
+        //[HttpGet("Favorites")]
+        //[Authorize]
+        //public async Task<IActionResult> GetFavorites()
+        //{
+        //    var memberIdClaim = User.FindFirst("userId")?.Value;
+        //    if (!int.TryParse(memberIdClaim, out var memberId))
+        //        return Unauthorized();
+
+        //    var favorites = await _service.GetFavoritesAsync(memberId);
+        //    return Ok(favorites);
+        //}
+        // 先這樣
+        [HttpGet("Favorites")]
+        [AllowAnonymous] // 暫時改成 AllowAnonymous
+        public async Task<IActionResult> GetFavorites([FromQuery] int? memberId)
+        {
+            // 先嘗試從 JWT 取，沒有就用 query parameter（測試用）
+            var memberIdClaim = User.FindFirst("userId")?.Value;
+            int id;
+            if (!int.TryParse(memberIdClaim, out id))
+            {
+                if (memberId == null) return Unauthorized();
+                id = memberId.Value;
+            }
+
+            var favorites = await _service.GetFavoritesAsync(id);
+            return Ok(favorites);
+        }
+
+        // 會員歷史訂單
+        [HttpGet("MemberOrderHistory")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetMemberOrderHistory([FromQuery] int? memberId)
+        {
+            var memberIdClaim = User.FindFirst("userId")?.Value;
+            int id;
+            if (!int.TryParse(memberIdClaim, out id))
+            {
+                if (memberId == null) return Unauthorized();
+                id = memberId.Value;
+            }
+            var history = await _service.GetMemberOrderHistoryAsync(id);
+            return Ok(history);
+        }
     }
 }

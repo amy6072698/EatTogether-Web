@@ -1,6 +1,7 @@
 
 using EatTogether.API.Models.EfModels;
 using EatTogether.API.Models.Infra;
+using EatTogether.API.Models.Repositories;
 using EatTogether.Models.Repositories;
 using EatTogether.Models.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -123,6 +124,7 @@ namespace EatTogether.API
             builder.Services.AddScoped<IRoleRepository, RoleRepository>();
             builder.Services.AddScoped<IUserRepository, UserRepository>();
 			builder.Services.AddScoped<IMemberRepository, MemberRepository>();
+            builder.Services.AddScoped<IMemberFavoriteRepository, MemberFavoriteRepository>();
 
             // 註冊Service
             builder.Services.AddScoped<IAuthService, AuthService>();
@@ -135,6 +137,18 @@ namespace EatTogether.API
 
             // 前台寄信服務
             builder.Services.AddScoped<IEmailService, EmailService>();
+
+            // ── 訂位模組 ──
+            builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
+            builder.Services.AddScoped<ReservationService>();
+
+            // ── 優惠券前台 Service ──
+            builder.Services.AddScoped<CouponService>();
+
+            // ── BackgroundServices ──
+            builder.Services.AddHostedService<ReservationReminderBackgroundService>();
+            builder.Services.AddHostedService<NoShowMarkingBackgroundService>();
+            builder.Services.AddHostedService<CouponExpiryNotifyBackgroundService>();
 
 
 			// Add services to the container.
@@ -196,7 +210,7 @@ namespace EatTogether.API
             }
             else
             {
-                app.UseStaticFiles();
+				app.UseStaticFiles();
             }
 			// CSP Header：縱深防禦，限制瀏覽器可載入的資源來源
 			app.Use(async (ctx, next) =>
