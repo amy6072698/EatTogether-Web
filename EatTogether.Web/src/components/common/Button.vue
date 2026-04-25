@@ -15,12 +15,14 @@
         :href="href"
         :target="target"
         :rel="target === '_blank' ? 'noopener noreferrer' : undefined"
+        :role="loading ? 'status' : undefined"
         :class="buttonClass"
     >
         <span
             v-if="loading"
-            class="spinner-border-eat"
+            class="spinner-border spinner-border-sm spinner-border-eat me-2"
             style="width: 0.9rem; height: 0.9rem; border-width: 2px"
+            aria-hidden="true"
         ></span>
         <slot />
     </a>
@@ -30,12 +32,14 @@
         :type="type"
         :disabled="disabled || loading"
         :class="buttonClass"
+        :role="loading ? 'status' : undefined"
         @click="emit('click', $event)"
     >
         <span
             v-if="loading"
-            class="spinner-border-eat"
+            class="spinner-border spinner-border-sm spinner-border-eat me-2"
             style="width: 0.9rem; height: 0.9rem; border-width: 2px"
+            aria-hidden="true"
         ></span>
         <slot />
     </button>
@@ -53,8 +57,7 @@ const props = defineProps({
     variant: {
         type: String,
         default: 'primary',
-        validator: (v) =>
-            ['primary', 'secondary', 'tertiary', 'danger', 'cart'].includes(v),
+        validator: (v) => ['primary', 'secondary', 'tertiary', 'danger', 'cart'].includes(v),
     },
     /** RouterLink 的目標路由 */
     to: {
@@ -93,15 +96,14 @@ const emit = defineEmits(['click'])
 const buttonClass = computed(() => `btn-eat-${props.variant}`)
 </script>
 
-
-  <!-- Button.vue 不需要 <style>。
+<!-- Button.vue 不需要 <style>。
   所有按鈕樣式（.btn-eat-primary / secondary / tertiary / danger / cart）
   均定義在全域 src/assets/styles/buttons.css，
   spinner 樣式定義在全域 src/assets/styles/animations.css。
 
   使用範例：
   ───────────────────────────────────────────────────── -->
-  <!-- 一般按鈕 -->
+<!-- 一般按鈕 -->
 <!-- <Button variant="primary" @click="handleSubmit">立即訂位</Button>
 <Button variant="secondary">查看菜單</Button>
 <Button variant="tertiary">瀏覽完整菜單</Button>
@@ -119,4 +121,3 @@ const buttonClass = computed(() => `btn-eat-${props.variant}`)
 
 <!-- 一般超連結 -->
 <!-- <Button variant="secondary" href="https://..." target="_blank">外部連結</Button> -->
-

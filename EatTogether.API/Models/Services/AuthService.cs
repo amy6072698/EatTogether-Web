@@ -1,199 +1,120 @@
 ﻿using EatTogether.API.Models.DTOs;
 using EatTogether.API.Models.EfModels;
 using EatTogether.API.Models.Infra;
-using EatTogether.Models.DTOs;
-using EatTogether.Models.Infra;
-using EatTogether.Models.Repositories;
+using EatTogether.API.Models.Repositories;
+using static Org.BouncyCastle.Math.EC.ECCurve;
 
-namespace EatTogether.Models.Services
+namespace EatTogether.API.Models.Services
 {
 	public interface IAuthService
 	{
-		Task<Result<LoginDto>> ForceChangePasswordAsync(int userId, string newPassword);
-		Task<Result> ForgotPasswordAsync(string email);
-		Task<Result<LoginDto>> LoginAsync(string account, string password);
-		Task<Result> ResetPasswordAsync(string token, string newPassword);
-		Task<bool> ValidateResetTokenAsync(string token);
+		// -----內用點餐頁用------------------------------
+		Task<Result<MemberLoginDto>> MemberLoginAsync(string email, string password);
 
-        // -----前台點餐頁用------------------------------
-        Task<Result<MemberLoginDto>> MemberLoginAsync(string email, string password);
-    }
+		// -----前台會員註冊用------------------------------
+		Task<Result> RegisterAsync(RegisterDto dto);
+	}
 
 	public class AuthService : IAuthService
 	{
-		private readonly IUserRepository _userRepo;
-		private readonly IRoleRepository _roleRepo;
-		private readonly IPasswordResetTokenRepository _tokenRepo;
-		private readonly IRoleFunctionRepository _roleFuncRepo;
-		private readonly IPasswordResetEmailService _emailService;
 		private readonly IHttpContextAccessor _httpContextAccessor;
-        // -----前台點餐頁用------------------------------
-        private readonly IMemberRepository _memberRepo;
 
-        public AuthService(
-			IUserRepository userRepo,
-			IRoleRepository roleRepo,
-			IPasswordResetTokenRepository tokenRepo,
-			IRoleFunctionRepository roleFuncRepo,
-			IPasswordResetEmailService emailService,
+		// -----內用點餐頁用------------------------------
+		private readonly IMemberRepository _memberRepo;
+
+		// -----前台會員註冊用------------------------------
+		private readonly IEmailService _emailService;
+		private readonly IConfiguration _config;
+
+		public AuthService(
 			IHttpContextAccessor httpContextAccessor,
-            IMemberRepository memberRepo)
+			IMemberRepository memberRepo,
+			IEmailService emailService,
+			IConfiguration config)
 		{
-			_userRepo = userRepo;
-			_roleRepo = roleRepo;
-			_tokenRepo = tokenRepo;
-			_roleFuncRepo = roleFuncRepo;
-			_emailService = emailService;
 			_httpContextAccessor = httpContextAccessor;
 			_memberRepo = memberRepo;
+			_emailService = emailService;
+			_config = config;
 		}
 
-		public async Task<Result<LoginDto>> LoginAsync(string account, string password)
+		// -----前台會員註冊用------------------------------
+		public async Task<Result> RegisterAsync(RegisterDto dto)
 		{
-			// 1. 用帳號查使用者
-			var user = await _userRepo.GetByAccountAsync(account);
+			// 1. 帳號唯一性檢查
+			if (await _memberRepo.IsAccountExistsAsync(dto.Account))
+				return Result.Fail("account_taken");
 
-			// 2. 帳號不存在 or 密碼錯誤 → 一律回傳同一訊息（防帳號枚舉）
-			if (user == null || !HashUtility.VerifyPassword(password, user.HashedPassword))
-				return Result<LoginDto>.Fail("帳號或密碼錯誤");
+			// 2. Email 唯一性檢查
+			if (await _memberRepo.IsEmailExistsAsync(dto.Email))
+				return Result.Fail("email_taken");
 
-			// 3. 已刪除的帳號 → 同樣回傳「帳號或密碼錯誤」（不透露帳號存在）
-			if (user.IsDeleted)
-				return Result<LoginDto>.Fail("帳號或密碼錯誤");
+			// 3. BCrypt Hash
+			var hashedPassword = HashUtility.HashPassword(dto.Password);
 
-			// 4. 帳號停用 → 顯示明確訊息
-			if (!user.IsActive)
-				return Result<LoginDto>.Fail("此帳號已停用，請聯絡店長");
-
-			var roleNames = await _roleRepo.GetRoleNamesByIdsAsync(user.RoleIds);
-
-			var functionNames = (await _roleFuncRepo.GetFunctionNamesByRoleIdsAsync(user.RoleIds)).ToList();
-
-
-			// 5. 驗證通過 → 組裝 LoginDto 回傳
-			var loginDto = new LoginDto
+			// 4. 建立 Member（IsConfirmed=0，待 Email 驗證後開通）
+			var member = new Member
 			{
-				UserId = user.Id,
-				Account = user.Account,
-				Name = user.Name,
-				RoleIds = user.RoleIds,
-				RoleNames = roleNames,
-				FunctionNames = functionNames,
-				MustChangePassword = user.MustChangePassword
+				Account = dto.Account,
+				Name = dto.Name,
+				Email = dto.Email,
+				HashedPassword = hashedPassword,
+				IsConfirmed = false,
+				IsBlacklisted = false,
+				IsDeleted = false,
+				CreatedAt = DateTime.Now
 			};
+			await _memberRepo.CreateMemberAsync(member);
 
-			return Result<LoginDto>.Success(loginDto);
-		}
+			// 5. 寄信保護：同一 MemberId 若已有未過期且未使用的 token，不重建
+			//    ← 修正：這裡回傳 Success，因為帳號已建立成功，只是不重複寄信
+			if (await _memberRepo.HasPendingConfirmTokenAsync(member.Id))
+				return Result.Success();
 
-		public async Task<Result<LoginDto>> ForceChangePasswordAsync(int userId, string newPassword)
-		{
-			// 先確認使用者存在
-			var user = await _userRepo.GetByIdAsync(userId);
-			if (user == null) return Result<LoginDto>.Fail("使用者不存在");
-
-			// 更新 HashedPassword
-			var hashedPassword = HashUtility.HashPassword(newPassword);
-			await _userRepo.UpdatePasswordAsync(userId, hashedPassword);
-
-			// MustChangePassword 設為 0
-			await _userRepo.SetMustChangePasswordAsync(userId, false);
-
-			// 組裝 LoginDto
-			var roleNames = await _roleRepo.GetRoleNamesByIdsAsync(user.RoleIds);
-			var functionNames = (await _roleFuncRepo.GetFunctionNamesByRoleIdsAsync(user.RoleIds)).ToList();
-
-			var loginDto = new LoginDto
-			{
-				UserId = user.Id,
-				Account = user.Account,
-				Name = user.Name,
-				RoleIds = user.RoleIds,
-				RoleNames = roleNames,
-				FunctionNames = functionNames,
-				MustChangePassword = false
-			};
-
-			return Result<LoginDto>.Success(loginDto);
-
-		}
-
-		public async Task<Result> ForgotPasswordAsync(string email)
-		{
-			var user = await _userRepo.GetByEmailAsync(email);
-
-			// 查無此 Email 或使用者已刪除或停用 → 一律回傳成功（防帳號枚舉）
-			if (user == null || user.IsDeleted || !user.IsActive) return Result.Success();
-
-			// 將舊 Token 全部失效
-			await _tokenRepo.InvalidatePreviousTokensAsync(user.Id);
-
-			// 產生 32 碼 Token（Guid 去除符號）
+			// 6. 建立 MemberConfirmToken（有效期 15 分鐘）
 			var tokenString = Guid.NewGuid().ToString("N");
-
-			var tokenEntity = new PasswordResetToken
+			var confirmToken = new MemberConfirmToken
 			{
-				UserId = user.Id,
+				MemberId = member.Id,
 				Token = tokenString,
-				IsUsed = false
+				NewEmail = null,
+				ExpiresAt = DateTime.Now.AddMinutes(15),
+				IsUsed = false,
+				CreatedAt = DateTime.Now
 			};
+			await _memberRepo.CreateConfirmTokenAsync(confirmToken);
 
-			await _tokenRepo.CreateAsync(tokenEntity);
-
-			// 產生重設連結
-			var request = _httpContextAccessor.HttpContext!.Request;
-			var resetLink = $"{request.Scheme}://{request.Host}/Auth/ResetPassword?token={tokenString}";
-
-			// 寄送 Email
-			await _emailService.SendPasswordResetEmailAsync(email, resetLink);
+			// 7. 寄出 Email 驗證信
+			var frontendBaseUrl = _config["FrontendBaseUrl"];
+			var verifyUrl = $"{frontendBaseUrl}/verify-email?token={tokenString}";
+			await _emailService.SendVerifyEmailAsync(dto.Email, verifyUrl);
 
 			return Result.Success();
 		}
 
-		public async Task<bool> ValidateResetTokenAsync(string token)
+		// -----內用點餐頁用------------------------------
+		public async Task<Result<MemberLoginDto>> MemberLoginAsync(string email, string password)
 		{
-			var tokenEntity = await _tokenRepo.GetValidTokenAsync(token);
-			return tokenEntity != null;
+			var member = await _memberRepo.GetByEmailAsync(email);
+
+			if (member == null)
+				return Result<MemberLoginDto>.Fail($"找不到email: {email}");
+
+			if (!HashUtility.VerifyPassword(password, member.HashedPassword))
+				return Result<MemberLoginDto>.Fail($"密碼錯誤");
+
+			if (member.IsBlacklisted)
+				return Result<MemberLoginDto>.Fail("黑名單");
+
+			if (!member.IsConfirmed)
+				return Result<MemberLoginDto>.Fail("未驗證");
+
+			return Result<MemberLoginDto>.Success(new MemberLoginDto
+			{
+				MemberId = member.Id,
+				Name = member.Name,
+				Email = member.Email,
+			});
 		}
-
-		public async Task<Result> ResetPasswordAsync(string token, string newPassword)
-		{
-			// 驗證 Token
-			var tokenEntity = await _tokenRepo.GetValidTokenAsync(token);
-			if (tokenEntity == null) return Result.Fail("連結已失效或已使用，請重新申請");
-
-			// 更新密碼
-			var hashedPassword = HashUtility.HashPassword(newPassword);
-			await _userRepo.UpdatePasswordAsync(tokenEntity.UserId, hashedPassword);
-
-			// Token 標記為已使用（一次性）
-			await _tokenRepo.MarkUsedAsync(tokenEntity.Id);
-
-			return Result.Success();
-		}
-
-        // -----前台點餐頁用------------------------------
-        public async Task<Result<MemberLoginDto>> MemberLoginAsync(string email, string password)
-        {
-            var member = await _memberRepo.GetByEmailAsync(email);
-
-            if (member == null)
-                return Result<MemberLoginDto>.Fail($"找不到email: {email}");
-
-            if (!HashUtility.VerifyPassword(password, member.HashedPassword))
-                return Result<MemberLoginDto>.Fail($"密碼錯誤");
-
-            if (member.IsBlacklisted)
-                return Result<MemberLoginDto>.Fail("黑名單");
-
-            if (!member.IsConfirmed)
-                return Result<MemberLoginDto>.Fail("未驗證");
-
-            return Result<MemberLoginDto>.Success(new MemberLoginDto
-            {
-                MemberId = member.Id,
-                Name = member.Name,
-                Email = member.Email,
-            });
-        }
-    }
+	}
 }

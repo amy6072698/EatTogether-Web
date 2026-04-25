@@ -1,6 +1,6 @@
-using EatTogether.API.Models.EfModels;
+using EatTogether.API.Models.Infra;
+using EatTogether.API.Models.Repositories;
 using EatTogether.Models.DTOs;
-using EatTogether.Models.Infra;
 using EatTogether.Models.Repositories;
 
 namespace EatTogether.Models.Services

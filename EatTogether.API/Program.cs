@@ -2,10 +2,10 @@
 using EatTogether.API.Models.EfModels;
 using EatTogether.API.Models.Infra;
 using EatTogether.API.Models.Repositories;
+using EatTogether.API.Models.Services;
 using EatTogether.Models.Repositories;
 using EatTogether.Models.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -98,17 +98,10 @@ namespace EatTogether.API
             builder.Services.AddDbContext<EatTogetherDBContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            // 設定 Services
-            builder.Services.AddHttpContextAccessor();
-            //builder.Services.AddScoped<ITokenService, TokenService>();
-            //builder.Services.AddScoped<IAuthService, AuthService>();
-            //builder.Services.AddScoped<IMemberService, MemberService>();
+			// 註冊 IHttpContextAccessor
+			builder.Services.AddHttpContextAccessor();
 
-            // 設定 6. Repositories
-            //builder.Services.AddScoped<IAuthRepository, AuthRepository>();
-            //builder.Services.AddScoped<IMemberRepository, MemberRepository>();
-            //builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-            // 註冊Repository
+            // 註冊 Repository
             builder.Services.AddScoped<ICouponRepository, CouponRepository>();
             builder.Services.AddScoped<IEventRepository, EventRepository>();
             builder.Services.AddScoped<IDishRepository, DishRepository>();
@@ -117,20 +110,19 @@ namespace EatTogether.API
             builder.Services.AddScoped<ITableRepository, TableRepository>();
             builder.Services.AddScoped<IMemberCouponRepository, MemberCouponRepository>();
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-            builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
             builder.Services.AddScoped<IPreOrderRepository, PreOrderRepository>();
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
-            builder.Services.AddScoped<IRoleFunctionRepository, RoleFunctionRepository>();
-            builder.Services.AddScoped<IRoleRepository, RoleRepository>();
-            builder.Services.AddScoped<IUserRepository, UserRepository>();
+			builder.Services.AddScoped<IUserRepository, UserRepository>();
 			builder.Services.AddScoped<IMemberRepository, MemberRepository>();
             builder.Services.AddScoped<IMemberFavoriteRepository, MemberFavoriteRepository>();
 
-            // 註冊Service
+            // 註冊 Service
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IOrderService, OrderService>();
-            builder.Services.AddScoped<IPasswordResetEmailService, PasswordResetEmailService>();			
-			builder.Services.AddSingleton<EatTogether.API.Models.Infra.JwtHelper>();
+
+			// 註冊 JWT Helper：生成 JWT Token 的 infra 工具
+			builder.Services.AddSingleton<JwtHelper>();
+
 			// 結帳相關
 			builder.Services.AddMemoryCache();
 			builder.Services.AddHttpClient();
