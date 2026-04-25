@@ -38,8 +38,8 @@
                                 v-if="link.children"
                                 class="nav-item dropdown-wrap"
                                 :class="{ 'is-open': openDropdown === link.label }"
-                                @mouseenter="openDropdown = link.label"
-                                @mouseleave="openDropdown = null"
+                                @mouseenter="isHoverDevice && (openDropdown = link.label)"
+                                @mouseleave="isHoverDevice && (openDropdown = null)"
                             >
                                 <button
                                     class="nav-link nav-dropdown-trigger"
@@ -124,6 +124,7 @@ const member = {
 const route = useRoute()
 const openDropdown = ref(null)
 const navbarCollapse = ref(null)
+const isHoverDevice = typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches
 
 const navLinks = [
     { label: '最新消息', to: '/news' },
@@ -148,6 +149,8 @@ function isActive(path) {
 }
 
 function toggleDropdown(label) {
+    // hover 裝置由 mouseenter/mouseleave 控制，click 不介入
+    if (isHoverDevice) return
     openDropdown.value = openDropdown.value === label ? null : label
 }
 
@@ -370,6 +373,17 @@ onMounted(() => {
     transform: translateX(-50%) translateY(-4px);
 }
 
+@media (max-width: 992px) {
+    .dropdown-enter-from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    .dropdown-leave-to {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+}
+
 /* Mobile toggler */
 .navbar-eat .navbar-toggler {
     border-color: var(--eat-outline-variant);
@@ -409,7 +423,6 @@ onMounted(() => {
 }
 
 .avatar-wrapper:hover {
-    color: var(--eat-primary); /* 懸停時變亮金色 */
     border-color: var(--eat-primary);
     background: rgba(226, 210, 185, 0.2);
 }
