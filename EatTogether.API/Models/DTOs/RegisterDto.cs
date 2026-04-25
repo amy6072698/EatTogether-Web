@@ -19,7 +19,10 @@ namespace EatTogether.API.Models.DTOs
 		public string Email { get; set; } = "";
 
 		[Required]
-		[MinLength(8)]
+		[StringLength(128, MinimumLength = 8)]
 		public string Password { get; set; } = "";
+
+		// 新增這行來接收前端傳來的驗證碼 Token
+		public string CaptchaToken { get; set; }
 	}
 }

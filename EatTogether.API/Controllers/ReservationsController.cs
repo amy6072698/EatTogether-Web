@@ -103,7 +103,7 @@ namespace EatTogether.API.Controllers
         {
             var memberId = GetMemberId();
 
-            EatTogether.Models.Infra.Result result;
+            EatTogether.API.Models.Infra.Result result;
 
             if (memberId.HasValue)
             {

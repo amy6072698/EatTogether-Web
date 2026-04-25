@@ -75,7 +75,7 @@ namespace EatTogether.API.Models.Infra
 <div style=""font-family:sans-serif;max-width:600px;margin:auto;"">
     <h2 style=""color:#c0392b;"">義起吃 | 義式料理</h2>
     <p>您好，感謝您註冊義起吃！</p>
-    <p>請點擊下方按鈕完成 Email 驗證，連結有效期限為 24 小時：</p>
+    <p>請點擊下方按鈕完成 Email 驗證，連結有效期限為 15 分鐘：</p>
     <a href=""{verifyUrl}""
        style=""display:inline-block;padding:12px 24px;background:#c0392b;color:#fff;
               text-decoration:none;border-radius:4px;margin:16px 0;"">

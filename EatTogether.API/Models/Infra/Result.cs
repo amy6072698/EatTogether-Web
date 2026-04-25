@@ -1,4 +1,4 @@
-﻿namespace EatTogether.Models.Infra
+﻿namespace EatTogether.API.Models.Infra
 {
     public class Result
     {

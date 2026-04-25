@@ -2,6 +2,7 @@
 using EatTogether.API.Models.EfModels;
 using EatTogether.API.Models.Infra;
 using EatTogether.API.Models.Repositories;
+using EatTogether.API.Models.Services;
 using EatTogether.Models.Repositories;
 using EatTogether.Models.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;

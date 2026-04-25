@@ -1,10 +1,10 @@
 ﻿using EatTogether.API.Models.DTOs;
 using EatTogether.API.Models.EfModels;
 using EatTogether.API.Models.Infra;
-using EatTogether.Models.Infra;
-using EatTogether.Models.Repositories;
+using EatTogether.API.Models.Repositories;
+using static Org.BouncyCastle.Math.EC.ECCurve;
 
-namespace EatTogether.Models.Services
+namespace EatTogether.API.Models.Services
 {
 	public interface IAuthService
 	{
@@ -23,19 +23,19 @@ namespace EatTogether.Models.Services
 		private readonly IMemberRepository _memberRepo;
 
 		// -----前台會員註冊用------------------------------
-		private readonly IEmailService _memberEmailService;
-		private readonly IConfiguration _configuration;
+		private readonly IEmailService _emailService;
+		private readonly IConfiguration _config;
 
 		public AuthService(
 			IHttpContextAccessor httpContextAccessor,
 			IMemberRepository memberRepo,
-			IEmailService memberEmailService,
-			IConfiguration configuration)
+			IEmailService emailService,
+			IConfiguration config)
 		{
 			_httpContextAccessor = httpContextAccessor;
 			_memberRepo = memberRepo;
-			_memberEmailService = memberEmailService;
-			_configuration = configuration;
+			_emailService = emailService;
+			_config = config;
 		}
 
 		// -----前台會員註冊用------------------------------
@@ -65,11 +65,11 @@ namespace EatTogether.Models.Services
 				CreatedAt = DateTime.Now
 			};
 			await _memberRepo.CreateMemberAsync(member);
-			// SaveChangesAsync 後，EF Core 會將自動產生的 Id 回填至 member.Id
 
 			// 5. 寄信保護：同一 MemberId 若已有未過期且未使用的 token，不重建
+			//    ← 修正：這裡回傳 Success，因為帳號已建立成功，只是不重複寄信
 			if (await _memberRepo.HasPendingConfirmTokenAsync(member.Id))
-				return Result.Fail("pending_token");
+				return Result.Success();
 
 			// 6. 建立 MemberConfirmToken（有效期 15 分鐘）
 			var tokenString = Guid.NewGuid().ToString("N");
@@ -85,9 +85,9 @@ namespace EatTogether.Models.Services
 			await _memberRepo.CreateConfirmTokenAsync(confirmToken);
 
 			// 7. 寄出 Email 驗證信
-			var frontendBaseUrl = _configuration["FrontendBaseUrl"];
+			var frontendBaseUrl = _config["FrontendBaseUrl"];
 			var verifyUrl = $"{frontendBaseUrl}/verify-email?token={tokenString}";
-			await _memberEmailService.SendVerifyEmailAsync(dto.Email, verifyUrl);
+			await _emailService.SendVerifyEmailAsync(dto.Email, verifyUrl);
 
 			return Result.Success();
 		}

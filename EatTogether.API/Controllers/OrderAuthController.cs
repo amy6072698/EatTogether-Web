@@ -1,6 +1,6 @@
 using EatTogether.API.Models.Infra;
-using EatTogether.Models.Repositories;
-using EatTogether.Models.Services;
+using EatTogether.API.Models.Repositories;
+using EatTogether.API.Models.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
