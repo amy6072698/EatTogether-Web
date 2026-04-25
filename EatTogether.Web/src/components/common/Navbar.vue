@@ -38,31 +38,16 @@
                                 v-if="link.children"
                                 class="nav-item dropdown-wrap"
                                 :class="{ 'is-open': openDropdown === link.label }"
+                                @mouseenter="openDropdown = link.label"
+                                @mouseleave="openDropdown = null"
                             >
                                 <button
                                     class="nav-link nav-dropdown-trigger"
                                     :class="{ active: link.children.some((c) => isActive(c.to)) }"
                                     @click="toggleDropdown(link.label)"
                                 >
-                                    {{
-                                        link.children?.find((c) => isActive(c.to))?.label ??
-                                        link.label
-                                    }}
-                                    <svg
-                                        class="dropdown-chevron"
-                                        width="10"
-                                        height="6"
-                                        viewBox="0 0 10 6"
-                                        fill="none"
-                                    >
-                                        <path
-                                            d="M1 1l4 4 4-4"
-                                            stroke="currentColor"
-                                            stroke-width="1.5"
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                        />
-                                    </svg>
+                                    {{ link.label }}
+                                    <i class="bi bi-chevron-down dropdown-chevron"></i>
                                 </button>
                                 <Transition name="dropdown">
                                     <div
@@ -96,7 +81,19 @@
                     </ul>
 
                     <!-- CTA Button -->
-                    <div class="d-flex my-3 my-lg-0">
+                    <div class="d-flex align-items-center my-3 my-lg-0">
+                        <RouterLink
+                            to="/member"
+                            class="avatar-wrapper"
+                            @click="handleLinkClick"
+                            aria-label="前往會員中心"
+                        >
+                            <img
+                                :src="member.avatarUrl || defaultAvatar"
+                                alt="Member Avatar"
+                                class="avatar-img"
+                            />
+                        </RouterLink>
                         <Button
                             class="py-2 px-3 w-100 w-lg-auto"
                             variant="primary"
@@ -118,7 +115,12 @@ import { useRoute } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import Button from '@/components/common/Button.vue'
 import { Modal, Collapse } from 'bootstrap'
+import defaultAvatar from '@/assets/images/default-avatar.svg'
 
+// 從 API 或 Store 取得的用戶資料
+const member = {
+    avatarUrl: null, // null 會顯示 defaultAvatar
+}
 const route = useRoute()
 const openDropdown = ref(null)
 const navbarCollapse = ref(null)
@@ -126,17 +128,16 @@ const navbarCollapse = ref(null)
 const navLinks = [
     { label: '最新消息', to: '/news' },
     {
-        label: '菜單',
+        label: '菜單分類',
         children: [
             { label: '本季限定', to: '/limited' },
-            { label: '菜單', to: '/menu' },
-            { label: '套餐', to: '/setmeal' },
+            { label: '精選菜單', to: '/menu' },
+            { label: '精選套餐', to: '/setmeal' },
         ],
     },
     { label: '優惠券', to: '/coupons' },
     { label: '訂位', to: '/reservation' },
     { label: '訂位查詢', to: '/reservation/query' },
-    { label: '會員', to: '/member' },
     { label: '外帶點餐', to: '/takeout' },
     { label: '內用', to: '/In' },
 ]
@@ -249,6 +250,24 @@ onMounted(() => {
 .dropdown-wrap {
     position: relative;
 }
+
+/* 為了防止選單與按鈕之間有空隙導致 hover 消失 */
+.dropdown-wrap::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    height: 1rem;
+    display: block;
+}
+
+@media (max-width: 992px) {
+    .dropdown-wrap::after {
+        display: none;
+    }
+}
+
 .nav-dropdown-trigger {
     background: none;
     border: none;
@@ -258,8 +277,13 @@ onMounted(() => {
     cursor: pointer;
 }
 .dropdown-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     transition: transform 0.25s ease;
     opacity: 0.6;
+    font-size: 0.8rem;
+    line-height: 1;
 }
 .is-open .dropdown-chevron {
     transform: rotate(180deg);
@@ -364,5 +388,41 @@ onMounted(() => {
         /* 順滑捲動體驗 */
         -webkit-overflow-scrolling: touch;
     }
+}
+
+/* Avatar */
+.avatar-wrapper {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    /* 設定柔和的底色與邊框，呼應你的 Logo 金色 */
+    background-color: rgba(226, 210, 185, 0.15);
+    border: 1px solid rgba(245, 216, 122, 0.3);
+
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.avatar-wrapper:hover {
+    color: var(--eat-primary); /* 懸停時變亮金色 */
+    border-color: var(--eat-primary);
+    background: rgba(226, 210, 185, 0.2);
+}
+
+/* 內部的 SVG 圖示 */
+.avatar-wrapper .avatar-img {
+    width: 36px;
+    height: 36px;
+    filter: brightness(0) invert(0.6);
+    transition: filter 0.3s ease;
+}
+
+.avatar-wrapper:hover .avatar-img {
+    filter: brightness(0) invert(0.85); /* hover 變亮一點 */
 }
 </style>
