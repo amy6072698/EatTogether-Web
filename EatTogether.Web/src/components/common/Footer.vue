@@ -2,117 +2,12 @@
     <footer class="footer-eat">
         <!-- Logo -->
         <div class="footer-logo">
-            <svg
+            <img
+                src="@/assets/images/logo.svg"
+                alt="義起吃 Eat Together"
                 height="64"
-                viewBox="0 0 400 120"
-                xmlns="http://www.w3.org/2000/svg"
-            >
-                <circle cx="60" cy="60" fill="#1A0D08" r="56" />
-                <circle
-                    cx="60"
-                    cy="60"
-                    fill="none"
-                    opacity="0.5"
-                    r="52"
-                    stroke="#F5D87A"
-                    stroke-width="1"
-                />
-                <line
-                    stroke="#F5D87A"
-                    stroke-linecap="round"
-                    stroke-width="3"
-                    x1="49"
-                    x2="49"
-                    y1="28"
-                    y2="92"
-                />
-                <line
-                    stroke="#F5D87A"
-                    stroke-linecap="round"
-                    stroke-width="2.2"
-                    x1="43"
-                    x2="43"
-                    y1="28"
-                    y2="48"
-                />
-                <line
-                    stroke="#F5D87A"
-                    stroke-linecap="round"
-                    stroke-width="2.2"
-                    x1="49"
-                    x2="49"
-                    y1="28"
-                    y2="48"
-                />
-                <line
-                    stroke="#F5D87A"
-                    stroke-linecap="round"
-                    stroke-width="2.2"
-                    x1="55"
-                    x2="55"
-                    y1="28"
-                    y2="48"
-                />
-                <path
-                    d="M43 48 Q49 58 55 48"
-                    fill="none"
-                    stroke="#F5D87A"
-                    stroke-width="2.2"
-                />
-                <line
-                    stroke="#F5D87A"
-                    stroke-linecap="round"
-                    stroke-width="3"
-                    x1="71"
-                    x2="71"
-                    y1="28"
-                    y2="92"
-                />
-                <path
-                    d="M71 28 Q83 37 83 52 Q83 61 71 64"
-                    fill="#F5D87A"
-                    opacity="0.18"
-                />
-                <path
-                    d="M71 28 Q83 37 83 52 Q83 61 71 64"
-                    fill="none"
-                    stroke="#F5D87A"
-                    stroke-width="2.2"
-                />
-                <circle cx="60" cy="93" fill="#C9A96E" r="2" />
-                <line
-                    opacity="0.35"
-                    stroke="#F5D87A"
-                    stroke-width="1"
-                    x1="130"
-                    x2="130"
-                    y1="28"
-                    y2="92"
-                />
-                <text
-                    fill="#F5D87A"
-                    font-family="'Noto Serif TC','Songti SC',serif"
-                    font-size="44"
-                    font-weight="700"
-                    letter-spacing="8"
-                    x="158"
-                    y="74"
-                >
-                    義起吃
-                </text>
-                <text
-                    fill="#C9A96E"
-                    font-family="'Cormorant Garamond','Georgia',serif"
-                    font-size="14"
-                    font-style="italic"
-                    letter-spacing="5"
-                    opacity="0.85"
-                    x="162"
-                    y="97"
-                >
-                    Eat Together
-                </text>
-            </svg>
+                class="d-inline-block align-middle"
+            />
         </div>
 
         <!-- Info -->
@@ -147,7 +42,12 @@
         </div>
 
         <!-- Copyright -->
-        <p class="footer-copy">© 義起吃 EatTogether. All Rights Reserved.</p>
+        <div class="d-flex justify-content-center gap-4 flex-column flex-lg-row mt-lg-5">
+            <p class="footer-copy mb-0">
+                義起吃 Eat Together &copy;2026 Copyrights All Rights Reserved
+            </p>
+            <p class="footer-copy mb-0">本專題僅為學習用途，不做任何商業使用。</p>
+        </div>
     </footer>
 </template>
 
@@ -215,7 +115,5 @@ const socialLinks = [
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: rgba(152, 143, 129, 0.5);
-    margin-top: 0.5rem;
-    margin-bottom: 0;
 }
 </style>

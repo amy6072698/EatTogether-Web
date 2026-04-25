@@ -1,5 +1,6 @@
 <template>
     <Navbar />
+    <AuthModal />
     <RouterView />
     <Footer />
     <ToastContainer />
@@ -12,10 +13,11 @@ import { useAuthStore } from '@/stores/auth.js'
 import Navbar from '@/components/common/Navbar.vue'
 import Footer from '@/components/common/Footer.vue'
 import ToastContainer from '@/components/common/ToastContainer.vue'
+import AuthModal from '@/components/auth/AuthModal.vue'
 
 const authStore = useAuthStore()
-const route     = useRoute()
-const router    = useRouter()
+const route = useRoute()
+const router = useRouter()
 
 onMounted(() => {
     // ── redirect 處理 ───────────────────────────────────
