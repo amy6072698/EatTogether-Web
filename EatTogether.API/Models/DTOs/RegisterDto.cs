@@ -6,7 +6,7 @@ namespace EatTogether.API.Models.DTOs
 	{
 		[Required]
 		[StringLength(50, MinimumLength = 3)]
-		[RegularExpression(@"^[a-zA-Z0-9]+$", ErrorMessage = "帳號限英數字")]
+		[RegularExpression(@"^[a-zA-Z0-9_]+$", ErrorMessage = "帳號限英數字及底線")]
 		public string Account { get; set; } = "";
 
 		[Required]
@@ -23,6 +23,6 @@ namespace EatTogether.API.Models.DTOs
 		public string Password { get; set; } = "";
 
 		// 新增這行來接收前端傳來的驗證碼 Token
-		public string CaptchaToken { get; set; }
+		public string? CaptchaToken { get; set; }
 	}
 }
