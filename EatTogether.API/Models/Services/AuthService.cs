@@ -13,6 +13,10 @@ namespace EatTogether.API.Models.Services
 
 		// -----前台會員註冊用------------------------------
 		Task<Result> RegisterAsync(RegisterDto dto);
+
+		// -----前台 Email 驗證用------------------------------
+		Task<Result> VerifyEmailAsync(string token);
+		Task<Result> ResendVerifyEmailAsync(string email);
 	}
 
 	public class AuthService : IAuthService
@@ -88,6 +92,61 @@ namespace EatTogether.API.Models.Services
 			var frontendBaseUrl = _config["FrontendBaseUrl"];
 			var verifyUrl = $"{frontendBaseUrl}/verify-email?token={tokenString}";
 			await _emailService.SendVerifyEmailAsync(dto.Email, verifyUrl);
+
+			return Result.Success();
+		}
+
+		// -----前台 Email 驗證用------------------------------
+
+		public async Task<Result> VerifyEmailAsync(string token)
+		{
+			var confirmToken = await _memberRepo.GetConfirmTokenAsync(token);
+
+			if (confirmToken == null || confirmToken.IsUsed || confirmToken.ExpiresAt <= DateTime.Now)
+				return Result.Fail("token_invalid");
+
+			// 確認 Member 未被刪除或列入黑名單
+			var member = await _memberRepo.GetMemberByIdAsync(confirmToken.MemberId);
+			if (member == null || member.IsDeleted || member.IsBlacklisted)
+				return Result.Fail("token_invalid");
+
+			if (confirmToken.NewEmail == null)
+				await _memberRepo.ConfirmMemberAndMarkTokenUsedAsync(confirmToken.MemberId, confirmToken.Id);
+			else
+				await _memberRepo.UpdateEmailAndMarkTokenUsedAsync(confirmToken.MemberId, confirmToken.NewEmail, confirmToken.Id);
+
+			return Result.Success();
+		}
+
+		public async Task<Result> ResendVerifyEmailAsync(string email)
+		{
+			// 1. 找不到 → 靜默回傳成功（防枚舉）
+			var member = await _memberRepo.GetByEmailAsync(email);
+			if (member == null)
+				return Result.Success();
+
+			// 2. IsConfirmed=1 → 回傳 already_confirmed
+			if (member.IsConfirmed)
+				return Result.Fail("already_confirmed");
+
+			// 3. 將舊未使用 token 標記已使用，建立新 token，寄信
+			await _memberRepo.MarkOldConfirmTokensUsedAsync(member.Id);
+
+			var tokenString = Guid.NewGuid().ToString("N");
+			var confirmToken = new MemberConfirmToken
+			{
+				MemberId = member.Id,
+				Token = tokenString,
+				NewEmail = null,
+				ExpiresAt = DateTime.Now.AddMinutes(15),
+				IsUsed = false,
+				CreatedAt = DateTime.Now
+			};
+			await _memberRepo.CreateConfirmTokenAsync(confirmToken);
+
+			var frontendBaseUrl = _config["FrontendBaseUrl"];
+			var verifyUrl = $"{frontendBaseUrl}/verify-email?token={tokenString}";
+			await _emailService.SendVerifyEmailAsync(member.Email, verifyUrl);
 
 			return Result.Success();
 		}

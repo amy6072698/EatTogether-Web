@@ -17,6 +17,16 @@ namespace EatTogether.API.Models.Repositories
 		Task CreateMemberAsync(Member member);
 		Task<bool> HasPendingConfirmTokenAsync(int memberId);
 		Task CreateConfirmTokenAsync(MemberConfirmToken token);
+
+		// -----前台 Email 驗證用------------------------------
+		Task<MemberConfirmToken?> GetConfirmTokenAsync(string token);
+		Task MarkConfirmTokenUsedAsync(int tokenId);
+		Task SetMemberConfirmedAsync(int memberId);
+		Task UpdateMemberEmailAsync(int memberId, string newEmail);
+		Task ConfirmMemberAndMarkTokenUsedAsync(int memberId, int tokenId);
+		Task UpdateEmailAndMarkTokenUsedAsync(int memberId, string newEmail, int tokenId);
+		Task MarkOldConfirmTokensUsedAsync(int memberId);
+		Task<Member?> GetMemberByIdAsync(int id);
 	}
 
 	public class MemberRepository : IMemberRepository
@@ -121,6 +131,76 @@ namespace EatTogether.API.Models.Repositories
 		{
 			_context.MemberConfirmTokens.Add(token);
 			await _context.SaveChangesAsync();
+		}
+
+		// -----前台 Email 驗證用------------------------------
+
+		public async Task<MemberConfirmToken?> GetConfirmTokenAsync(string token)
+		{
+			return await _context.MemberConfirmTokens
+				.FirstOrDefaultAsync(t => t.Token == token);
+		}
+
+		public async Task MarkConfirmTokenUsedAsync(int tokenId)
+		{
+			var token = await _context.MemberConfirmTokens.FindAsync(tokenId);
+			if (token == null) return;
+			token.IsUsed = true;
+			await _context.SaveChangesAsync();
+		}
+
+		public async Task SetMemberConfirmedAsync(int memberId)
+		{
+			var member = await _context.Members.FindAsync(memberId);
+			if (member == null) return;
+			member.IsConfirmed = true;
+			await _context.SaveChangesAsync();
+		}
+
+		public async Task UpdateMemberEmailAsync(int memberId, string newEmail)
+		{
+			var member = await _context.Members.FindAsync(memberId);
+			if (member == null) return;
+			member.Email = newEmail;
+			await _context.SaveChangesAsync();
+		}
+
+		public async Task ConfirmMemberAndMarkTokenUsedAsync(int memberId, int tokenId)
+		{
+			var member = await _context.Members.FindAsync(memberId);
+			var token = await _context.MemberConfirmTokens.FindAsync(tokenId);
+			if (member == null || token == null) return;
+
+			member.IsConfirmed = true;
+			token.IsUsed = true;
+			await _context.SaveChangesAsync(); // 兩個變更一次提交，EF Core 自動包隱式 Transaction
+		}
+
+		public async Task UpdateEmailAndMarkTokenUsedAsync(int memberId, string newEmail, int tokenId)
+		{
+			var member = await _context.Members.FindAsync(memberId);
+			var token = await _context.MemberConfirmTokens.FindAsync(tokenId);
+			if (member == null || token == null) return;
+
+			member.Email = newEmail;
+			token.IsUsed = true;
+			await _context.SaveChangesAsync();
+		}
+
+		public async Task MarkOldConfirmTokensUsedAsync(int memberId)
+		{
+			var tokens = await _context.MemberConfirmTokens
+				.Where(t => t.MemberId == memberId && !t.IsUsed && t.NewEmail == null)
+				.ToListAsync();
+			if (tokens.Count == 0) return;
+			foreach (var t in tokens)
+				t.IsUsed = true;
+			await _context.SaveChangesAsync();
+		}
+
+		public async Task<Member?> GetMemberByIdAsync(int id)
+		{
+			return await _context.Members.FindAsync(id);
 		}
 	}
 }
