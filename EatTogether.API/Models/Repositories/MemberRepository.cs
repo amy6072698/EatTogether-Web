@@ -25,6 +25,10 @@ namespace EatTogether.API.Models.Repositories
 		// -----前台登出用------------------------------
 		Task RevokeRefreshTokenByTokenStringAsync(string token);
 
+		// -----前台 Refresh Token 用------------------------------
+		Task<MemberRefreshToken?> GetRefreshTokenAsync(string token);
+		Task RevokeRefreshTokenAsync(int tokenId);
+
 		// -----前台復原帳號用------------------------------
 		Task RestoreAccountAsync(int memberId);
 
@@ -236,6 +240,25 @@ namespace EatTogether.API.Models.Repositories
 				.FirstOrDefaultAsync(t => t.Token == token);
 			if (refreshToken == null || refreshToken.IsRevoked) return;
 			refreshToken.IsRevoked = true;
+			await _context.SaveChangesAsync();
+		}
+
+		// -----前台 Refresh Token 用------------------------------
+
+		// 含 Member 及其 MemberExternalLogins，供 RefreshTokenAsync 建構 MemberViewModel
+		public async Task<MemberRefreshToken?> GetRefreshTokenAsync(string token)
+		{
+			return await _context.MemberRefreshTokens
+				.Include(t => t.Member)
+				.ThenInclude(m => m.MemberExternalLogins)
+				.FirstOrDefaultAsync(t => t.Token == token);
+		}
+
+		public async Task RevokeRefreshTokenAsync(int tokenId)
+		{
+			var token = await _context.MemberRefreshTokens.FindAsync(tokenId);
+			if (token == null) return;
+			token.IsRevoked = true;
 			await _context.SaveChangesAsync();
 		}
 

@@ -147,6 +147,21 @@ namespace EatTogether.API.Controllers
 			return Ok(result.Value);
 		}
 
+		// POST /api/auth/refresh
+		[HttpPost("refresh")]
+		public async Task<IActionResult> Refresh()
+		{
+			var refreshToken = Request.Cookies["refresh_token"];
+			if (string.IsNullOrEmpty(refreshToken))
+				return Unauthorized();
+
+			var result = await _authService.RefreshTokenAsync(refreshToken);
+			if (!result.IsSuccess)
+				return Unauthorized();
+
+			return Ok(result.Value);
+		}
+
 		// POST /api/auth/forgot-password
 		[HttpPost("forgot-password")]
 		[EnableRateLimiting("AuthPolicy")]

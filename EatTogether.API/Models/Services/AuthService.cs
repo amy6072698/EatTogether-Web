@@ -17,6 +17,9 @@ namespace EatTogether.API.Models.Services
 		// -----前台登出用------------------------------
 		Task LogoutAsync(HttpRequest request);
 
+		// -----前台 Refresh Token 用------------------------------
+		Task<Result<MemberViewModel>> RefreshTokenAsync(string refreshToken);
+
 		// -----前台復原帳號用------------------------------
 		Task<Result<MemberViewModel>> RestoreAccountAsync(LoginDto dto);
 
@@ -134,6 +137,62 @@ namespace EatTogether.API.Models.Services
 			// 2. 清除前端的兩個 Cookie
 			var response = _httpContextAccessor.HttpContext!.Response;
 			CookieHelper.ClearAuthCookies(response, _env);
+		}
+
+		// -----前台 Refresh Token 用------------------------------
+		public async Task<Result<MemberViewModel>> RefreshTokenAsync(string refreshToken)
+		{
+			// 1. 查詢 MemberRefreshTokens（含 Member + MemberExternalLogins）
+			var tokenRecord = await _memberRepo.GetRefreshTokenAsync(refreshToken);
+
+			// 2. 找不到 → 401
+			if (tokenRecord == null)
+				return Result<MemberViewModel>.Fail("invalid_refresh_token");
+
+			// 3. 已撤銷 → 401
+			if (tokenRecord.IsRevoked)
+				return Result<MemberViewModel>.Fail("invalid_refresh_token");
+
+			// 4. 已過期 → 401
+			if (tokenRecord.ExpiresAt <= DateTime.Now)
+				return Result<MemberViewModel>.Fail("invalid_refresh_token");
+
+			// 5. 舊 token 標記 IsRevoked=true（Token Rotation）
+			await _memberRepo.RevokeRefreshTokenAsync(tokenRecord.Id);
+
+			// 6. 產生新 Access Token + 新 Refresh Token
+			var member = tokenRecord.Member;
+			var newAccessToken = _jwtHelper.GenerateAccessToken(member.Id, member.Name);
+			var newRefreshToken = _jwtHelper.GenerateRefreshToken();
+
+			// 7. 儲存新 Refresh Token
+			var refreshTokenExpireDays = int.Parse(_config["Jwt:RefreshTokenExpireDays"]!);
+			await _memberRepo.SaveRefreshTokenAsync(new MemberRefreshToken
+			{
+				MemberId = member.Id,
+				Token = newRefreshToken,
+				ExpiresAt = DateTime.Now.AddDays(refreshTokenExpireDays),
+				IsRevoked = false,
+				CreatedAt = DateTime.Now,
+			});
+
+			// 8. 寫入新 Cookie
+			var response = _httpContextAccessor.HttpContext!.Response;
+			CookieHelper.SetAccessTokenCookie(response, newAccessToken, _env);
+			CookieHelper.SetRefreshTokenCookie(response, newRefreshToken, _env);
+
+			// 9. 回傳 MemberViewModel
+			return Result<MemberViewModel>.Success(new MemberViewModel
+			{
+				Id = member.Id,
+				Name = member.Name,
+				Email = member.Email,
+				AvatarFileName = member.AvatarFileName,
+				HashedPasswordStatus = member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD
+					? "EXTERNAL_LOGIN_NO_PASSWORD"
+					: "HAS_PASSWORD",
+				GoogleLinked = member.MemberExternalLogins.Any(e => e.Provider == "google"),
+			});
 		}
 
 		// -----前台復原帳號用------------------------------
