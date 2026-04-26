@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import apiFetch from '@/utils/apiFetch.js'
 import Button from '@/components/common/Button.vue'
 
@@ -27,6 +27,7 @@ const regFormError = ref('')
 const isSubmitting = ref(false)
 
 // 密碼顯示切換
+const showLoginPassword = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 
@@ -34,8 +35,8 @@ function validateAccount() {
     regAccountError.value = ''
     if (!regAccount.value.trim()) {
         regAccountError.value = '帳號為必填'
-    } else if (!/^[a-zA-Z0-9]{3,50}$/.test(regAccount.value)) {
-        regAccountError.value = '帳號限英數字，3–50 字元'
+    } else if (!/^[a-zA-Z0-9_]{3,50}$/.test(regAccount.value)) {
+        regAccountError.value = '帳號限英數字及底線，3–50 字元'
     }
 }
 
@@ -100,20 +101,27 @@ function validateRegisterForm() {
 async function handleRegister() {
     if (!validateRegisterForm()) return
 
+    regFormError.value = ''
     isSubmitting.value = true
     try {
         const res = await apiFetch('/auth/register', {
             method: 'POST',
             body: JSON.stringify({
                 account: regAccount.value,
-                name: regName.value,
-                email: regEmail.value,
+                name: regName.value.trim(),
+                email: regEmail.value.trim(),
                 password: regPassword.value,
             }),
         })
 
         if (res.ok) {
             registerSuccess.value = true
+            return
+        }
+
+        if (res.status >= 500) return
+        if (res.status === 429) {
+            regFormError.value = '請求過於頻繁，請稍後再試'
             return
         }
 
@@ -131,8 +139,10 @@ async function handleRegister() {
         }
 
         regFormError.value = data?.message || '發生錯誤，請稍後再試'
-    } catch {
-        // apiFetch 網路錯誤已由其內部 show Toast，此處不重複提示
+    } catch (err) {
+        if (import.meta.env.DEV) {
+            console.error('[handleRegister]', err)
+        }
     } finally {
         isSubmitting.value = false
     }
@@ -140,8 +150,8 @@ async function handleRegister() {
 
 function switchToRegister() {
     activeTab.value = 'register'
-
-    showPassword.value = false
+    showLoginPassword.value = false
+    // TODO: 實作登入後補上登入表單欄位重置
 }
 
 function switchToLogin() {
@@ -166,6 +176,28 @@ function switchToLogin() {
     // 重置成功狀態
     registerSuccess.value = false
 }
+
+onMounted(() => {
+    const modalEl = document.querySelector('#authModal')
+    modalEl.addEventListener('hidden.bs.modal', () => {
+        regAccount.value = ''
+        regName.value = ''
+        regEmail.value = ''
+        regPassword.value = ''
+        regConfirmPassword.value = ''
+        regAccountError.value = ''
+        regNameError.value = ''
+        regEmailError.value = ''
+        regPasswordError.value = ''
+        regConfirmPasswordError.value = ''
+        regFormError.value = ''
+        showPassword.value = false
+        showConfirmPassword.value = false
+        registerSuccess.value = false
+        activeTab.value = 'login'
+        showLoginPassword.value = false
+    })
+})
 </script>
 
 <template>
@@ -242,18 +274,21 @@ function switchToLogin() {
                                 <label class="eat-label d-block mb-1">密碼</label>
                                 <div class="position-relative">
                                     <input
-                                        :type="showPassword ? 'text' : 'password'"
+                                        :type="showLoginPassword ? 'text' : 'password'"
                                         class="form-eat w-100"
                                         placeholder="請輸入密碼"
                                     />
                                     <button
                                         type="button"
                                         class="password-toggle"
-                                        @click="showPassword = !showPassword"
-                                        :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
+                                        @mousedown.prevent
+                                        @click="showLoginPassword = !showLoginPassword"
+                                        :aria-label="showLoginPassword ? '隱藏密碼' : '顯示密碼'"
                                     >
                                         <i
-                                            :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"
+                                            :class="
+                                                showLoginPassword ? 'bi bi-eye-slash' : 'bi bi-eye'
+                                            "
                                         ></i>
                                     </button>
                                 </div>
@@ -292,31 +327,45 @@ function switchToLogin() {
                                 ></div>
 
                                 <!-- 通用錯誤橫幅 -->
-                                <div v-if="regFormError" class="auth-error-banner">
+                                <div v-if="regFormError" class="auth-error-banner" role="alert">
                                     {{ regFormError }}
                                 </div>
 
                                 <!-- 帳號 -->
                                 <div>
-                                    <label class="eat-label d-block mb-1">帳號</label>
+                                    <label for="reg-account" class="eat-label d-block mb-1"
+                                        >帳號</label
+                                    >
                                     <input
+                                        id="reg-account"
                                         v-model="regAccount"
                                         @blur="validateAccount"
                                         type="text"
                                         class="form-eat w-100"
                                         :class="{ 'form-eat--error': regAccountError }"
-                                        placeholder="限英數字，3–50 字元"
+                                        placeholder="限英數字及底線，3–50 字元"
                                         autocomplete="username"
+                                        :aria-describedby="
+                                            regAccountError ? 'reg-account-error' : undefined
+                                        "
+                                        :aria-invalid="regAccountError ? 'true' : undefined"
                                     />
-                                    <p v-if="regAccountError" class="auth-field-error mt-1 mb-0">
+                                    <p
+                                        v-if="regAccountError"
+                                        id="reg-account-error"
+                                        class="auth-field-error mt-1 mb-0"
+                                    >
                                         {{ regAccountError }}
                                     </p>
                                 </div>
 
                                 <!-- 姓名 -->
                                 <div>
-                                    <label class="eat-label d-block mb-1">姓名</label>
+                                    <label for="reg-name" class="eat-label d-block mb-1"
+                                        >姓名</label
+                                    >
                                     <input
+                                        id="reg-name"
                                         v-model="regName"
                                         @blur="validateName"
                                         type="text"
@@ -324,16 +373,27 @@ function switchToLogin() {
                                         :class="{ 'form-eat--error': regNameError }"
                                         placeholder="請輸入您的姓名"
                                         autocomplete="name"
+                                        :aria-describedby="
+                                            regNameError ? 'reg-name-error' : undefined
+                                        "
+                                        :aria-invalid="regNameError ? 'true' : undefined"
                                     />
-                                    <p v-if="regNameError" class="auth-field-error mt-1 mb-0">
+                                    <p
+                                        v-if="regNameError"
+                                        id="reg-name-error"
+                                        class="auth-field-error mt-1 mb-0"
+                                    >
                                         {{ regNameError }}
                                     </p>
                                 </div>
 
                                 <!-- Email -->
                                 <div>
-                                    <label class="eat-label d-block mb-1">Email</label>
+                                    <label for="reg-email" class="eat-label d-block mb-1"
+                                        >Email</label
+                                    >
                                     <input
+                                        id="reg-email"
                                         v-model="regEmail"
                                         @blur="validateEmail"
                                         type="email"
@@ -341,17 +401,28 @@ function switchToLogin() {
                                         :class="{ 'form-eat--error': regEmailError }"
                                         placeholder="example@email.com"
                                         autocomplete="email"
+                                        :aria-describedby="
+                                            regEmailError ? 'reg-email-error' : undefined
+                                        "
+                                        :aria-invalid="regEmailError ? 'true' : undefined"
                                     />
-                                    <p v-if="regEmailError" class="auth-field-error mt-1 mb-0">
+                                    <p
+                                        v-if="regEmailError"
+                                        id="reg-email-error"
+                                        class="auth-field-error mt-1 mb-0"
+                                    >
                                         {{ regEmailError }}
                                     </p>
                                 </div>
 
                                 <!-- 密碼 -->
                                 <div>
-                                    <label class="eat-label d-block mb-1">密碼</label>
+                                    <label for="reg-password" class="eat-label d-block mb-1"
+                                        >密碼</label
+                                    >
                                     <div class="position-relative">
                                         <input
+                                            id="reg-password"
                                             v-model="regPassword"
                                             @blur="validatePassword"
                                             :type="showPassword ? 'text' : 'password'"
@@ -359,10 +430,15 @@ function switchToLogin() {
                                             :class="{ 'form-eat--error': regPasswordError }"
                                             placeholder="至少 8 個字元"
                                             autocomplete="new-password"
+                                            :aria-describedby="
+                                                regPasswordError ? 'reg-password-error' : undefined
+                                            "
+                                            :aria-invalid="regPasswordError ? 'true' : undefined"
                                         />
                                         <button
                                             type="button"
                                             class="password-toggle"
+                                            @mousedown.prevent
                                             @click="showPassword = !showPassword"
                                             :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
                                         >
@@ -374,16 +450,23 @@ function switchToLogin() {
                                         </button>
                                     </div>
 
-                                    <p v-if="regPasswordError" class="auth-field-error mt-1 mb-0">
+                                    <p
+                                        v-if="regPasswordError"
+                                        id="reg-password-error"
+                                        class="auth-field-error mt-1 mb-0"
+                                    >
                                         {{ regPasswordError }}
                                     </p>
                                 </div>
 
                                 <!-- 確認密碼 -->
                                 <div>
-                                    <label class="eat-label d-block mb-1">確認密碼</label>
+                                    <label for="reg-confirm-password" class="eat-label d-block mb-1"
+                                        >確認密碼</label
+                                    >
                                     <div class="position-relative">
                                         <input
+                                            id="reg-confirm-password"
                                             v-model="regConfirmPassword"
                                             @input="validateConfirmPassword"
                                             :type="showConfirmPassword ? 'text' : 'password'"
@@ -391,6 +474,14 @@ function switchToLogin() {
                                             :class="{ 'form-eat--error': regConfirmPasswordError }"
                                             placeholder="再次輸入密碼"
                                             autocomplete="new-password"
+                                            :aria-describedby="
+                                                regConfirmPasswordError
+                                                    ? 'reg-confirm-password-error'
+                                                    : undefined
+                                            "
+                                            :aria-invalid="
+                                                regConfirmPasswordError ? 'true' : undefined
+                                            "
                                         />
                                         <button
                                             type="button"
@@ -411,6 +502,7 @@ function switchToLogin() {
                                     </div>
                                     <p
                                         v-if="regConfirmPasswordError"
+                                        id="reg-confirm-password-error"
                                         class="auth-field-error mt-1 mb-0"
                                     >
                                         {{ regConfirmPasswordError }}
@@ -467,7 +559,7 @@ function switchToLogin() {
 }
 
 .form-eat::placeholder {
-    color: rgba(249, 221, 211, 0.35);
+    color: color-mix(in srgb, var(--eat-on-surface) 35%, transparent);
 }
 
 /* ── Error ── */
