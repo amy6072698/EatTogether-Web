@@ -1,6 +1,6 @@
 ﻿using EatTogether.API.Models.DTOs;
 using EatTogether.API.Models.Services;
-using EatTogether.API.Models.ViewModels;
+using EatTogether.API.Models.ViewModels.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -61,7 +61,7 @@ namespace EatTogether.API.Controllers
 				});
 			}
 
-			return Ok(new RegisterResultViewModel
+			return Ok(new SuccessViewModel
 			{
 				Message = "驗證信已寄出，請至信箱點擊驗證連結"
 			});
@@ -75,12 +75,46 @@ namespace EatTogether.API.Controllers
 			return StatusCode(501);
 		}
 
+		// GET /api/auth/verify-email?token=xxx
+		[HttpGet("verify-email")]
+		public async Task<IActionResult> VerifyEmail([FromQuery] string token)
+		{
+			if (string.IsNullOrWhiteSpace(token))
+				return BadRequest(new ErrorViewModel
+				{
+					Message = "驗證連結無效或已過期",
+					ErrorCode = "token_invalid"
+				});
+
+			var result = await _authService.VerifyEmailAsync(token);
+			if (!result.IsSuccess)
+				return BadRequest(new ErrorViewModel
+				{
+					Message = "驗證連結無效或已過期",
+					ErrorCode = "token_invalid"
+				});
+
+			return Ok(new SuccessViewModel { Message = "Email 驗證成功" });
+		}
+
 		// POST /api/auth/resend-verify-email
 		[HttpPost("resend-verify-email")]
 		[EnableRateLimiting("AuthPolicy")]
-		public IActionResult ResendVerifyEmail()
+		public async Task<IActionResult> ResendVerifyEmail([FromBody] ResendVerifyEmailDto dto)
 		{
-			return StatusCode(501);
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState);
+
+			var result = await _authService.ResendVerifyEmailAsync(dto.Email);
+
+			if (!result.IsSuccess && result.ErrorMessage == "already_confirmed")
+				return Ok(new ErrorViewModel
+				{
+					Message = "帳號已完成驗證，請直接登入",
+					ErrorCode = "already_confirmed"
+				});
+
+			return Ok(new SuccessViewModel { Message = "驗證信已寄出，請至信箱點擊驗證連結" });
 		}
 	}
 }
