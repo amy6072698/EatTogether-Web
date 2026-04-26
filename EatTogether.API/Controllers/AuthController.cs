@@ -1,6 +1,7 @@
 ﻿using EatTogether.API.Models.DTOs;
 using EatTogether.API.Models.Services;
 using EatTogether.API.Models.ViewModels.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -98,6 +99,16 @@ namespace EatTogether.API.Controllers
 			{
 				Message = "驗證信已寄出，請至信箱點擊驗證連結"
 			});
+		}
+
+		// POST /api/auth/logout
+		[HttpPost("logout")]
+		[Authorize]
+		[EnableRateLimiting("GeneralPolicy")]
+		public async Task<IActionResult> Logout()
+		{
+			await _authService.LogoutAsync(Request);
+			return Ok(new SuccessViewModel { Message = "已成功登出" });
 		}
 
 		// POST /api/auth/restore-account

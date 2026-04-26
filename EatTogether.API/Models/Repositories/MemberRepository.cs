@@ -22,6 +22,9 @@ namespace EatTogether.API.Models.Repositories
 		Task<Member?> GetMemberByAccountAsync(string account);
 		Task SaveRefreshTokenAsync(MemberRefreshToken token);
 
+		// -----前台登出用------------------------------
+		Task RevokeRefreshTokenByTokenStringAsync(string token);
+
 		// -----前台復原帳號用------------------------------
 		Task RestoreAccountAsync(int memberId);
 
@@ -222,6 +225,17 @@ namespace EatTogether.API.Models.Repositories
 		public async Task SaveRefreshTokenAsync(MemberRefreshToken token)
 		{
 			_context.MemberRefreshTokens.Add(token);
+			await _context.SaveChangesAsync();
+		}
+
+		// -----前台登出用------------------------------
+
+		public async Task RevokeRefreshTokenByTokenStringAsync(string token)
+		{
+			var refreshToken = await _context.MemberRefreshTokens
+				.FirstOrDefaultAsync(t => t.Token == token);
+			if (refreshToken == null || refreshToken.IsRevoked) return;
+			refreshToken.IsRevoked = true;
 			await _context.SaveChangesAsync();
 		}
 

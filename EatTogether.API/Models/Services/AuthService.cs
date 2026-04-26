@@ -14,6 +14,9 @@ namespace EatTogether.API.Models.Services
 		// -----前台一般登入用------------------------------
 		Task<Result<MemberViewModel>> LoginAsync(LoginDto dto);
 
+		// -----前台登出用------------------------------
+		Task LogoutAsync(HttpRequest request);
+
 		// -----前台復原帳號用------------------------------
 		Task<Result<MemberViewModel>> RestoreAccountAsync(LoginDto dto);
 
@@ -118,6 +121,19 @@ namespace EatTogether.API.Models.Services
 					: "HAS_PASSWORD",
 				GoogleLinked = member.MemberExternalLogins.Any(e => e.Provider == "google"),
 			});
+		}
+
+		// -----前台登出用------------------------------
+		public async Task LogoutAsync(HttpRequest request)
+		{
+			// 1. 從 Cookie 取出 refresh_token，有值才撤銷（防止帳號枚舉）
+			var refreshToken = request.Cookies["refresh_token"];
+			if (!string.IsNullOrEmpty(refreshToken))
+				await _memberRepo.RevokeRefreshTokenByTokenStringAsync(refreshToken);
+
+			// 2. 清除前端的兩個 Cookie
+			var response = _httpContextAccessor.HttpContext!.Response;
+			CookieHelper.ClearAuthCookies(response, _env);
 		}
 
 		// -----前台復原帳號用------------------------------

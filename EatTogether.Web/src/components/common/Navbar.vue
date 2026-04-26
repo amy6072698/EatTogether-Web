@@ -102,6 +102,15 @@
                         >
                             登入｜註冊
                         </Button>
+                        <!-- 暫時登出按鈕，供 1-4 測試用；2-1 Navbar 重構時整合至頭像 Dropdown -->
+                        <Button
+                            class="py-2 px-3 w-100 w-lg-auto ms-2"
+                            variant="secondary"
+                            @click="authStore.logout()"
+                            aria-label="登出"
+                        >
+                            登出
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -116,6 +125,9 @@ import { RouterLink } from 'vue-router'
 import Button from '@/components/common/Button.vue'
 import { Modal, Collapse } from 'bootstrap'
 import defaultAvatar from '@/assets/images/default-avatar.svg'
+import { useAuthStore } from '@/stores/auth.js'
+
+const authStore = useAuthStore()
 
 // 從 API 或 Store 取得的用戶資料
 const member = {
