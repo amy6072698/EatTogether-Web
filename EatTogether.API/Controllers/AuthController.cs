@@ -20,9 +20,37 @@ namespace EatTogether.API.Controllers
 		// POST /api/auth/login
 		[HttpPost("login")]
 		[EnableRateLimiting("AuthPolicy")]
-		public IActionResult Login()
+		public async Task<IActionResult> Login([FromBody] LoginDto dto)
 		{
-			return StatusCode(501);
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState);
+
+			var result = await _authService.LoginAsync(dto);
+
+			if (!result.IsSuccess)
+			{
+				return result.ErrorMessage switch
+				{
+					"account_or_password_error" => Unauthorized(new ErrorViewModel
+					{
+						Message = "帳號或密碼錯誤",
+						ErrorCode = "account_or_password_error"
+					}),
+					"EMAIL_NOT_VERIFIED" => Unauthorized(new ErrorViewModel
+					{
+						Message = "請先驗證 Email",
+						ErrorCode = "EMAIL_NOT_VERIFIED"
+					}),
+					"ACCOUNT_BLACKLISTED" => StatusCode(403, new ErrorViewModel
+					{
+						Message = "帳號已停權，請聯繫客服",
+						ErrorCode = "ACCOUNT_BLACKLISTED"
+					}),
+					_ => BadRequest(new ErrorViewModel { Message = "發生錯誤，請稍後再試" })
+				};
+			}
+
+			return Ok(result.Value);
 		}
 
 		// POST /api/auth/register

@@ -18,6 +18,10 @@ namespace EatTogether.API.Models.Repositories
 		Task<bool> HasPendingConfirmTokenAsync(int memberId);
 		Task CreateConfirmTokenAsync(MemberConfirmToken token);
 
+		// -----前台一般登入用------------------------------
+		Task<Member?> GetMemberByAccountAsync(string account);
+		Task SaveRefreshTokenAsync(MemberRefreshToken token);
+
 		// -----前台 Email 驗證用------------------------------
 		Task<MemberConfirmToken?> GetConfirmTokenAsync(string token);
 		Task MarkConfirmTokenUsedAsync(int tokenId);
@@ -201,6 +205,21 @@ namespace EatTogether.API.Models.Repositories
 		public async Task<Member?> GetMemberByIdAsync(int id)
 		{
 			return await _context.Members.FindAsync(id);
+		}
+
+		// -----前台一般登入用------------------------------
+
+		public async Task<Member?> GetMemberByAccountAsync(string account)
+		{
+			return await _context.Members
+				.Include(m => m.MemberExternalLogins)
+				.FirstOrDefaultAsync(m => m.Account == account);
+		}
+
+		public async Task SaveRefreshTokenAsync(MemberRefreshToken token)
+		{
+			_context.MemberRefreshTokens.Add(token);
+			await _context.SaveChangesAsync();
 		}
 	}
 }
