@@ -129,6 +129,10 @@ async function handleLogin() {
             loginFormError.value = '請求過於頻繁，請稍後再試'
             return
         }
+        if (res.status === 403) {
+            loginFormError.value = '帳號已停權，請聯繫餐廳'
+            return
+        }
 
         const data = await res.json()
 
@@ -138,7 +142,7 @@ async function handleLogin() {
             return
         }
         if (data.errorCode === 'account_blacklisted') {
-            loginFormError.value = '帳號已停權，請聯繫客服'
+            loginFormError.value = '帳號已停權，請聯繫餐廳'
             return
         }
         if (data.errorCode === 'account_deleted') {
@@ -191,6 +195,17 @@ async function handleRestoreAccount() {
                 Modal.getInstance(modalEl)?.hide()
                 authStore.fetchMe()
             }, 3000)
+            return
+        }
+
+        if (res.status >= 500) return
+        if (res.status === 429) {
+            loginFormError.value = '請求過於頻繁，請稍後再試'
+            return
+        }
+        if (res.status === 403) {
+            showAccountDeleted.value = false
+            loginFormError.value = '帳號已停權，請聯繫客服'
             return
         }
 

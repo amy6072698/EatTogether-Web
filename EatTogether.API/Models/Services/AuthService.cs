@@ -14,6 +14,9 @@ namespace EatTogether.API.Models.Services
 		// -----前台一般登入用------------------------------
 		Task<Result<MemberViewModel>> LoginAsync(LoginDto dto);
 
+		// -----前台復原帳號用------------------------------
+		Task<Result<MemberViewModel>> RestoreAccountAsync(LoginDto dto);
+
 		// -----前台會員註冊用------------------------------
 		Task<Result> RegisterAsync(RegisterDto dto);
 
@@ -56,32 +59,32 @@ namespace EatTogether.API.Models.Services
 		// -----前台一般登入用------------------------------
 		public async Task<Result<MemberViewModel>> LoginAsync(LoginDto dto)
 		{
-			// 1. 以 Account 查詢（含 MemberExternalLogins，供判斷 googleLinked）
+			// 1. 以 Account 查詢（含 MemberExternalLogins，供判斷 googleLinked；含軟刪除會員）
 			var member = await _memberRepo.GetMemberByAccountAsync(dto.Account);
 
 			// 2. 找不到 → 統一錯誤（不透露帳號是否存在）
 			if (member == null)
 				return Result<MemberViewModel>.Fail("account_or_password_error");
 
-			// 3. Email 未驗證
-			if (!member.IsConfirmed)
-				return Result<MemberViewModel>.Fail("email_not_verified");
-
-			// 4. 帳號已停權
-			if (member.IsBlacklisted)
-				return Result<MemberViewModel>.Fail("account_blacklisted");
-
-			// 5. 純 Google 帳號 → 統一錯誤
+			// 3. 純 Google 帳號 → 統一錯誤
 			if (member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD)
 				return Result<MemberViewModel>.Fail("account_or_password_error");
 
-			// 6. BCrypt 驗證密碼失敗 → 統一錯誤
+			// 4. BCrypt 驗證密碼失敗 → 統一錯誤
 			if (!HashUtility.VerifyPassword(dto.Password, member.HashedPassword))
 				return Result<MemberViewModel>.Fail("account_or_password_error");
 
-			// 7. 已軟刪除 → 須在密碼驗證通過後才檢查
+			// 5. 已軟刪除 → 密碼驗證通過後才揭露，供前端顯示復原按鈕
 			if (member.IsDeleted)
 				return Result<MemberViewModel>.Fail("account_deleted");
+
+			// 6. Email 未驗證
+			if (!member.IsConfirmed)
+				return Result<MemberViewModel>.Fail("email_not_verified");
+
+			// 7. 帳號已停權
+			if (member.IsBlacklisted)
+				return Result<MemberViewModel>.Fail("account_blacklisted");
 
 			// 8. 簽發 JWT
 			var accessToken = _jwtHelper.GenerateAccessToken(member.Id, member.Name);
@@ -113,6 +116,67 @@ namespace EatTogether.API.Models.Services
 				HashedPasswordStatus = member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD
 					? "EXTERNAL_LOGIN_NO_PASSWORD"
 					: "HAS_PASSWORD",
+				GoogleLinked = member.MemberExternalLogins.Any(e => e.Provider == "google"),
+			});
+		}
+
+		// -----前台復原帳號用------------------------------
+		public async Task<Result<MemberViewModel>> RestoreAccountAsync(LoginDto dto)
+		{
+			// 1. 以 Account 查詢（含軟刪除會員）
+			var member = await _memberRepo.GetMemberByAccountAsync(dto.Account);
+
+			// 2. 找不到 → 統一錯誤
+			if (member == null)
+				return Result<MemberViewModel>.Fail("account_or_password_error");
+
+			// 3. 純 Google 帳號 → 統一錯誤
+			if (member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD)
+				return Result<MemberViewModel>.Fail("account_or_password_error");
+
+			// 4. BCrypt 驗證密碼失敗 → 統一錯誤
+			if (!HashUtility.VerifyPassword(dto.Password, member.HashedPassword))
+				return Result<MemberViewModel>.Fail("account_or_password_error");
+
+			// 5. 帳號未刪除 → 不需復原
+			if (!member.IsDeleted)
+				return Result<MemberViewModel>.Fail("account_not_deleted");
+
+			// 6. 帳號已停權
+			if (member.IsBlacklisted)
+				return Result<MemberViewModel>.Fail("account_blacklisted");
+
+			// 7. 復原帳號（IsDeleted=0、DeletedAt=NULL）
+			await _memberRepo.RestoreAccountAsync(member.Id);
+
+			// 8. 簽發 JWT
+			var accessToken = _jwtHelper.GenerateAccessToken(member.Id, member.Name);
+			var refreshToken = _jwtHelper.GenerateRefreshToken();
+
+			// 9. 儲存 RefreshToken
+			var refreshTokenExpireDays = int.Parse(_config["Jwt:RefreshTokenExpireDays"]!);
+			await _memberRepo.SaveRefreshTokenAsync(new MemberRefreshToken
+			{
+				MemberId = member.Id,
+				Token = refreshToken,
+				ExpiresAt = DateTime.Now.AddDays(refreshTokenExpireDays),
+				IsRevoked = false,
+				CreatedAt = DateTime.Now,
+			});
+
+			// 10. 寫入 Cookie
+			var response = _httpContextAccessor.HttpContext!.Response;
+			CookieHelper.SetAccessTokenCookie(response, accessToken, _env);
+			CookieHelper.SetRefreshTokenCookie(response, refreshToken, _env);
+
+			// 11. 回傳 MemberViewModel
+			return Result<MemberViewModel>.Success(new MemberViewModel
+			{
+				Id = member.Id,
+				Name = member.Name,
+				Email = member.Email,
+				AvatarFileName = member.AvatarFileName,
+				HashedPasswordStatus = "HAS_PASSWORD",
 				GoogleLinked = member.MemberExternalLogins.Any(e => e.Provider == "google"),
 			});
 		}

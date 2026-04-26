@@ -22,12 +22,11 @@ let authExpiredHandling = false
  *  - credentials: 'include'（JWT 存於 HttpOnly Cookie，跨域必須帶）
  *  - 網路錯誤（connection refused / timeout）統一顯示 Toast 並 throw
  *  - 401 自動 Refresh Token（含競態防護）→ 重送原始請求
- *  - 403 顯示「無操作權限」Toast
  *  - 5xx 顯示「伺服器發生錯誤」Toast
  *
  * @param {string} path         - 相對路徑，例如 '/auth/login'（不加 /api 前綴，BASE_URL 已含）
  * @param {RequestInit} options - 同原生 fetch options，body 由呼叫端自行 JSON.stringify
- * @returns {Promise<Response>}  200 / 400 / 404 等交由呼叫端自行處理
+ * @returns {Promise<Response>}  200 / 400 / 403 / 404 等交由呼叫端自行處理
  * @throws {Error}              網路錯誤時 throw，呼叫端的 catch 可顯示頁面層級錯誤狀態
  */
 async function apiFetch(path, options = {}) {
@@ -120,19 +119,13 @@ async function apiFetch(path, options = {}) {
         return response
     }
 
-    // ── 403：無操作權限 ─────────────────────────────────────
-    if (response.status === 403) {
-        show('無操作權限', 'error')
-        return response
-    }
-
     // ── 5xx：伺服器錯誤 ─────────────────────────────────────
     if (response.status >= 500) {
         show('伺服器發生錯誤，請稍後再試', 'error')
         return response
     }
 
-    // ── 其他（200、400、404 等）：交由呼叫端自行處理 ────────
+    // ── 其他（200、400、403、404 等）：交由呼叫端自行處理 ────────
     return response
 }
 

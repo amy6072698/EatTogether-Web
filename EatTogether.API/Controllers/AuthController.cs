@@ -100,6 +100,42 @@ namespace EatTogether.API.Controllers
 			});
 		}
 
+		// POST /api/auth/restore-account
+		[HttpPost("restore-account")]
+		[EnableRateLimiting("AuthPolicy")]
+		public async Task<IActionResult> RestoreAccount([FromBody] LoginDto dto)
+		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState);
+
+			var result = await _authService.RestoreAccountAsync(dto);
+
+			if (!result.IsSuccess)
+			{
+				return result.ErrorMessage switch
+				{
+					"account_or_password_error" => Unauthorized(new ErrorViewModel
+					{
+						Message = "帳號或密碼錯誤",
+						ErrorCode = "account_or_password_error"
+					}),
+					"account_not_deleted" => BadRequest(new ErrorViewModel
+					{
+						Message = "帳號狀態正常，請直接登入",
+						ErrorCode = "account_not_deleted"
+					}),
+					"account_blacklisted" => StatusCode(403, new ErrorViewModel
+					{
+						Message = "帳號已停權，請聯繫客服",
+						ErrorCode = "account_blacklisted"
+					}),
+					_ => BadRequest(new ErrorViewModel { Message = "發生錯誤，請稍後再試" })
+				};
+			}
+
+			return Ok(result.Value);
+		}
+
 		// POST /api/auth/forgot-password
 		[HttpPost("forgot-password")]
 		[EnableRateLimiting("AuthPolicy")]
