@@ -21,6 +21,8 @@ const isLoginSubmitting = ref(false)
 const showResendEmail = ref(false)
 const loginResendEmail = ref('')
 const isResendSubmitting = ref(false)
+const showAccountDeleted = ref(false) // 控制帳號已刪除提示區塊
+const isRestoring = ref(false) // 重新啟用按鈕 loading 狀態
 
 // 註冊成功狀態
 const registerSuccess = ref(false)
@@ -130,13 +132,17 @@ async function handleLogin() {
 
         const data = await res.json()
 
-        if (data.errorCode === 'EMAIL_NOT_VERIFIED') {
+        if (data.errorCode === 'email_not_verified') {
             loginFormError.value = '請先驗證 Email'
             showResendEmail.value = true
             return
         }
-        if (data.errorCode === 'ACCOUNT_BLACKLISTED') {
+        if (data.errorCode === 'account_blacklisted') {
             loginFormError.value = '帳號已停權，請聯繫客服'
+            return
+        }
+        if (data.errorCode === 'account_deleted') {
+            showAccountDeleted.value = true
             return
         }
         loginFormError.value = data.message || '帳號或密碼錯誤'
@@ -163,6 +169,40 @@ async function handleResendVerifyEmail() {
         }
     } finally {
         isResendSubmitting.value = false
+    }
+}
+
+async function handleRestoreAccount() {
+    isRestoring.value = true
+    try {
+        const res = await apiFetch('/auth/restore-account', {
+            method: 'POST',
+            body: JSON.stringify({
+                account: loginAccount.value,
+                password: loginPassword.value,
+            }),
+        })
+
+        if (res.ok) {
+            loginSuccess.value = true
+            showAccountDeleted.value = false
+            setTimeout(() => {
+                const modalEl = document.querySelector('#authModal')
+                Modal.getInstance(modalEl)?.hide()
+                authStore.fetchMe()
+            }, 3000)
+            return
+        }
+
+        const data = await res.json()
+        loginFormError.value = data?.message || '復原失敗，請稍後再試'
+        showAccountDeleted.value = false
+    } catch (err) {
+        if (import.meta.env.DEV) {
+            console.error('[handleRestoreAccount]', err)
+        }
+    } finally {
+        isRestoring.value = false
     }
 }
 
@@ -247,6 +287,8 @@ function switchToRegister() {
     showResendEmail.value = false
     loginResendEmail.value = ''
     showLoginPassword.value = false
+    showAccountDeleted.value = false
+    isRestoring.value = false
 }
 
 function switchToLogin() {
@@ -299,6 +341,8 @@ onMounted(() => {
         showConfirmPassword.value = false
         registerSuccess.value = false
         activeTab.value = 'login'
+        showAccountDeleted.value = false
+        isRestoring.value = false
     })
 })
 </script>
@@ -377,23 +421,52 @@ onMounted(() => {
                                     {{ loginFormError }}
                                 </div>
 
-                                <!-- Email 未驗證：補寄驗證信 -->
-                                <div v-if="showResendEmail" class="d-flex gap-2">
-                                    <input
-                                        v-model="loginResendEmail"
-                                        type="email"
-                                        class="form-eat flex-grow-1"
-                                        placeholder="請輸入您的 Email"
-                                        autocomplete="email"
-                                    />
+                                <!-- 帳號已停用：重新啟用提示 -->
+                                <div
+                                    v-if="showAccountDeleted"
+                                    class="auth-error-banner position-relative"
+                                    role="alert"
+                                >
+                                    <button
+                                        type="button"
+                                        class="btn-close btn-close-white btn-sm position-absolute top-0 end-0 m-1"
+                                        aria-label="關閉"
+                                        @click="showAccountDeleted = false"
+                                    ></button>
+                                    <p class="mb-2">此帳號已停用，是否要重新啟用？</p>
                                     <Button
-                                        variant="secondary"
-                                        class="fs-6 py-2 flex-shrink-0"
-                                        :loading="isResendSubmitting"
-                                        @click="handleResendVerifyEmail"
+                                        variant="primary"
+                                        class="fs-6 py-1 w-100"
+                                        :loading="isRestoring"
+                                        @click="handleRestoreAccount"
                                     >
-                                        {{ isResendSubmitting ? '寄送中...' : '重新寄送驗證信' }}
+                                        {{ isRestoring ? '啟用中...' : '重新啟用帳號' }}
                                     </Button>
+                                </div>
+
+                                <!-- Email 未驗證：補寄驗證信 -->
+                                <!-- Email 未驗證：補寄驗證信 -->
+                                <div v-if="showResendEmail" class="d-flex flex-column gap-2">
+                                    <p class="eat-body-muted mb-0" style="font-size: 0.85rem">
+                                        輸入您的 Email，重新寄送驗證信：
+                                    </p>
+                                    <div class="d-flex gap-2">
+                                        <input
+                                            v-model="loginResendEmail"
+                                            type="email"
+                                            class="form-eat flex-grow-1"
+                                            placeholder="請輸入您的 Email"
+                                            autocomplete="email"
+                                        />
+                                        <Button
+                                            variant="secondary"
+                                            class="fs-6 py-2 flex-shrink-0"
+                                            :loading="isResendSubmitting"
+                                            @click="handleResendVerifyEmail"
+                                        >
+                                            {{ isResendSubmitting ? '寄送中...' : '重寄驗證信' }}
+                                        </Button>
+                                    </div>
                                 </div>
 
                                 <!-- 帳號 -->

@@ -36,15 +36,20 @@ namespace EatTogether.API.Controllers
 						Message = "帳號或密碼錯誤",
 						ErrorCode = "account_or_password_error"
 					}),
-					"EMAIL_NOT_VERIFIED" => Unauthorized(new ErrorViewModel
+					"email_not_verified" => Unauthorized(new ErrorViewModel
 					{
 						Message = "請先驗證 Email",
-						ErrorCode = "EMAIL_NOT_VERIFIED"
+						ErrorCode = "email_not_verified"
 					}),
-					"ACCOUNT_BLACKLISTED" => StatusCode(403, new ErrorViewModel
+					"account_blacklisted" => StatusCode(403, new ErrorViewModel
 					{
 						Message = "帳號已停權，請聯繫客服",
-						ErrorCode = "ACCOUNT_BLACKLISTED"
+						ErrorCode = "account_blacklisted"
+					}),
+					"account_deleted" => Ok(new ErrorViewModel
+					{
+						Message = "此帳號已停用",
+						ErrorCode = "account_deleted"
 					}),
 					_ => BadRequest(new ErrorViewModel { Message = "發生錯誤，請稍後再試" })
 				};

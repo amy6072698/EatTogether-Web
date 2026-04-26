@@ -63,25 +63,25 @@ namespace EatTogether.API.Models.Services
 			if (member == null)
 				return Result<MemberViewModel>.Fail("account_or_password_error");
 
-			// 3. 已軟刪除 → 統一錯誤（不透露帳號狀態）
-			if (member.IsDeleted)
-				return Result<MemberViewModel>.Fail("account_or_password_error");
-
-			// 4. Email 未驗證
+			// 3. Email 未驗證
 			if (!member.IsConfirmed)
-				return Result<MemberViewModel>.Fail("EMAIL_NOT_VERIFIED");
+				return Result<MemberViewModel>.Fail("email_not_verified");
 
-			// 5. 帳號已停權
+			// 4. 帳號已停權
 			if (member.IsBlacklisted)
-				return Result<MemberViewModel>.Fail("ACCOUNT_BLACKLISTED");
+				return Result<MemberViewModel>.Fail("account_blacklisted");
 
-			// 6. 純 Google 帳號 → 統一錯誤
+			// 5. 純 Google 帳號 → 統一錯誤
 			if (member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD)
 				return Result<MemberViewModel>.Fail("account_or_password_error");
 
-			// 7. BCrypt 驗證密碼失敗 → 統一錯誤
+			// 6. BCrypt 驗證密碼失敗 → 統一錯誤
 			if (!HashUtility.VerifyPassword(dto.Password, member.HashedPassword))
 				return Result<MemberViewModel>.Fail("account_or_password_error");
+
+			// 7. 已軟刪除 → 須在密碼驗證通過後才檢查
+			if (member.IsDeleted)
+				return Result<MemberViewModel>.Fail("account_deleted");
 
 			// 8. 簽發 JWT
 			var accessToken = _jwtHelper.GenerateAccessToken(member.Id, member.Name);
