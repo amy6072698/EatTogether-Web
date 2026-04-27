@@ -32,6 +32,16 @@ namespace EatTogether.API.Models.Repositories
 		// -----前台復原帳號用------------------------------
 		Task RestoreAccountAsync(int memberId);
 
+		// -----前台忘記密碼用------------------------------
+		Task<bool> HasPendingPasswordResetTokenAsync(int memberId);
+		Task CreatePasswordResetTokenAsync(MemberPasswordResetToken token);
+
+		// -----前台重設密碼用------------------------------
+		Task<MemberPasswordResetToken?> GetPasswordResetTokenAsync(string token);
+		Task MarkPasswordResetTokenUsedAsync(int tokenId);
+		Task UpdateMemberPasswordAsync(int memberId, string hashedPassword);
+		Task RevokeAllRefreshTokensByMemberIdAsync(int memberId);
+
 		// -----前台 Email 驗證用------------------------------
 		Task<MemberConfirmToken?> GetConfirmTokenAsync(string token);
 		Task MarkConfirmTokenUsedAsync(int tokenId);
@@ -270,6 +280,61 @@ namespace EatTogether.API.Models.Repositories
 			if (member == null) return;
 			member.IsDeleted = false;
 			member.DeletedAt = null;
+			await _context.SaveChangesAsync();
+		}
+
+		// -----前台忘記密碼用------------------------------
+
+		// 寄信保護：查詢是否已有未過期且未使用的密碼重設 token
+		public async Task<bool> HasPendingPasswordResetTokenAsync(int memberId)
+		{
+			return await _context.MemberPasswordResetTokens.AnyAsync(t =>
+				t.MemberId == memberId &&
+				!t.IsUsed &&
+				t.ExpiresAt > DateTime.Now);
+		}
+
+		public async Task CreatePasswordResetTokenAsync(MemberPasswordResetToken token)
+		{
+			_context.MemberPasswordResetTokens.Add(token);
+			await _context.SaveChangesAsync();
+		}
+
+		// -----前台重設密碼用------------------------------
+
+		// 含 Member 導覽屬性，供驗證 IsDeleted / IsBlacklisted
+		public async Task<MemberPasswordResetToken?> GetPasswordResetTokenAsync(string token)
+		{
+			return await _context.MemberPasswordResetTokens
+				.Include(t => t.Member)
+				.FirstOrDefaultAsync(t => t.Token == token);
+		}
+
+		public async Task MarkPasswordResetTokenUsedAsync(int tokenId)
+		{
+			var token = await _context.MemberPasswordResetTokens.FindAsync(tokenId);
+			if (token == null) return;
+			token.IsUsed = true;
+			await _context.SaveChangesAsync();
+		}
+
+		public async Task UpdateMemberPasswordAsync(int memberId, string hashedPassword)
+		{
+			var member = await _context.Members.FindAsync(memberId);
+			if (member == null) return;
+			member.HashedPassword = hashedPassword;
+			await _context.SaveChangesAsync();
+		}
+
+		// 密碼重設後撤銷該會員所有 RefreshToken（踢除所有裝置）
+		public async Task RevokeAllRefreshTokensByMemberIdAsync(int memberId)
+		{
+			var tokens = await _context.MemberRefreshTokens
+				.Where(t => t.MemberId == memberId && !t.IsRevoked)
+				.ToListAsync();
+			if (tokens.Count == 0) return;
+			foreach (var t in tokens)
+				t.IsRevoked = true;
 			await _context.SaveChangesAsync();
 		}
 	}

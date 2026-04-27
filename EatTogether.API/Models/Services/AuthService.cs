@@ -29,6 +29,13 @@ namespace EatTogether.API.Models.Services
 		// -----前台 Email 驗證用------------------------------
 		Task<Result> VerifyEmailAsync(string token);
 		Task<Result> ResendVerifyEmailAsync(string email);
+
+		// -----前台忘記密碼用------------------------------
+		Task<Result> ForgotPasswordAsync(string email);
+
+		// -----前台重設密碼用------------------------------
+		Task<Result> ValidateResetTokenAsync(string token);
+		Task<Result> ResetPasswordAsync(ResetPasswordDto dto);
 	}
 
 	public class AuthService : IAuthService
@@ -361,6 +368,82 @@ namespace EatTogether.API.Models.Services
 			var frontendBaseUrl = _config["FrontendBaseUrl"];
 			var verifyUrl = $"{frontendBaseUrl}/verify-email?token={tokenString}";
 			await _emailService.SendVerifyEmailAsync(member.Email, verifyUrl);
+
+			return Result.Success();
+		}
+
+		// -----前台忘記密碼用------------------------------
+		public async Task<Result> ForgotPasswordAsync(string email)
+		{
+			// 1. 以 Email 查詢（不含軟刪除）
+			//    找不到 / 已刪除 / 已停權 / 未驗證 → 全部靜默回傳 Success（防枚舉）
+			var member = await _memberRepo.GetByEmailAsync(email);
+			if (member == null || member.IsDeleted || member.IsBlacklisted || !member.IsConfirmed)
+				return Result.Success();
+
+			// 2. 寄信保護：已有未過期且未使用的 token → 靜默回傳 Success（防濫寄）
+			if (await _memberRepo.HasPendingPasswordResetTokenAsync(member.Id))
+				return Result.Success();
+
+			// 3. 建立 MemberPasswordResetToken（有效期 30 分鐘）
+			var tokenString = Guid.NewGuid().ToString("N");
+			var resetToken = new MemberPasswordResetToken
+			{
+				MemberId = member.Id,
+				Token = tokenString,
+				ExpiresAt = DateTime.Now.AddMinutes(30),
+				IsUsed = false,
+				CreatedAt = DateTime.Now,
+			};
+			await _memberRepo.CreatePasswordResetTokenAsync(resetToken);
+
+			// 4. 寄出密碼重設信
+			var frontendBaseUrl = _config["FrontendBaseUrl"];
+			var resetUrl = $"{frontendBaseUrl}/reset-password?token={tokenString}";
+			await _emailService.SendPasswordResetEmailAsync(member.Email, resetUrl);
+
+			return Result.Success();
+		}
+
+		// -----前台重設密碼用------------------------------
+		public async Task<Result> ValidateResetTokenAsync(string token)
+		{
+			var tokenRecord = await _memberRepo.GetPasswordResetTokenAsync(token);
+
+			if (tokenRecord == null || tokenRecord.IsUsed || tokenRecord.ExpiresAt <= DateTime.Now)
+				return Result.Fail("token_invalid");
+
+			// 確認 Member 狀態正常
+			var member = tokenRecord.Member;
+			if (member == null || member.IsDeleted || member.IsBlacklisted)
+				return Result.Fail("token_invalid");
+
+			return Result.Success();
+		}
+
+		public async Task<Result> ResetPasswordAsync(ResetPasswordDto dto)
+		{
+			// 1. 驗證 token（與 ValidateResetTokenAsync 邏輯一致）
+			var tokenRecord = await _memberRepo.GetPasswordResetTokenAsync(dto.Token);
+
+			if (tokenRecord == null || tokenRecord.IsUsed || tokenRecord.ExpiresAt <= DateTime.Now)
+				return Result.Fail("token_invalid");
+
+			var member = tokenRecord.Member;
+			if (member == null || member.IsDeleted || member.IsBlacklisted)
+				return Result.Fail("token_invalid");
+
+			// 2. BCrypt Hash 新密碼
+			var hashedPassword = HashUtility.HashPassword(dto.NewPassword);
+
+			// 3. 更新密碼
+			await _memberRepo.UpdateMemberPasswordAsync(member.Id, hashedPassword);
+
+			// 4. 標記 token 已使用
+			await _memberRepo.MarkPasswordResetTokenUsedAsync(tokenRecord.Id);
+
+			// 5. 撤銷該會員所有 RefreshToken（密碼更新後踢除所有裝置）
+			await _memberRepo.RevokeAllRefreshTokensByMemberIdAsync(member.Id);
 
 			return Result.Success();
 		}

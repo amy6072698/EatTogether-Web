@@ -515,7 +515,7 @@ onMounted(() => {
                                         />
                                         <button
                                             type="button"
-                                            class="password-toggle"
+                                            class="btn-eat-password-toggle"
                                             @mousedown.prevent
                                             @click="showLoginPassword = !showLoginPassword"
                                             :aria-label="
@@ -692,7 +692,7 @@ onMounted(() => {
                                         />
                                         <button
                                             type="button"
-                                            class="password-toggle"
+                                            class="btn-eat-password-toggle"
                                             @mousedown.prevent
                                             @click="showPassword = !showPassword"
                                             :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
@@ -740,7 +740,7 @@ onMounted(() => {
                                         />
                                         <button
                                             type="button"
-                                            class="password-toggle"
+                                            class="btn-eat-password-toggle"
                                             @click="showConfirmPassword = !showConfirmPassword"
                                             :aria-label="
                                                 showConfirmPassword ? '隱藏密碼' : '顯示密碼'
@@ -870,25 +870,6 @@ onMounted(() => {
 
 /* ── Success ── */
 .auth-success-box {
-    color: var(--eat-on-surface);
-}
-
-/* ── 密碼顯示切換按鈕 ── */
-.password-toggle {
-    position: absolute;
-    right: 0.75rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: var(--eat-on-surface-variant);
-    cursor: pointer;
-    padding: 0;
-    line-height: 1;
-    transition: color 0.2s;
-}
-
-.password-toggle:hover {
     color: var(--eat-on-surface);
 }
 </style>

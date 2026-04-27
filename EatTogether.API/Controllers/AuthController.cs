@@ -165,9 +165,56 @@ namespace EatTogether.API.Controllers
 		// POST /api/auth/forgot-password
 		[HttpPost("forgot-password")]
 		[EnableRateLimiting("AuthPolicy")]
-		public IActionResult ForgotPassword()
+		public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
 		{
-			return StatusCode(501);
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState);
+
+			// 無論結果如何一律回傳 200（防枚舉）
+			await _authService.ForgotPasswordAsync(dto.Email);
+			return Ok(new SuccessViewModel { Message = "若此 Email 已註冊，重設密碼信件將寄出" });
+		}
+
+		// GET /api/auth/validate-reset-token?token=xxx
+		[HttpGet("validate-reset-token")]
+		[EnableRateLimiting("AuthPolicy")]
+		public async Task<IActionResult> ValidateResetToken([FromQuery] string token)
+		{
+			if (string.IsNullOrWhiteSpace(token))
+				return BadRequest(new ErrorViewModel
+				{
+					Message = "重設連結無效或已過期",
+					ErrorCode = "token_invalid"
+				});
+
+			var result = await _authService.ValidateResetTokenAsync(token);
+			if (!result.IsSuccess)
+				return BadRequest(new ErrorViewModel
+				{
+					Message = "重設連結無效或已過期",
+					ErrorCode = "token_invalid"
+				});
+
+			return Ok(new SuccessViewModel { Message = "token 有效" });
+		}
+
+		// POST /api/auth/reset-password
+		[HttpPost("reset-password")]
+		[EnableRateLimiting("AuthPolicy")]
+		public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState);
+
+			var result = await _authService.ResetPasswordAsync(dto);
+			if (!result.IsSuccess)
+				return BadRequest(new ErrorViewModel
+				{
+					Message = "重設連結無效或已過期",
+					ErrorCode = "token_invalid"
+				});
+
+			return Ok(new SuccessViewModel { Message = "密碼已成功重設，請重新登入" });
 		}
 
 		// GET /api/auth/verify-email?token=xxx
