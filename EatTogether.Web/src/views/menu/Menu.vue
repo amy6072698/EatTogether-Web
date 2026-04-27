@@ -135,7 +135,7 @@
                     :key="dish.id"
                     class="dish-card"
                     :class="{ 'is-soldout': dish.stockStatus === 2 }"
-                    @click="openModal(dish)"
+                    @click="dish.stockStatus !== 2 && openModal(dish)"
                     @mousemove="handleMouseMove($event)"
                     @mouseleave="handleMouseLeave"
                 >
@@ -370,13 +370,19 @@
                         <!-- 評分 -->
                         <div class="modal-section">
                             <div class="modal-section-label">為這道餐點評分</div>
+                            <p class="rating-avg" v-if="dishRatingMap[selectedDish.id]">
+                                ⭐ 平均 {{ dishRatingMap[selectedDish.id].averageScore.toFixed(1) }} 分（{{ dishRatingMap[selectedDish.id].ratingCount }} 人評分）
+                            </p>
+                            <p class="rating-avg rating-avg--empty" v-else>尚無評分，成為第一個！</p>
                             <div class="star-row">
                                 <button
                                     v-for="star in 5"
                                     :key="star"
                                     class="star-btn"
+                                    :class="{ 'is-rated': userRatings[selectedDish.id] }"
+                                    :disabled="!!userRatings[selectedDish.id]"
                                     @click="submitRating(selectedDish.id, star)"
-                                    @mouseenter="hoverStar = star"
+                                    @mouseenter="!userRatings[selectedDish.id] && (hoverStar = star)"
                                     @mouseleave="hoverStar = 0"
                                     :aria-label="`${star} 顆星`"
                                 >
@@ -388,7 +394,7 @@
                                 </button>
                             </div>
                             <p v-if="userRatings[selectedDish.id]" class="star-voted">
-                                您已評 {{ userRatings[selectedDish.id] }} 顆星
+                                已評分 ★
                             </p>
                         </div>
                     </div>
@@ -540,6 +546,31 @@ const getCountdown = (endDateString, startDateString) => {
     return `倒數 ${hh}:${mm}:${ss}`
 }
 
+// ── Polling ──────────────────────────────────────────
+let _pollTimer = null
+let _dishFingerprint = ''
+
+const getDishFingerprint = (data) =>
+    [...data]
+        .sort((a, b) => a.id - b.id)
+        .map(d => `${d.id}|${d.dishName}|${d.price}|${d.stockStatus}|${d.isActive ?? 1}`)
+        .join(',')
+
+const pollMenu = async () => {
+    try {
+        const res = await apiFetch('/Dishes/active')
+        if (!res.ok) return
+        const newData = await res.json()
+        const newFp = getDishFingerprint(newData)
+        if (newFp !== _dishFingerprint) {
+            _dishFingerprint = newFp
+            dishes.value = newData
+        }
+    } catch (e) {
+        console.warn('[pollMenu]', e)
+    }
+}
+
 // ── State ────────────────────────────────────────────
 const dishes = ref([])
 const loading = ref(true)
@@ -556,15 +587,26 @@ const viewMode = ref('grid')
 
 // ── 評分 ──────────────────────────────────────────────
 const userRatings = reactive(JSON.parse(localStorage.getItem('menu-ratings') || '{}'))
+const dishRatingMap = reactive({})
 const hoverStar = ref(0)
 
-const submitRating = (dishId, star) => {
-    userRatings[dishId] = star
-    localStorage.setItem('menu-ratings', JSON.stringify(userRatings))
-    apiFetch(`/Dishes/${dishId}/Rate`, {
+const submitRating = async (dishId, star) => {
+    if (userRatings[dishId]) return
+    try {
+        const res = await apiFetch(`/Dishes/${dishId}/Rate`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ score: star }),
-    }).catch(() => {}) // fire-and-forget，忽略錯誤
+        })
+        if (!res.ok) throw new Error()
+        const data = await res.json()
+        userRatings[dishId] = star
+        localStorage.setItem('menu-ratings', JSON.stringify(userRatings))
+        dishRatingMap[dishId] = { averageScore: data.averageScore, ratingCount: data.ratingCount }
+        show('⭐ 感謝您的評分！', 'success')
+    } catch {
+        show('評分失敗，請稍後再試', 'error')
+    }
 }
 
 // ── 收藏 ──────────────────────────────────────────────
@@ -721,6 +763,8 @@ const filteredDishes = computed(() => {
 
 onMounted(async () => {
     await fetchMenu()
+    _dishFingerprint = getDishFingerprint(dishes.value)
+    _pollTimer = setInterval(pollMenu, 3000)
     window.addEventListener('scroll', handleParallax, { passive: true })
     document.addEventListener('click', handleShareClickOutside)
     window.addEventListener('resize', updateBtnPos)
@@ -733,6 +777,7 @@ onMounted(async () => {
     }
 })
 onUnmounted(() => {
+    clearInterval(_pollTimer)
     window.removeEventListener('scroll', handleParallax)
     document.removeEventListener('click', handleShareClickOutside)
     window.removeEventListener('resize', updateBtnPos)
@@ -1019,25 +1064,17 @@ onUnmounted(() => {
 
 /* ── Card 進場動畫 ── */
 .card-enter-active {
-    transition:
-        opacity 0.5s ease,
-        transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: opacity 0.35s ease;
 }
 .card-leave-active {
-    transition:
-        opacity 0.3s ease,
-        transform 0.3s ease;
+    transition: opacity 0.25s ease;
 }
-.card-enter-from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.97);
-}
+.card-enter-from,
 .card-leave-to {
     opacity: 0;
-    transform: translateY(-8px) scale(0.97);
 }
 .card-move {
-    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform 0.3s ease;
 }
 
 .dish-card {
@@ -1083,6 +1120,7 @@ onUnmounted(() => {
 }
 .dish-card.is-soldout {
     opacity: 0.6;
+    cursor: not-allowed;
 }
 
 /* ── 售完遮罩 ── */
@@ -1618,6 +1656,24 @@ onUnmounted(() => {
     transform: scale(1.2);
 }
 
+.rating-avg {
+    font-family: var(--font-label);
+    font-size: 0.78rem;
+    color: var(--eat-primary);
+    letter-spacing: 0.04em;
+    margin: 0 0 0.6rem;
+}
+.rating-avg--empty {
+    color: rgba(249, 221, 211, 0.35);
+    font-style: italic;
+}
+.star-btn.is-rated {
+    cursor: default;
+    opacity: 0.75;
+}
+.star-btn:disabled {
+    pointer-events: none;
+}
 .star-voted {
     font-family: var(--font-label);
     font-size: 0.7rem;
