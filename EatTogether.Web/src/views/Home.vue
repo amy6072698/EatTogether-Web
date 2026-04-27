@@ -65,91 +65,68 @@
     </section>
 
     <!-- ═══════════════════════════════════════════
-       熱門餐點 — Dish Cards + Swiper 輪播
+       熱門餐點 — 全寬 Fade 輪播
   ════════════════════════════════════════════ -->
     <section class="dishes-section" id="dishes">
         <div class="container">
-            <!-- Section Header + Swiper 方向鍵 -->
             <div class="section-header">
                 <div>
                     <span class="section-eyebrow">Signature Dishes</span>
                     <h2 class="eat-h2 mb-0">招牌料理預覽</h2>
                 </div>
-                <div class="swiper-nav-wrap">
-                    <button
-                        class="swiper-nav-btn"
-                        id="dishesPrev"
-                        aria-label="Previous"
-                    >
-                        <svg 
-                            viewBox="0 0 16 16"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        >
-                            <path d="M10 3L5 8l5 5" />
-                        </svg>
-                    </button>
-                    <button
-                        class="swiper-nav-btn"
-                        id="dishesNext"
-                        aria-label="Next"
-                    >
-                        <svg
-                            viewBox="0 0 16 16"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        >
-                            <path d="M6 3l5 5-5 5" />
-                        </svg>
-                    </button>
-                </div>
             </div>
+        </div>
 
-            <!-- Swiper -->
-            <div class="swiper swiper-dishes">
-                <div class="swiper-wrapper">
-                    <div
-                        class="swiper-slide"
-                        v-for="dish in dishes"
-                        :key="dish.id"
+        <!-- 全寬 Swiper -->
+        <div class="swiper swiper-dishes">
+            <div class="swiper-wrapper">
+
+                <!-- Slide 0：影片 -->
+                <div class="swiper-slide" data-swiper-autoplay="8000">
+                    <video
+                        class="slide-video"
+                        autoplay
+                        muted
+                        loop
+                        playsinline
+                        v-show="!videoError"
+                        @error="videoError = true"
                     >
-                        <div class="card-eat">
-                            <div class="card-img-wrap">
-                                <img
-                                    :src="dish.img"
-                                    :alt="dish.name"
-                                    loading="lazy"
-                                />
-                                <div class="card-img-overlay-gradient"></div>
-                                <span
-                                    class="card-badge"
-                                    :style="dish.badgeStyle"
-                                    >{{ dish.badge }}</span
-                                >
-                                <button
-                                    class="card-favorite"
-                                    aria-label="加入收藏"
-                                >
-                                    ♡
-                                </button>
-                            </div>
-                            <div class="card-body">
-                                <h3 class="card-title">{{ dish.name }}</h3>
-                                <p class="card-text">{{ dish.desc }}</p>
-                            </div>
-                        </div>
+                        <source :src="videoSrc" type="video/mp4" />
+                    </video>
+                    <!-- 影片載入失敗 fallback -->
+                    <div
+                        class="slide-bg slide-fallback-bg"
+                        v-show="videoError"
+                    ></div>
+                    <div class="slide-overlay"></div>
+                    <div class="slide-content">
+                        <span class="slide-badge" style="background:rgba(212,175,55,0.22);border-color:rgba(212,175,55,0.55);color:#e3c76b;">精選影片</span>
+                        <h3 class="slide-title">義式風味饗宴</h3>
+                        <p class="slide-desc">走進義大利，感受每一道料理背後的百年溫度與職人工藝。</p>
                     </div>
                 </div>
-                <div class="swiper-pagination"></div>
-            </div>
 
-            <!-- 瀏覽完整菜單 CTA -->
+                <!-- Slide 1+：餐點圖片（原本資料不動） -->
+                <div
+                    class="swiper-slide"
+                    v-for="dish in dishes"
+                    :key="dish.id"
+                >
+                    <div class="slide-bg" :style="{ backgroundImage: `url(${dish.img})` }"></div>
+                    <div class="slide-overlay"></div>
+                    <div class="slide-content">
+                        <span v-if="dish.badge" class="slide-badge" :style="dish.badgeStyle">{{ dish.badge }}</span>
+                        <h3 class="slide-title">{{ dish.name }}</h3>
+                        <p class="slide-desc">{{ dish.desc }}</p>
+                    </div>
+                </div>
+
+            </div>
+            <div class="swiper-pagination"></div>
+        </div>
+
+        <div class="container">
             <div class="text-center mt-5">
                 <Button variant="tertiary" to="/menu">瀏覽完整菜單</Button>
             </div>
@@ -196,27 +173,30 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { RouterLink } from 'vue-router'
 import Swiper from 'swiper'
-import { Navigation, Pagination, Autoplay, EffectCoverflow } from 'swiper/modules'
+import { Pagination, Autoplay, EffectFade } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/pagination'
+import 'swiper/css/effect-fade'
 import Button from '@/components/common/Button.vue'
+import apiFetch from '@/utils/apiFetch.js'
 
 // ── Hero 背景圖漸入 ──────────────────────────────────
 const heroBgLoaded = ref(false)
 
+// ── 影片 slide ───────────────────────────────────────
+// 用變數而非靜態 src，避免 Vite 在 build 時試圖 import 此路徑
+const videoSrc = '/videos/italian.mp4'
+const videoError = ref(false)
+
 // ── 動態資料與 API 串接 ──────────────────────────────
-// 1. 準備一個空的陣列，等後台把資料倒進來
 const dishes = ref([])
 let _refreshTimer = null
 
-// 2. 去後台抓資料的函式
 async function fetchDishes() {
-    const API_URL = import.meta.env.VITE_API_BASE_URL || '/api'
-    const endpoint = `${API_URL}/Dishes/active`
-    const ORIGIN = 'https://localhost:7119'
-    
+    const endpoint = '/Dishes/active'
+
     try {
-        const response = await fetch(endpoint)
+        const response = await apiFetch(endpoint)
 
         if (!response.ok) {
             throw new Error(`伺服器回應錯誤：${response.status} (路徑：${endpoint})`)
@@ -236,16 +216,15 @@ async function fetchDishes() {
             }
         })
 
-        // 對齊資料格式
         const isFirstLoad = dishes.value.length === 0
 
         dishes.value = filteredData.map((item, index) => {
-            if (index === 0) console.log('第一筆完整資料物件 (請檢查裡面的欄位名稱):', item);
+            if (index === 0) console.warn('第一筆完整資料物件 (請檢查裡面的欄位名稱):', item)
 
-            const rawPath = item.imageUrl || item.ImageUrl || '';
+            const rawPath = item.imageUrl || item.ImageUrl || ''
             const finalImg = rawPath.startsWith('/images/')
                 ? rawPath
-                : 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80';
+                : 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80'
 
             let badge = null
             let badgeStyle = {}
@@ -268,7 +247,7 @@ async function fetchDishes() {
                 desc: item.description || '道地義式風味，主廚嚴選推薦。',
                 badge,
                 badgeStyle
-            };
+            }
         })
 
         // 首次載入才初始化 Swiper；背景輪詢只更新資料，不重建輪播
@@ -278,7 +257,6 @@ async function fetchDishes() {
         }
     } catch (error) {
         console.error('抓取失敗：', error)
-        // 防呆機制：僅首次失敗時塞提示資料，背景輪詢失敗則保留現有畫面
         if (dishes.value.length === 0) {
             dishes.value = [
                 {
@@ -295,25 +273,15 @@ async function fetchDishes() {
         }
     }
 }
-    
 
 // ── Swiper 初始化 ─────────────────────────────────────
 function initSwiper() {
     new Swiper('.swiper-dishes', {
-        modules: [Navigation, Pagination, Autoplay, EffectCoverflow],
-        effect: 'coverflow',
-        grabCursor: true,
-        centeredSlides: true,
-        slidesPerView: 'auto',
-        coverflowEffect: {
-            rotate: 0,
-            stretch: 0,
-            depth: 100,
-            modifier: 2.5,
-            slideShadows: false,
-        },
+        modules: [Pagination, Autoplay, EffectFade],
+        effect: 'fade',
+        fadeEffect: { crossFade: true },
         autoplay: {
-            delay: 3000,
+            delay: 4000,
             disableOnInteraction: false,
         },
         loop: true,
@@ -321,17 +289,13 @@ function initSwiper() {
             el: '.swiper-pagination',
             clickable: true,
         },
-        navigation: {
-            prevEl: '#dishesPrev',
-            nextEl: '#dishesNext',
-        },
     })
 }
 
 // ── 生命週期：網頁載入時執行 ──────────────────────────
 onMounted(() => {
     heroBgLoaded.value = true
-    fetchDishes() // 網頁一開，就去抓資料
+    fetchDishes()
     _refreshTimer = setInterval(fetchDishes, 5_000)
 })
 onUnmounted(() => {
@@ -524,14 +488,14 @@ onUnmounted(() => {
 /* ── 熱門餐點 ─────────────────────────────────────── */
 .dishes-section {
     background-color: var(--eat-surface);
-    padding: 5.5rem 0 6rem;
-    overflow-x: hidden; /* 防止 swiper overflow:visible 撐出水平捲軸 */
+    padding-top: 5.5rem;
+    padding-bottom: 6rem;
 }
 .section-header {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    margin-bottom: 3rem;
+    margin-bottom: 2.5rem;
     flex-wrap: wrap;
     gap: 1rem;
 }
@@ -544,15 +508,117 @@ onUnmounted(() => {
     margin-bottom: 0.4rem;
     display: block;
 }
+
+/* 全寬 Swiper */
 .swiper-dishes {
-    overflow: visible !important;
-    padding-bottom: 3.5rem !important;
+    width: 100%;
+    height: 70vh;
+    overflow: hidden;
 }
 :deep(.swiper-slide) {
-    height: auto;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 影片填滿 slide */
+.slide-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* 影片載入失敗 fallback 靜態圖 */
+.slide-fallback-bg {
+    background-image: url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1600&q=80') !important;
+}
+
+/* 背景圖（餐點 slides） */
+.slide-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    transform: scale(1.0);
+    will-change: transform;
+}
+:deep(.swiper-slide-active) .slide-bg {
+    animation: kenBurns 6s ease forwards;
+}
+@keyframes kenBurns {
+    from { transform: scale(1.0); }
+    to   { transform: scale(1.05); }
+}
+
+/* 遮罩 */
+.slide-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to top,
+        rgba(18, 8, 4, 0.85) 0%,
+        rgba(18, 8, 4, 0.35) 50%,
+        rgba(18, 8, 4, 0.12) 100%
+    );
+}
+
+/* 文字內容 */
+.slide-content {
+    position: absolute;
+    bottom: 3.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(12px);
+    text-align: center;
+    z-index: 2;
+    width: 90%;
+    max-width: 720px;
+    opacity: 0;
+}
+:deep(.swiper-slide-active) .slide-content {
+    animation: slideTextIn 0.65s 0.1s ease forwards;
+}
+@keyframes slideTextIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.slide-badge {
+    display: inline-block;
+    padding: 0.2rem 0.7rem;
+    border: 1px solid rgba(227, 199, 107, 0.45);
+    border-radius: var(--eat-radius-sm);
+    background: rgba(227, 199, 107, 0.1);
+    backdrop-filter: blur(6px);
+    font-family: var(--font-label);
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--eat-primary);
+    margin-bottom: 0.75rem;
+}
+.slide-title {
+    font-family: var(--font-headline);
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    color: var(--eat-primary);
+    font-style: italic;
+    line-height: 1.15;
+    margin-bottom: 0.75rem;
+}
+.slide-desc {
+    font-family: var(--font-body);
+    font-size: clamp(0.9rem, 2vw, 1.05rem);
+    color: rgba(249, 221, 211, 0.75);
+    font-style: italic;
+    line-height: 1.7;
+    margin: 0;
+}
+
+/* Pagination */
+:deep(.swiper-pagination) {
+    bottom: 1.25rem;
 }
 :deep(.swiper-pagination-bullet) {
-    background: rgba(208, 197, 181, 0.3);
+    background: rgba(208, 197, 181, 0.35);
     opacity: 1;
     width: 8px;
     height: 8px;
@@ -561,145 +627,8 @@ onUnmounted(() => {
 }
 :deep(.swiper-pagination-bullet-active) {
     background: var(--eat-primary);
-    width: 8px;
-    height: 8px;
-}
-.swiper-nav-wrap {
-    display: flex;
-    gap: 0.5rem;
-}
-.swiper-nav-btn {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: rgba(30, 16, 11, 0.65);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(227, 199, 107, 0.22);
-    color: var(--eat-on-surface-variant);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: var(--eat-transition);
-    flex-shrink: 0;
-}
-.swiper-nav-btn:hover {
-    background: rgba(227, 199, 107, 0.12);
-    border-color: var(--eat-primary);
-    color: var(--eat-primary);
-}
-.swiper-nav-btn svg {
-    width: 14px;
-    height: 14px;
-}
-
-/* Dish Card */
-.card-eat {
-    background: transparent;
-    border: none;
-    border-radius: var(--eat-radius);
-    overflow: visible;
-    transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding-top: 1rem;
-}
-.card-eat:hover {
-    transform: translateY(-8px);
-}
-.card-img-wrap {
-    position: relative;
-    width: 300px;
-    height: 300px;
-    border-radius: 50%;
-    overflow: hidden;
-    flex-shrink: 0;
-    border: 2px solid rgba(227, 199, 107, 0.3);
-}
-.card-img-wrap img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.card-eat:hover .card-img-wrap img {
-    transform: scale(1.12);
-}
-.card-img-overlay-gradient {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-        to top,
-        var(--eat-surface-high) 0%,
-        transparent 50%
-    );
-    opacity: 0.85;
-}
-.card-badge {
-    position: absolute;
-    top: 1rem;
-    left: 1rem;
-    background: rgba(227, 199, 107, 0.18);
-    backdrop-filter: blur(6px);
-    border: 1px solid rgba(227, 199, 107, 0.45);
-    padding: 0.15rem 0.55rem;
-    font-family: var(--font-label);
-    font-size: 0.65rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--eat-primary);
-    border-radius: var(--eat-radius-sm);
-}
-.card-favorite {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    background: none;
-    border: none;
-    color: rgba(249, 221, 211, 0.6);
-    cursor: pointer;
-    transition: color 0.3s ease;
-    font-size: 1.25rem;
-    line-height: 1;
-}
-.card-favorite:hover {
-    color: var(--eat-primary);
-}
-.card-body {
-    padding: 1.25rem 1.5rem;
-    background: transparent;
-    text-align: center;
-}
-.card-title {
-    font-family: var(--font-headline);
-    font-size: 1.6rem;
-    color: var(--eat-primary);
-    font-style: italic;
-    margin-bottom: 0.25rem;
-}
-.card-price {
-    font-family: var(--font-label);
-    font-size: 1rem;
-    color: var(--eat-secondary);
-    letter-spacing: 0.08em;
-    white-space: nowrap;
-}
-.card-text {
-    font-family: var(--font-body);
-    font-size: 1rem;
-    color: rgba(249, 221, 211, 0.65);
-    font-style: italic;
-    line-height: 1.7;
-    margin-top: 0.5rem;
-    margin-bottom: 0;
-}
-.card-footer-action {
-    padding: 0 1.75rem 1.75rem;
-    background: var(--eat-surface-high);
-    display: flex;
-    align-items: center;
+    width: 24px;
+    border-radius: 4px;
 }
 
 /* ── 預約 Banner ──────────────────────────────────── */

@@ -32,7 +32,7 @@
           v-reveal="index"
           class="meal-card"
           :class="{ 'is-comparing': compareList.includes(meal.id) }"
-          @click="openModal(meal)"
+          @click="isAvailable(meal) && openModal(meal)"
           @mousemove="onCardMove($event)"
           @mouseleave="activePreview = null"
         >
@@ -99,7 +99,7 @@
                   >{{ group.categoryName }} × {{ group.pickLimit }}</span>
                 </div>
               </div>
-              <button class="tip-more" @click.stop="openModal(meal)">查看完整資訊 →</button>
+              <button class="tip-more" @click.stop="isAvailable(meal) && openModal(meal)">查看完整資訊 →</button>
             </div>
           </Transition>
 
@@ -277,6 +277,36 @@
             </div>
           </div>
 
+          <!-- 浮動按鈕 (position:fixed, JS 定位) -->
+          <button class="modal-close" :style="{ top: btnPos.top, right: btnPos.closeRight }" @click="closeModal">✕</button>
+          <div class="share-wrap" ref="shareWrapRef" :style="{ top: btnPos.top, right: btnPos.shareRight }">
+            <button class="modal-share" @click.stop="shareMenuOpen = !shareMenuOpen" aria-label="分享">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                <polyline points="16 6 12 2 8 6"/>
+                <line x1="12" y1="2" x2="12" y2="15"/>
+              </svg>
+            </button>
+            <Transition name="share-menu">
+              <div v-if="shareMenuOpen" class="share-menu">
+                <button class="share-item" @click="openShareItem('line')">
+                  <span class="share-icon si-line">L</span>LINE
+                </button>
+                <button class="share-item" @click="openShareItem('facebook')">
+                  <span class="share-icon si-fb">f</span>Facebook
+                </button>
+                <button class="share-item" @click="openShareItem('x')">
+                  <span class="share-icon si-x">𝕏</span>X
+                </button>
+                <button class="share-item" @click="openShareItem('copy')">
+                  <span class="share-icon si-copy">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  </span>複製連結
+                </button>
+              </div>
+            </Transition>
+          </div>
+
           <!-- 資訊區 -->
           <div class="modal-body" ref="modalBodyRef">
             <div class="modal-header-row">
@@ -350,43 +380,6 @@
           </div>
         </div>
 
-        <!-- 按鈕並列於 modal-box 外，用 position:fixed + JS 動態對齊右上角 -->
-        <button
-          class="modal-close"
-          :style="{ top: btnPos.top, right: btnPos.closeRight }"
-          @click="closeModal"
-        >✕</button>
-        <div
-          class="share-wrap"
-          ref="shareWrapRef"
-          :style="{ top: btnPos.top, right: btnPos.shareRight }"
-        >
-          <button class="modal-share" @click.stop="shareMenuOpen = !shareMenuOpen" aria-label="分享">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-              <polyline points="16 6 12 2 8 6"/>
-              <line x1="12" y1="2" x2="12" y2="15"/>
-            </svg>
-          </button>
-          <Transition name="share-menu">
-            <div v-if="shareMenuOpen" class="share-menu">
-              <button class="share-item" @click="openShareItem('line')">
-                <span class="share-icon si-line">L</span>LINE
-              </button>
-              <button class="share-item" @click="openShareItem('facebook')">
-                <span class="share-icon si-fb">f</span>Facebook
-              </button>
-              <button class="share-item" @click="openShareItem('x')">
-                <span class="share-icon si-x">𝕏</span>X
-              </button>
-              <button class="share-item" @click="openShareItem('copy')">
-                <span class="share-icon si-copy">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                </span>複製連結
-              </button>
-            </div>
-          </Transition>
-        </div>
       </div>
     </Transition>
   </div>
@@ -397,6 +390,7 @@ import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from
 import { useRouter } from 'vue-router';
 import ToastContainer from '@/components/common/ToastContainer.vue';
 import { useToast } from '@/composables/useToast.js';
+import apiFetch from '@/utils/apiFetch.js';
 const { show } = useToast();
 const router = useRouter();
 
@@ -526,7 +520,6 @@ const modalBodyRef = ref(null);
 const modalImgRef = ref(null);
 const modalBoxRef = ref(null);
 
-// 按鈕動態定位（相對 viewport，避免被任何 stacking context 裁切）
 const btnPos = reactive({ top: '1rem', closeRight: '1rem', shareRight: '3.5rem' });
 
 const updateBtnPos = () => {
@@ -795,13 +788,11 @@ onUnmounted(() => {
 // ── API ────────────────────────────────────────────
 let _refreshTimer = null;
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
-
 const fetchDishes = async () => {
   try {
-    const res = await fetch(`${API_BASE}/Dishes/active`);
+    const res = await apiFetch('/Dishes/active');
     if (res.ok) dishes.value = await res.json();
-  } catch {}
+  } catch { /* 背景靜默失敗 */ }
 };
 
 const fetchSetMeals = async () => {
@@ -810,7 +801,7 @@ const fetchSetMeals = async () => {
     loading.value = true;
   }
   try {
-    const res = await fetch(`${API_BASE}/SetMeals/active`);
+    const res = await apiFetch('/SetMeals/active');
     if (!res.ok) throw new Error(`抓取失敗 (${res.status})`);
     setMeals.value = await res.json();
     error.value = null;
@@ -930,7 +921,8 @@ onUnmounted(() => {
   justify-content: center;
   z-index: 5;
   border-radius: inherit;
-  pointer-events: none;
+  pointer-events: all;
+  cursor: not-allowed;
 }
 .time-overlay-text {
   font-family: var(--font-label);
@@ -1242,6 +1234,7 @@ onUnmounted(() => {
   margin: 0 0 0.65rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1443,6 +1436,7 @@ onUnmounted(() => {
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1481,11 +1475,11 @@ onUnmounted(() => {
 
 .modal-box {
   width: 100%; max-width: 540px;
-  max-height: calc(100vh - 3rem);
+  max-height: min(680px, calc(100vh - 8rem));
   background: #1e100b;
   border: 1px solid rgba(227, 199, 107, 0.15);
   border-radius: 24px;
-  overflow: visible;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -1501,7 +1495,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   background: #251813;
   overflow: hidden;
-  border-radius: 24px 24px 0 0; /* 頂部圓角與 modal-box 一致 */
+  border-radius: 24px 24px 0 0;
 }
 .modal-img {
   width: 100%; height: 100%; object-fit: cover;
