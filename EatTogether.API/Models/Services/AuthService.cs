@@ -3,6 +3,8 @@ using EatTogether.API.Models.EfModels;
 using EatTogether.API.Models.Infra;
 using EatTogether.API.Models.Repositories;
 using EatTogether.API.Models.ViewModels;
+using Google.Apis.Auth;
+using System.Text.Json;
 
 namespace EatTogether.API.Models.Services
 {
@@ -36,10 +38,16 @@ namespace EatTogether.API.Models.Services
 		// -----前台重設密碼用------------------------------
 		Task<Result> ValidateResetTokenAsync(string token);
 		Task<Result> ResetPasswordAsync(ResetPasswordDto dto);
+
+		// -----前台 Google OAuth 用------------------------------
+		Task<Result<MemberViewModel>> GoogleCallbackAsync(string code);
 	}
 
 	public class AuthService : IAuthService
 	{
+		// Google OAuth token exchange 共用同一個 HttpClient（避免 socket exhaustion）
+		private static readonly HttpClient _httpClient = new();
+
 		private readonly IHttpContextAccessor _httpContextAccessor;
 
 		// -----內用點餐頁用------------------------------
@@ -120,16 +128,20 @@ namespace EatTogether.API.Models.Services
 			CookieHelper.SetRefreshTokenCookie(response, refreshToken, _env);
 
 			// 11. 回傳 MemberViewModel
+			var googleLogin = member.MemberExternalLogins
+				.FirstOrDefault(e => e.Provider == "google");
+
 			return Result<MemberViewModel>.Success(new MemberViewModel
 			{
 				Id = member.Id,
 				Name = member.Name,
 				Email = member.Email,
 				AvatarFileName = member.AvatarFileName,
+				GoogleAvatarUrl = googleLogin?.AvatarUrl,
 				HashedPasswordStatus = member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD
 					? "EXTERNAL_LOGIN_NO_PASSWORD"
 					: "HAS_PASSWORD",
-				GoogleLinked = member.MemberExternalLogins.Any(e => e.Provider == "google"),
+				GoogleLinked = googleLogin != null,
 			});
 		}
 
@@ -189,16 +201,20 @@ namespace EatTogether.API.Models.Services
 			CookieHelper.SetRefreshTokenCookie(response, newRefreshToken, _env);
 
 			// 9. 回傳 MemberViewModel
+			var googleLogin = member.MemberExternalLogins
+				.FirstOrDefault(e => e.Provider == "google");
+
 			return Result<MemberViewModel>.Success(new MemberViewModel
 			{
 				Id = member.Id,
 				Name = member.Name,
 				Email = member.Email,
 				AvatarFileName = member.AvatarFileName,
+				GoogleAvatarUrl = googleLogin?.AvatarUrl,
 				HashedPasswordStatus = member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD
 					? "EXTERNAL_LOGIN_NO_PASSWORD"
 					: "HAS_PASSWORD",
-				GoogleLinked = member.MemberExternalLogins.Any(e => e.Provider == "google"),
+				GoogleLinked = googleLogin != null,
 			});
 		}
 
@@ -252,14 +268,18 @@ namespace EatTogether.API.Models.Services
 			CookieHelper.SetRefreshTokenCookie(response, refreshToken, _env);
 
 			// 11. 回傳 MemberViewModel
+			var googleLogin = member.MemberExternalLogins
+				.FirstOrDefault(e => e.Provider == "google");
+
 			return Result<MemberViewModel>.Success(new MemberViewModel
 			{
 				Id = member.Id,
 				Name = member.Name,
 				Email = member.Email,
 				AvatarFileName = member.AvatarFileName,
+				GoogleAvatarUrl = googleLogin?.AvatarUrl,
 				HashedPasswordStatus = "HAS_PASSWORD",
-				GoogleLinked = member.MemberExternalLogins.Any(e => e.Provider == "google"),
+				GoogleLinked = googleLogin != null,
 			});
 		}
 
@@ -446,6 +466,165 @@ namespace EatTogether.API.Models.Services
 			await _memberRepo.RevokeAllRefreshTokensByMemberIdAsync(member.Id);
 
 			return Result.Success();
+		}
+
+		// -----前台 Google OAuth 用------------------------------
+		public async Task<Result<MemberViewModel>> GoogleCallbackAsync(string code)
+		{
+			// 1. 用 code 向 Google 換取 id_token
+			var clientId = _config["Google:ClientId"]!;
+			var clientSecret = _config["Google:ClientSecret"]!;
+			var redirectUri = _config["Google:RedirectUri"]!;
+
+			var tokenResponse = await _httpClient.PostAsync(
+				"https://oauth2.googleapis.com/token",
+				new FormUrlEncodedContent(new Dictionary<string, string>
+				{
+					["code"] = code,
+					["client_id"] = clientId,
+					["client_secret"] = clientSecret,
+					["redirect_uri"] = redirectUri,
+					["grant_type"] = "authorization_code",
+				}));
+
+			if (!tokenResponse.IsSuccessStatusCode)
+				return Result<MemberViewModel>.Fail("google_auth_failed");
+
+			var tokenJson = await tokenResponse.Content.ReadAsStringAsync();
+			using var doc = JsonDocument.Parse(tokenJson);
+			if (!doc.RootElement.TryGetProperty("id_token", out var idTokenElement))
+				return Result<MemberViewModel>.Fail("google_auth_failed");
+
+			var idToken = idTokenElement.GetString()!;
+
+			// 2. 驗證 id_token，解析 sub、email、name、avatarUrl
+			GoogleJsonWebSignature.Payload payload;
+			try
+			{
+				payload = await GoogleJsonWebSignature.ValidateAsync(
+					idToken,
+					new GoogleJsonWebSignature.ValidationSettings { Audience = new[] { clientId } });
+			}
+			catch
+			{
+				return Result<MemberViewModel>.Fail("google_auth_failed");
+			}
+
+			var providerUserId = payload.Subject;
+			var email = payload.Email;
+			var name = payload.Name ?? email.Split('@')[0];
+			var avatarUrl = payload.Picture;
+
+			// 3. 查詢 MemberExternalLogins WHERE Provider='google' AND ProviderUserId=sub
+			Member member;
+			var externalLogin = await _memberRepo.GetExternalLoginAsync("google", providerUserId);
+
+			if (externalLogin != null)
+			{
+				// 找到：使用現有 Member（Include 在 Repository 已處理）
+				if (externalLogin.Member == null)
+					return Result<MemberViewModel>.Fail("login_failed");
+				member = externalLogin.Member;
+			}
+			else
+			{
+				// 4. 查詢 Members.Email（GetByEmailAsync 已過濾 IsDeleted=1）
+				var existingMember = await _memberRepo.GetByEmailAsync(email);
+
+				if (existingMember != null)
+				{
+					// 停權帳號不允許連結
+					if (existingMember.IsBlacklisted)
+						return Result<MemberViewModel>.Fail("account_blacklisted");
+
+					// 未驗證帳號視為 Google 已驗證，自動設為已驗證
+					if (!existingMember.IsConfirmed)
+					{
+						existingMember.IsConfirmed = true;
+						await _memberRepo.SetMemberConfirmedAsync(existingMember.Id);
+					}
+
+					// 5. Email 已存在（IsDeleted=0）→ 自動連結，寄安全通知信
+					member = existingMember;
+					await _memberRepo.CreateExternalLoginAsync(new MemberExternalLogin
+					{
+						MemberId = member.Id,
+						Provider = "google",
+						ProviderUserId = providerUserId,
+						AvatarUrl = avatarUrl,
+						CreatedAt = DateTime.Now,
+					});
+					await _emailService.SendSecurityNoticeAsync(
+						member.Email,
+						"您的帳號已新增 Google 登入，若非本人操作請立即修改密碼");
+				}
+				else
+				{
+					// 6. Email 不存在（或已軟刪除）→ 建立新 Member
+					var newMember = new Member
+					{
+						Account = $"google_{providerUserId}",
+						Name = name,
+						Email = email,
+						HashedPassword = HashUtility.EXTERNAL_LOGIN_NO_PASSWORD,
+						IsConfirmed = true,
+						IsBlacklisted = false,
+						IsDeleted = false,
+						CreatedAt = DateTime.Now,
+					};
+					await _memberRepo.CreateMemberAsync(newMember);
+
+					await _memberRepo.CreateExternalLoginAsync(new MemberExternalLogin
+					{
+						MemberId = newMember.Id,
+						Provider = "google",
+						ProviderUserId = providerUserId,
+						AvatarUrl = avatarUrl,
+						CreatedAt = DateTime.Now,
+					});
+					member = newMember;
+				}
+			}
+
+			// 7. 已軟刪除（ExternalLogin 存在但 Member 後來被刪除的邊緣情境）
+			if (member.IsDeleted)
+				return Result<MemberViewModel>.Fail("login_failed");
+
+			// 8. 已停權
+			if (member.IsBlacklisted)
+				return Result<MemberViewModel>.Fail("account_blacklisted");
+
+			// 9. 簽發 JWT + Refresh Token，寫入 Cookie
+			var accessToken = _jwtHelper.GenerateAccessToken(member.Id, member.Name);
+			var refreshToken = _jwtHelper.GenerateRefreshToken();
+
+			var refreshTokenExpireDays = int.Parse(_config["Jwt:RefreshTokenExpireDays"]!);
+			await _memberRepo.SaveRefreshTokenAsync(new MemberRefreshToken
+			{
+				MemberId = member.Id,
+				Token = refreshToken,
+				ExpiresAt = DateTime.Now.AddDays(refreshTokenExpireDays),
+				IsRevoked = false,
+				CreatedAt = DateTime.Now,
+			});
+
+			var response = _httpContextAccessor.HttpContext!.Response;
+			CookieHelper.SetAccessTokenCookie(response, accessToken, _env);
+			CookieHelper.SetRefreshTokenCookie(response, refreshToken, _env);
+
+			// 10. 回傳 MemberViewModel（Google OAuth 後 GoogleLinked 必為 true）
+			return Result<MemberViewModel>.Success(new MemberViewModel
+			{
+				Id = member.Id,
+				Name = member.Name,
+				Email = member.Email,
+				AvatarFileName = member.AvatarFileName,
+				GoogleAvatarUrl = avatarUrl,
+				HashedPasswordStatus = member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD
+					? "EXTERNAL_LOGIN_NO_PASSWORD"
+					: "HAS_PASSWORD",
+				GoogleLinked = true,
+			});
 		}
 
 		// -----內用點餐頁用------------------------------

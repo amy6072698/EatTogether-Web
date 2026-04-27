@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
 import apiFetch from '@/utils/apiFetch.js'
@@ -18,6 +18,10 @@ const confirmPasswordError = ref('')
 const isLoading = ref(false)
 const showRpNewPassword = ref(false)
 const showRpConfirmPassword = ref(false)
+
+// 新增倒數計時用的變數
+const countdown = ref(3)
+let timer = null // 存放 setInterval 的 ID
 
 function validateNewPassword() {
     newPasswordError.value = ''
@@ -66,15 +70,27 @@ async function handleSubmit() {
 
         status.value = 'success'
         window.scrollTo({ top: 0 })
-        setTimeout(() => {
-            router.push({ name: 'Home' }).then(() => {
-                const modalEl = document.querySelector('#authModal')
-                if (modalEl) {
-                    const modal = Modal.getInstance(modalEl) || new Modal(modalEl)
-                    modal.show()
-                }
-            })
-        }, 3000)
+
+        // 確保初始值為 3
+        countdown.value = 3
+
+        // 設定每 1000 毫秒 (1秒) 執行一次的計時器
+        timer = setInterval(() => {
+            countdown.value-- // 每次減少 1 秒
+
+            if (countdown.value <= 0) {
+                clearInterval(timer) // 時間到，停止計時
+
+                // 執行導航邏輯
+                router.push({ name: 'Home' }).then(() => {
+                    const modalEl = document.querySelector('#authModal')
+                    if (modalEl) {
+                        const modal = Modal.getInstance(modalEl) || new Modal(modalEl)
+                        modal.show()
+                    }
+                })
+            }
+        }, 1000)
     } catch {
         // 網路錯誤由 apiFetch 統一 Toast 處理
     } finally {
@@ -108,6 +124,13 @@ onMounted(async () => {
         }
     } catch {
         status.value = 'invalid'
+    }
+})
+
+onUnmounted(() => {
+    // 如果元件被銷毀時，計時器還在跑，就把它清掉
+    if (timer) {
+        clearInterval(timer)
     }
 })
 </script>
@@ -254,7 +277,7 @@ onMounted(async () => {
                             </div>
                             <h1 class="eat-h3 fw-bolder fst-normal mb-2">密碼已重設</h1>
                             <p class="eat-body-muted mb-4">您的密碼已成功更新，請使用新密碼登入</p>
-                            <p class="eat-body-muted mt-1">3 秒後自動返回登入...</p>
+                            <p class="eat-body-muted mt-1">{{ countdown }} 秒後自動返回登入...</p>
                         </div>
                     </div>
                 </div>

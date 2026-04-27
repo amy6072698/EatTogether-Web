@@ -258,5 +258,40 @@ namespace EatTogether.API.Controllers
 
 			return Ok(new SuccessViewModel { Message = "驗證信已寄出，請至信箱點擊驗證連結" });
 		}
+
+		// POST /api/auth/google/callback
+		[HttpPost("google/callback")]
+		[EnableRateLimiting("AuthPolicy")]
+		public async Task<IActionResult> GoogleCallback([FromBody] GoogleCallbackDto dto)
+		{
+			if (!ModelState.IsValid)
+				return BadRequest(ModelState);
+
+			var result = await _authService.GoogleCallbackAsync(dto.Code);
+
+			if (!result.IsSuccess)
+			{
+				return result.ErrorMessage switch
+				{
+					"account_blacklisted" => StatusCode(403, new ErrorViewModel
+					{
+						Message = "帳號已停權，請聯繫客服",
+						ErrorCode = "account_blacklisted"
+					}),
+					"login_failed" => BadRequest(new ErrorViewModel
+					{
+						Message = "登入失敗，請聯絡客服",
+						ErrorCode = "login_failed"
+					}),
+					_ => BadRequest(new ErrorViewModel
+					{
+						Message = "Google 登入失敗，請重試",
+						ErrorCode = "google_auth_failed"
+					})
+				};
+			}
+
+			return Ok(result.Value);
+		}
 	}
 }

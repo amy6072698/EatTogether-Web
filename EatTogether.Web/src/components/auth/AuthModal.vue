@@ -1,9 +1,14 @@
 <script setup>
 import { onMounted, ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { Modal } from 'bootstrap'
 import apiFetch from '@/utils/apiFetch.js'
 import Button from '@/components/common/Button.vue'
 import { useAuthStore } from '@/stores/auth.js'
+import { generateState, buildGoogleOAuthUrl } from '@/utils/googleOAuth.js'
+
+const router = useRouter()
+const route = useRoute()
 
 const authStore = useAuthStore()
 
@@ -113,12 +118,11 @@ async function handleLogin() {
         })
 
         if (res.ok) {
-            loginSuccess.value = true
-            setTimeout(() => {
-                const modalEl = document.querySelector('#authModal')
-                Modal.getInstance(modalEl)?.hide()
-                authStore.fetchMe()
-            }, 3000)
+            await authStore.fetchMe()
+            const modalEl = document.querySelector('#authModal')
+            Modal.getInstance(modalEl)?.hide()
+            const redirect = route.query.redirect
+            if (redirect) router.push(redirect)
             return
         }
 
@@ -186,13 +190,12 @@ async function handleRestoreAccount() {
         })
 
         if (res.ok) {
-            loginSuccess.value = true
+            await authStore.fetchMe()
             showAccountDeleted.value = false
-            setTimeout(() => {
-                const modalEl = document.querySelector('#authModal')
-                Modal.getInstance(modalEl)?.hide()
-                authStore.fetchMe()
-            }, 3000)
+            const modalEl = document.querySelector('#authModal')
+            Modal.getInstance(modalEl)?.hide()
+            const redirect = route.query.redirect
+            if (redirect) router.push(redirect)
             return
         }
 
@@ -217,6 +220,12 @@ async function handleRestoreAccount() {
     } finally {
         isRestoring.value = false
     }
+}
+
+function handleGoogleLogin() {
+    const state = generateState(route.fullPath)
+    const url = buildGoogleOAuthUrl(state)
+    window.location.href = url
 }
 
 function handleForgotPassword() {
@@ -437,7 +446,7 @@ onMounted(() => {
                                 <Button
                                     variant="secondary"
                                     class="btn-eat-md mb-2"
-                                    :disabled="true"
+                                    @click="handleGoogleLogin"
                                 >
                                     使用 Google 登入
                                 </Button>
@@ -589,7 +598,11 @@ onMounted(() => {
 
                             <!-- 註冊表單 -->
                             <template v-else>
-                                <Button variant="primary" class="btn-eat-md mb-2" :disabled="true">
+                                <Button
+                                    variant="primary"
+                                    class="btn-eat-md mb-2"
+                                    @click="handleGoogleLogin"
+                                >
                                     使用 Google 快速註冊
                                 </Button>
 

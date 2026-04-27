@@ -25,8 +25,8 @@ const routes = [
 
     // ── 會員專區（需登入）────────────────────────────────
     {
-        path: '/member/profile',
-        name: 'MemberProfile',
+        path: '/member',
+        name: 'Member',
         component: () => import('@/views/member/Profile.vue'),
         meta: { requiresAuth: true },
     },

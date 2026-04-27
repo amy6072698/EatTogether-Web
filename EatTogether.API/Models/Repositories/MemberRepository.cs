@@ -51,6 +51,11 @@ namespace EatTogether.API.Models.Repositories
 		Task UpdateEmailAndMarkTokenUsedAsync(int memberId, string newEmail, int tokenId);
 		Task MarkOldConfirmTokensUsedAsync(int memberId);
 		Task<Member?> GetMemberByIdAsync(int id);
+
+		// -----前台 Google OAuth 用------------------------------
+		Task<MemberExternalLogin?> GetExternalLoginAsync(string provider, string providerUserId);
+		Task CreateExternalLoginAsync(MemberExternalLogin login);
+		Task<MemberExternalLogin?> GetExternalLoginByMemberIdAsync(int memberId, string provider);
 	}
 
 	public class MemberRepository : IMemberRepository
@@ -336,6 +341,30 @@ namespace EatTogether.API.Models.Repositories
 			foreach (var t in tokens)
 				t.IsRevoked = true;
 			await _context.SaveChangesAsync();
+		}
+
+		// -----前台 Google OAuth 用------------------------------
+
+		// 以 Provider + ProviderUserId 查詢外部登入紀錄（含 Member 導覽屬性）
+		public async Task<MemberExternalLogin?> GetExternalLoginAsync(string provider, string providerUserId)
+		{
+			return await _context.MemberExternalLogins
+				.Include(e => e.Member)
+				.FirstOrDefaultAsync(e => e.Provider == provider && e.ProviderUserId == providerUserId);
+		}
+
+		// 新增外部登入紀錄
+		public async Task CreateExternalLoginAsync(MemberExternalLogin login)
+		{
+			_context.MemberExternalLogins.Add(login);
+			await _context.SaveChangesAsync();
+		}
+
+		// 以 MemberId + Provider 查詢外部登入紀錄（用於確認該會員是否已綁定指定 Provider）
+		public async Task<MemberExternalLogin?> GetExternalLoginByMemberIdAsync(int memberId, string provider)
+		{
+			return await _context.MemberExternalLogins
+				.FirstOrDefaultAsync(e => e.MemberId == memberId && e.Provider == provider);
 		}
 	}
 }
