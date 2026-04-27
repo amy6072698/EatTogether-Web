@@ -28,8 +28,10 @@
         <div class="detail-note-wrap">
           <textarea v-model="note" class="font-body detail-note resize-none" rows="2" placeholder="備註 : 過敏食材、特殊需求…"></textarea>
         </div>
-        <!-- 底部：加入按鈕 -->
-        <button @click="onConfirm" class="submit-btn font-label detail-submit uppercase">加入本桌訂單</button>
+        <!-- 底部：加入 / 確認修改 按鈕 -->
+        <button @click="onConfirm" class="submit-btn font-label detail-submit uppercase">
+          {{ editMode ? '確認修改' : '加入本桌訂單' }}
+        </button>
       </div>
     </div>
   </div>
@@ -39,18 +41,24 @@
 import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
-  dish: { type: Object, default: null },
+  dish:        { type: Object,  default: null },
+  initialQty:  { type: Number,  default: 1 },
+  initialNote: { type: String,  default: '' },
+  editMode:    { type: Boolean, default: false },
 });
 const emit = defineEmits(['close', 'confirm']);
 
-const localQty = ref(1);
-const note     = ref('');
+const localQty = ref(props.initialQty);
+const note     = ref(props.initialNote);
 
-// 每次開啟新餐點時重置數量與備註
-watch(() => props.dish, () => {
-  localQty.value = 1;
-  note.value = '';
-});
+// 每次 dish / initialQty / initialNote 任一改變時同步（含編輯模式帶入備註）
+watch(
+  [() => props.dish, () => props.initialQty, () => props.initialNote],
+  ([, qty, initNote]) => {
+    localQty.value = qty     || 1;
+    note.value     = initNote || '';
+  }
+);
 
 const tags = computed(() => {
   if (!props.dish) return [];

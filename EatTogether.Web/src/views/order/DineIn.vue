@@ -32,13 +32,17 @@
     <div v-else class="root-wrap">
         <!-- ══ 全寬頂部 Header ══ -->
         <header class="dine-header">
-            <!-- 左：今日菜單 -->
-            <div class="dh-brand">
+            <!-- 左：Logo + 今日菜單 -->
+            <div class="dh-logo">
+                <img src="@/assets/images/logo.svg" alt="義起吃" class="dh-logo-img" />
                 <h1 class="dh-title font-headline">今日菜單</h1>
             </div>
 
-            <!-- 中：桌號 ＋ 用餐人數（同一行） -->
-            <div class="dh-center">
+            <!-- 中：彈性填充 -->
+            <div class="dh-brand"></div>
+
+            <!-- 右：桌號 ｜ 人數 ｜ 會員（同一行） -->
+            <div class="dh-right">
                 <span class="dh-label font-label">桌號</span>
                 <span class="dh-table-name font-headline">{{
                     tables.find((t) => t.id === tableId)?.tableName || tableNameFromUrl || '—'
@@ -46,9 +50,9 @@
 
                 <div class="dh-sep"></div>
 
-                <span :class="['dh-label', 'font-label', { 'pax-label-error': paxError }]">
-                    用餐人數
-                </span>
+                <span :class="['dh-label', 'font-label', { 'pax-label-error': paxError }]"
+                    >人數</span
+                >
                 <button
                     :class="['dh-pax-btn', 'font-label', { 'pax-ctrl-error': paxError }]"
                     :disabled="store.pax <= 1"
@@ -77,58 +81,61 @@
                 >
                     +
                 </button>
-            </div>
 
-            <!-- 右：會員（可點擊展開下拉） -->
-            <div
-                class="dh-member dh-member-btn"
-                @click.stop="memberDropdownOpen = !memberDropdownOpen"
-            >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    style="color: rgba(208, 197, 181, 0.45); flex-shrink: 0"
-                    viewBox="0 0 16 16"
+                <div class="dh-sep"></div>
+
+                <!-- 會員 -->
+                <div
+                    class="dh-member dh-member-btn"
+                    @click.stop="memberDropdownOpen = !memberDropdownOpen"
                 >
-                    <path
-                        d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.03 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"
-                    />
-                </svg>
-                <span class="dh-member-label font-label">{{ memberName }}</span>
-                <svg
-                    class="dh-chevron"
-                    :class="{ open: memberDropdownOpen }"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="10"
-                    height="10"
-                    fill="currentColor"
-                    viewBox="0 0 16 16"
-                >
-                    <path
-                        d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"
-                    />
-                </svg>
-                <!-- 下拉選單 -->
-                <div v-if="memberDropdownOpen" class="member-dropdown" @click.stop="">
-                    <button class="member-dropdown-item font-label" @click="openSwitchAccount">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="13"
-                            height="13"
-                            fill="currentColor"
-                            viewBox="0 0 16 16"
-                        >
-                            <path
-                                fill-rule="evenodd"
-                                d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-4.5-.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H11.5z"
-                            />
-                        </svg>
-                        切換帳號
-                    </button>
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="13"
+                        height="13"
+                        fill="currentColor"
+                        style="color: rgba(208, 197, 181, 0.45); flex-shrink: 0"
+                        viewBox="0 0 16 16"
+                    >
+                        <path
+                            d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.03 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"
+                        />
+                    </svg>
+                    <span class="dh-member-label font-label">{{ memberName }}</span>
+                    <svg
+                        class="dh-chevron"
+                        :class="{ open: memberDropdownOpen }"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="9"
+                        height="9"
+                        fill="currentColor"
+                        viewBox="0 0 16 16"
+                    >
+                        <path
+                            d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"
+                        />
+                    </svg>
+                    <!-- 下拉選單 -->
+                    <div v-if="memberDropdownOpen" class="member-dropdown" @click.stop="">
+                        <button class="member-dropdown-item font-label" @click="openSwitchAccount">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="13"
+                                height="13"
+                                fill="currentColor"
+                                viewBox="0 0 16 16"
+                            >
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-4.5-.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H11.5z"
+                                />
+                            </svg>
+                            切換帳號
+                        </button>
+                    </div>
                 </div>
             </div>
+
             <!-- 點擊背景關閉下拉 -->
             <div
                 v-if="memberDropdownOpen"
@@ -574,37 +581,89 @@
                     </div>
                     <div
                         v-for="item in cartItemsWithDetails"
-                        :key="item.productId"
-                        class="order-item"
+                        :key="item.lineId"
+                        :class="['order-item', { 'setmeal-order-item': item.isSetMeal }]"
                     >
                         <div class="order-item-top">
-                            <p class="font-headline order-item-name" style="color: #e3c76b">
-                                {{ item.productName }}
-                            </p>
+                            <!-- 左側名稱區：點擊開啟編輯 Modal -->
+                            <div
+                                class="order-item-name-wrap"
+                                @click="openCartItemEdit(item)"
+                                title="點擊編輯"
+                            >
+                                <div v-if="item.isSetMeal" class="setmeal-badge font-label">
+                                    🍱 套餐
+                                </div>
+                                <p class="font-headline order-item-name" style="color: #e3c76b">
+                                    {{ item.productName }}
+                                </p>
+                                <!-- 套餐子項目 -->
+                                <div v-if="item.isSetMeal" class="setmeal-subitems">
+                                    <span
+                                        v-for="f in item.setMealData?.fixedItems"
+                                        :key="'f-' + f.dishId"
+                                        class="font-label setmeal-subitem"
+                                        >{{ f.dishName }} × {{ f.quantity }}</span
+                                    >
+                                    <span
+                                        v-for="s in item.setMealData?.selectedOptions"
+                                        :key="'s-' + s.dishId"
+                                        class="font-label setmeal-subitem"
+                                        >{{ s.dishName }} × {{ s.qty }}</span
+                                    >
+                                </div>
+                                <p v-if="item.note" class="font-body order-item-note">
+                                    {{ item.note }}
+                                </p>
+                            </div>
                             <div class="order-item-right">
                                 <span class="font-label order-item-price"
                                     >NT$ {{ (item.unitPrice * item.qty).toLocaleString() }}</span
                                 >
                                 <button
                                     class="qty-btn-order"
-                                    @click="store.removeItem(item.productId)"
+                                    @click.stop="store.removeLineItem(item.lineId)"
                                 >
                                     −
                                 </button>
                                 <span class="font-label order-item-qty" style="color: #f9ddd3">{{
                                     item.qty
                                 }}</span>
+                                <!-- 套餐不支援直接 +（需重新選） -->
                                 <button
+                                    v-if="!item.isSetMeal"
                                     class="qty-btn-order"
-                                    @click="store.addItem(item.productId)"
+                                    @click.stop="store.addItem(item.productId, item.note)"
                                 >
                                     +
                                 </button>
+                                <span v-else style="width: 1.6rem"></span>
                             </div>
                         </div>
-                        <p v-if="store.notes[item.productId]" class="font-body order-item-note">
-                            {{ store.notes[item.productId] }}
-                        </p>
+                    </div>
+
+                    <!-- 贈品列（Gift 型活動自動帶入，唯讀） -->
+                    <div v-if="isLoggedIn && giftCartItem" class="order-item gift-order-item">
+                        <div class="order-item-top">
+                            <div style="display: flex; flex-direction: column; gap: 0.1rem">
+                                <p class="font-headline order-item-name" style="color: #e3c76b">
+                                    {{ giftCartItem.productName }}
+                                </p>
+                            </div>
+                            <div class="order-item-right">
+                                <span class="gift-order-badge font-label">🎁 贈品</span>
+                                <span
+                                    class="font-label order-item-qty"
+                                    style="
+                                        color: rgba(208, 197, 181, 0.55);
+                                        font-size: 0.75rem;
+                                        min-width: 1.2rem;
+                                        text-align: center;
+                                    "
+                                    >× 1</span
+                                >
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -703,7 +762,7 @@
                         </div>
                         <p
                             v-if="couponMsg"
-                            class="font-label mb-1"
+                            class="font-label mb-0"
                             style="font-size: 0.7rem; margin-top: 0.25rem"
                             :style="{ color: couponOk ? '#a3d977' : '#ffb4ab' }"
                         >
@@ -719,9 +778,19 @@
                         "
                     >
                         <div style="display: flex; flex-direction: column; gap: 0.3rem">
-                            <!-- 自動活動折扣列（已登入會員，只顯示最佳活動） -->
+                            <!-- 已套用活動標籤（已登入會員） -->
+                            <div v-if="isLoggedIn && bestAutoEvent" class="applied-event-tag">
+                                <span class="applied-event-icon">🎉</span>
+                                <span class="font-label applied-event-text">
+                                    已參加「{{ bestAutoEvent.title }}」活動 （滿 NT${{
+                                        bestAutoEvent.minSpend
+                                    }}
+                                    可享 {{ bestAutoEvent.discountDescription }}）
+                                </span>
+                            </div>
+                            <!-- 活動折扣列（FixedAmount / Percent 才顯示，Gift 不扣金額） -->
                             <div
-                                v-if="isLoggedIn && bestAutoEvent"
+                                v-if="isLoggedIn && autoEventDiscount > 0"
                                 style="
                                     display: flex;
                                     justify-content: space-between;
@@ -732,22 +801,20 @@
                                     class="font-label"
                                     style="
                                         font-size: 0.8rem;
-                                        color: rgba(227, 199, 107, 0.75);
-                                        letter-spacing: 0.05em;
+                                        color: rgba(163, 217, 119, 0.8);
+                                        letter-spacing: 0.06em;
                                     "
+                                    >活動折扣</span
                                 >
-                                    🎉 {{ bestAutoEvent.title }}
-                                </span>
                                 <span
                                     class="font-label"
                                     style="
                                         font-size: 0.8rem;
-                                        color: #e3c76b;
+                                        color: #a3d977;
                                         letter-spacing: 0.06em;
                                     "
+                                    >－ NT$ {{ autoEventDiscount.toLocaleString() }}</span
                                 >
-                                    {{ bestAutoEvent.discountDescription }}
-                                </span>
                             </div>
                             <!-- 優惠券折扣列 -->
                             <div
@@ -765,7 +832,7 @@
                                         color: rgba(163, 217, 119, 0.8);
                                         letter-spacing: 0.06em;
                                     "
-                                    >折扣</span
+                                    >優惠券折扣</span
                                 >
                                 <span
                                     class="font-label"
@@ -867,11 +934,15 @@
                         :key="toast.key"
                         :class="[
                             'notify-toast-card',
-                            toast.type === 'other-auto'
-                                ? 'other-auto'
-                                : toast.ev.isEligible
+                            toast.type === 'near'
+                                ? 'near'
+                                : toast.type === 'eligible-notify'
                                   ? 'eligible'
-                                  : 'near',
+                                  : toast.type === 'one-event-note'
+                                    ? 'info'
+                                    : toast.type === 'applied-event'
+                                      ? 'applied'
+                                      : 'eligible',
                         ]"
                     >
                         <button class="notify-toast-close" @click="dismissToast(toast.key)">
@@ -879,21 +950,35 @@
                         </button>
                         <div class="notify-toast-icon">
                             {{
-                                toast.type === 'other-auto'
-                                    ? '🎉'
-                                    : toast.ev.isEligible
-                                      ? '🎁'
-                                      : '🔥'
+                                toast.type === 'near'
+                                    ? '🔥'
+                                    : toast.type === 'one-event-note'
+                                      ? 'ℹ️'
+                                      : toast.type === 'applied-event'
+                                        ? '🎉'
+                                        : '🎁'
                             }}
                         </div>
                         <p class="font-body notify-toast-msg">
-                            {{
-                                toast.type === 'other-auto'
-                                    ? `「${toast.ev.title}」也符合條件，已套用最優惠方案`
-                                    : toast.ev.isEligible
-                                      ? `金額已達門檻，可參加「${toast.ev.title}」活動！`
-                                      : `再消費 NT$${toast.ev.minSpend - total} 即可參加「${toast.ev.title}」活動！`
-                            }}
+                            <template v-if="toast.type === 'near'">
+                                差 NT${{ toast.ev.minSpend - total }} 即可參加「{{
+                                    toast.ev.title
+                                }}」活動，享 {{ toast.ev.discountDescription }} 優惠！
+                            </template>
+                            <template v-else-if="toast.type === 'eligible-notify'">
+                                恭喜！金額已達門檻，可參加「{{ toast.ev.title }}」活動{{
+                                    toast.ev.summary ? `(${toast.ev.summary})` : ''
+                                }}！（請洽現場服務人員）
+                            </template>
+                            <template v-else-if="toast.type === 'one-event-note'">
+                                每次用餐能參加一個活動，不得與其他優惠活動合併使用
+                            </template>
+                            <template v-else-if="toast.type === 'applied-event'">
+                                已參加「{{ toast.ev.title }}」活動 （滿 NT${{
+                                    toast.ev.minSpend
+                                }}
+                                可享 {{ toast.ev.discountDescription }}）
+                            </template>
                         </p>
                     </div>
                 </TransitionGroup>
@@ -911,8 +996,38 @@
         <!-- Detail Modal -->
         <DishDetailModal
             :dish="activeDetail"
-            @close="activeDetail = null"
+            :edit-mode="editingLineId !== null"
+            :initial-qty="
+                editingLineId !== null
+                    ? (cartItemsWithDetails.find((i) => i.lineId === editingLineId)?.qty ?? 1)
+                    : 1
+            "
+            :initial-note="
+                editingLineId !== null
+                    ? (cartItemsWithDetails.find((i) => i.lineId === editingLineId)?.note ?? '')
+                    : ''
+            "
+            @close="((activeDetail = null), (editingLineId = null))"
             @confirm="onDetailConfirm"
+        />
+
+        <!-- 套餐選項 Modal -->
+        <SetMealSelectModal
+            :meal="activeMeal"
+            :edit-mode="editingMealLineId !== null"
+            :initial-qty="
+                editingMealLineId !== null
+                    ? (store.lines.find((l) => l.lineId === editingMealLineId)?.qty ?? 1)
+                    : 1
+            "
+            :initial-note="
+                editingMealLineId !== null
+                    ? (store.lines.find((l) => l.lineId === editingMealLineId)?.note ?? '')
+                    : ''
+            "
+            :initial-sel="editingMealLineId !== null ? buildInitialSel(editingMealLineId) : {}"
+            @close="activeMeal = null; editingMealLineId = null"
+            @confirm="onSetMealConfirm"
         />
 
         <!-- Success Modal -->
@@ -967,6 +1082,7 @@ import { useRoute } from 'vue-router'
 import { useOrderStore } from '@/stores/order'
 import apiFetch from '@/utils/apiFetch'
 import DishDetailModal from '@/components/Order/DishDetailModal.vue'
+import SetMealSelectModal from '@/components/Order/SetMealSelectModal.vue'
 import OrderSuccessModal from '@/components/Order/OrderSuccessModal.vue'
 import AuthModal from '@/components/Order/OrderAuthModal.vue'
 
@@ -987,6 +1103,11 @@ const activeSidebarCat = ref('')
 const curView = ref('list')
 const orderPanelOpen = ref(false)
 const activeDetail = ref(null)
+const editingLineId = ref(null) // null = 新增模式，有值 = 編輯模式
+
+// ── 套餐選項 Modal ──────────────────────────────────────────────
+const activeMeal = ref(null) // 目前開啟的套餐資料（API 回傳）
+const editingMealLineId = ref(null) // 套餐編輯模式的 lineId
 const successModalOpen = ref(false)
 const orderNumber = ref('')
 const submitting = ref(false)
@@ -1291,10 +1412,23 @@ const displaySections = computed(() => {
 })
 
 const cartItemsWithDetails = computed(() =>
-    store.cartItems
-        .map(({ productId, qty }) => {
-            const d = products.value.find((p) => p.productId === productId)
-            return d ? { ...d, qty } : null
+    store.lines
+        .map((line) => {
+            if (line.isSetMeal) {
+                // 套餐 line 直接用儲存的資料
+                return {
+                    lineId: line.lineId,
+                    productId: line.productId,
+                    productName: line.setMealData?.name ?? '套餐',
+                    unitPrice: line.unitPrice ?? 0,
+                    qty: line.qty,
+                    note: line.note,
+                    isSetMeal: true,
+                    setMealData: line.setMealData,
+                }
+            }
+            const d = products.value.find((p) => p.productId === line.productId)
+            return d ? { ...d, lineId: line.lineId, qty: line.qty, note: line.note } : null
         })
         .filter(Boolean)
 )
@@ -1304,14 +1438,23 @@ const total = computed(() =>
 )
 
 // ── 活動 ──────────────────────────────────────────────────────────
-const autoEvents = ref([]) // IsAutoDiscount=1，已達門檻，自動折扣
-const notifyEvents = ref([]) // IsAutoDiscount=0，通知型活動
-const nearAutoEvents = ref([]) // IsAutoDiscount=1，差額 ≤ 100，快到門檻提示
+const autoEvents = ref([]) // IsAutoDiscount=1，已達門檻
+const notifyEvents = ref([]) // IsAutoDiscount=0，通知型
+const nearAutoEvents = ref([]) // IsAutoDiscount=1，差額≤100
+
+// ── Gift 贈品（Gift 型活動自動加入購物車）──
+const giftCartItem = ref(null) // { productId, productName, qty: 1 } | null
 
 // ── Notify Toast（右下角通知）──
 const notifyToasts = ref([]) // [{ key, ev, persistent?, type? }]
-const _shownNotifyStates = new Map() // id / 'auto-{id}' → 'near'|'eligible'|'other'，狀態改變才再彈
 let _toastKeySeq = 0
+
+// 各類 toast 的 key 追蹤（id → key），每次 fetch 做增刪比對
+const _nearToastKeys = new Map() // ev.id → key（差額提示）
+const _eligibleNotifyKeys = new Map() // ev.id → key（IsAutoDiscount=0 達門檻）
+let _oneEventNoteKey = null // 「一個活動限制」提示 key
+let _lastBestEventId = null // 上次 bestAutoEvent 的 id（避免重複推 toast）
+let _appliedEventToastTimer = null // applied-event toast 自動消失計時器
 
 function dismissToast(key) {
     notifyToasts.value = notifyToasts.value.filter((t) => t.key !== key)
@@ -1319,16 +1462,17 @@ function dismissToast(key) {
 function pushToast(ev, opts = {}) {
     const key = ++_toastKeySeq
     notifyToasts.value.push({ key, ev: { ...ev }, ...opts })
-    if (!opts.persistent) setTimeout(() => dismissToast(key), 8000)
+    return key
 }
 
 // ── 最佳自動活動：MinSpend 最高，同門檻取折扣最大 ──
 const bestAutoEvent = computed(() => {
     if (!autoEvents.value.length) return null
-    return [...autoEvents.value].sort((a, b) => {
-        if (b.minSpend !== a.minSpend) return b.minSpend - a.minSpend
-        return (b.calculatedDiscount ?? 0) - (a.calculatedDiscount ?? 0)
-    })[0]
+    return [...autoEvents.value].sort((a, b) =>
+        b.minSpend !== a.minSpend
+            ? b.minSpend - a.minSpend
+            : (b.calculatedDiscount ?? 0) - (a.calculatedDiscount ?? 0)
+    )[0]
 })
 
 const autoEventDiscount = computed(() =>
@@ -1344,30 +1488,76 @@ async function fetchActiveEvents() {
         notifyEvents.value = data.notifyEvents ?? []
         nearAutoEvents.value = data.nearAutoEvents ?? []
 
-        // ── 其餘自動活動（非最佳）→ persistent toast ──
-        if (bestAutoEvent.value && autoEvents.value.length > 1) {
-            autoEvents.value
-                .filter((ev) => ev.id !== bestAutoEvent.value.id)
-                .forEach((ev) => {
-                    const mapKey = `auto-${ev.id}`
-                    if (_shownNotifyStates.get(mapKey) !== 'other') {
-                        _shownNotifyStates.set(mapKey, 'other')
-                        pushToast(ev, { persistent: true, type: 'other-auto' })
-                    }
-                })
+        const autoIdSet = new Set(autoEvents.value.map((e) => e.id))
+        const nearAutoIdSet = new Set(nearAutoEvents.value.map((e) => e.id))
+        const hasBest = !!bestAutoEvent.value
+
+        // ── 清除失效的差額 toast（事件已達門檻 or 差額回到>100）──
+        for (const [id, key] of _nearToastKeys) {
+            const stillNearAuto = nearAutoIdSet.has(id)
+            const stillNearNotify = notifyEvents.value.some(
+                (e) => e.id === id && !e.isEligible && e.minSpend - total.value <= 100
+            )
+            if (!stillNearAuto && !stillNearNotify) {
+                dismissToast(key)
+                _nearToastKeys.delete(id)
+            }
         }
 
-        // ── 通知型活動（IsAutoDiscount=0），狀態改變才彈，8s 自動消失 ──
-        const newNotify = notifyEvents.value.filter((ev) => {
-            const isRelevant = ev.isEligible || ev.minSpend - total.value <= 100
-            if (!isRelevant) return false
-            const currentState = ev.isEligible ? 'eligible' : 'near'
-            return _shownNotifyStates.get(ev.id) !== currentState
+        // ── 清除失效的 eligible-notify toast（事件已不符合 or bestAutoEvent 出現）──
+        for (const [id, key] of _eligibleNotifyKeys) {
+            const stillEligible = notifyEvents.value.some((e) => e.id === id && e.isEligible)
+            if (!stillEligible || hasBest) {
+                dismissToast(key)
+                _eligibleNotifyKeys.delete(id)
+            }
+        }
+
+        // ── 若 bestAutoEvent 消失，清除「一個活動限制」提示 ──
+        if (!hasBest && _oneEventNoteKey !== null) {
+            dismissToast(_oneEventNoteKey)
+            _oneEventNoteKey = null
+        }
+
+        // ── 1. nearAutoEvents（IsAutoDiscount=1，差額≤100）→ 差額 toast ──
+        nearAutoEvents.value.forEach((ev) => {
+            if (!_nearToastKeys.has(ev.id)) {
+                const key = pushToast(ev, { persistent: true, type: 'near' })
+                _nearToastKeys.set(ev.id, key)
+            }
         })
-        newNotify.forEach((ev) => {
-            _shownNotifyStates.set(ev.id, ev.isEligible ? 'eligible' : 'near')
-            pushToast(ev, { persistent: true })
+
+        // ── 2. notifyEvents（IsAutoDiscount=0）──
+        notifyEvents.value.forEach((ev) => {
+            const gap = ev.minSpend - total.value
+            if (ev.isEligible) {
+                // 達門檻：dismiss 其差額 toast
+                const nearKey = _nearToastKeys.get(ev.id)
+                if (nearKey !== undefined) {
+                    dismissToast(nearKey)
+                    _nearToastKeys.delete(ev.id)
+                }
+                // 無 bestAutoEvent 才顯示「恭喜」toast
+                if (!hasBest && !_eligibleNotifyKeys.has(ev.id)) {
+                    const key = pushToast(ev, { persistent: true, type: 'eligible-notify' })
+                    _eligibleNotifyKeys.set(ev.id, key)
+                }
+            } else if (gap <= 100 && !_nearToastKeys.has(ev.id)) {
+                // 差額≤100：差額 toast
+                const key = pushToast(ev, { persistent: true, type: 'near' })
+                _nearToastKeys.set(ev.id, key)
+            }
         })
+
+        // ── 3. bestAutoEvent 存在且有其他符合活動 → 「一個活動限制」提示（僅一次）──
+        const hasOtherEligible =
+            notifyEvents.value.some((e) => e.isEligible) || autoEvents.value.length > 1
+        if (hasBest && hasOtherEligible && _oneEventNoteKey === null) {
+            _oneEventNoteKey = pushToast(
+                { id: -1, title: '', discountDescription: '' },
+                { persistent: true, type: 'one-event-note' }
+            )
+        }
     } catch {
         /* 靜默失敗 */
     }
@@ -1380,6 +1570,40 @@ watch(total, (val) => {
         autoEvents.value = []
         notifyEvents.value = []
         nearAutoEvents.value = []
+        notifyToasts.value = []
+        _nearToastKeys.clear()
+        _eligibleNotifyKeys.clear()
+        _oneEventNoteKey = null
+        giftCartItem.value = null
+        _lastBestEventId = null
+        clearTimeout(_appliedEventToastTimer)
+    }
+})
+
+// ── bestAutoEvent 切換：更新贈品 + 顯示 3 秒 applied-event toast ──
+watch(bestAutoEvent, (newEv) => {
+    // 1. 贈品更新
+    giftCartItem.value = null
+    if (isLoggedIn.value && newEv?.discountType === 'Gift' && newEv.rewardDishId) {
+        const dish = products.value.find((p) => p.productId === newEv.rewardDishId)
+        if (dish) {
+            giftCartItem.value = {
+                productId: dish.productId,
+                productName: dish.productName,
+                qty: 1,
+            }
+        }
+    }
+
+    // 2. 事件 id 真正改變才推 toast（含 null→有、有→null、有→不同有）
+    const newId = newEv?.id ?? null
+    if (newId !== _lastBestEventId) {
+        _lastBestEventId = newId
+        if (newEv) {
+            clearTimeout(_appliedEventToastTimer)
+            const key = pushToast(newEv, { persistent: false, type: 'applied-event' })
+            _appliedEventToastTimer = setTimeout(() => dismissToast(key), 2000)
+        }
     }
 })
 
@@ -1406,14 +1630,96 @@ function scrollToSection(cat) {
     document.getElementById('menuMain')?.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-function openDetail(dish) {
+async function openDetail(dish) {
+    if (dish.isSetMeal && dish.setMealId) {
+        // 套餐 → 開套餐選項 Modal
+        editingMealLineId.value = null
+        try {
+            const res = await apiFetch(`/SetMeals/${dish.setMealId}`)
+            if (res.ok) activeMeal.value = await res.json()
+        } catch {
+            /* 靜默 */
+        }
+        return
+    }
+    editingLineId.value = null
     activeDetail.value = dish
 }
+
+/** 購物車列點擊 → 編輯模式 */
+async function openCartItemEdit(item) {
+    if (item.isSetMeal) {
+        // 套餐：重新打開套餐選項 Modal（帶入舊選項）
+        editingMealLineId.value = item.lineId
+        const smId = item.setMealData?.id
+        if (!smId) return
+        try {
+            const res = await apiFetch(`/SetMeals/${smId}`)
+            if (res.ok) activeMeal.value = await res.json()
+        } catch {
+            /* 靜默 */
+        }
+        return
+    }
+    editingLineId.value = item.lineId
+    activeDetail.value = products.value.find((p) => p.productId === item.productId) ?? item
+}
+
 function onDetailConfirm(dish, qty, note) {
-    for (let i = 0; i < qty; i++) store.addItem(dish.productId)
-    store.setNote(dish.productId, note)
-    showToast(`「${dish.productName}」× ${qty} 已加入訂單`)
+    if (editingLineId.value !== null) {
+        // ── 編輯模式：先移除舊 line，再以新 qty/note 加入（自動合併同名 line）──
+        store.removeLineItem(editingLineId.value)
+        for (let i = 0; i < qty; i++) store.addItem(dish.productId, note || '')
+        showToast(`「${dish.productName}」已更新`)
+        editingLineId.value = null
+    } else {
+        // ── 新增模式 ──
+        for (let i = 0; i < qty; i++) store.addItem(dish.productId, note || '')
+        showToast(`「${dish.productName}」× ${qty} 已加入訂單`)
+    }
     activeDetail.value = null
+}
+
+/** 編輯套餐時，把已選項目重建為 { [groupNo]: { [dishId]: qty } } */
+function buildInitialSel(lineId) {
+    const line = store.lines.find((l) => l.lineId === lineId)
+    if (!line?.setMealData?.selectedOptions) return {}
+    const sel = {}
+    for (const opt of line.setMealData.selectedOptions) {
+        // groupNo 要從 activeMeal items 反查（目前 activeMeal 可能還沒載入）
+        // 先存在 dishId key 下，SetMealSelectModal 的 watch 會在 meal 載入後處理
+        sel[opt.groupNo ?? 0] = sel[opt.groupNo ?? 0] ?? {}
+        sel[opt.groupNo ?? 0][opt.dishId] = opt.qty
+    }
+    return sel
+}
+
+/** 套餐 Modal 確認 */
+function onSetMealConfirm(meal, qty, note, selectedOptions) {
+    const setMealData = {
+        id: meal.id,
+        name: meal.setMealName,
+        fixedItems: (meal.items ?? []).filter((i) => !i.isOptional),
+        selectedOptions,
+    }
+    if (editingMealLineId.value !== null) {
+        // 編輯模式：更新既有 line
+        store.updateSetMealLine(editingMealLineId.value, meal.setPrice, note, setMealData)
+        showToast(`「${meal.setMealName}」已更新`)
+        editingMealLineId.value = null
+    } else {
+        // 新增：每份各加一條 line
+        for (let i = 0; i < qty; i++) {
+            store.addSetMeal(
+                products.value.find((p) => p.setMealId === meal.id && p.isSetMeal)?.productId ?? 0,
+                meal.setPrice,
+                note,
+                setMealData
+            )
+        }
+        showToast(`「${meal.setMealName}」× ${qty} 已加入訂單`)
+    }
+    activeMeal.value = null
 }
 
 async function submitOrder() {
@@ -1437,14 +1743,67 @@ async function submitOrder() {
             note: store.specialRequest || null,
             couponId: couponId.value,
             discountAmount: couponOk.value ? couponDiscount.value : 0,
-            items: cartItemsWithDetails.value.map((i) => ({
-                productId: i.productId,
-                productName: i.productName,
-                qty: i.qty,
-                unitPrice: i.unitPrice,
-                isSetMeal: i.isSetMeal ?? false,
-                note: store.notes[i.productId] || null,
-            })),
+            items: (() => {
+                const result = []
+                for (const i of cartItemsWithDetails.value) {
+                    if (i.isSetMeal) {
+                        // 套餐：parent + 固定 + 選填 全部展開，子項以 parentIndex 連結
+                        const parentIdx = result.length
+                        result.push({
+                            productId: i.productId,
+                            productName: i.productName,
+                            qty: i.qty,
+                            unitPrice: i.unitPrice,
+                            isSetMeal: true,
+                            note: i.note || null,
+                            parentIndex: null,
+                        })
+                        for (const f of i.setMealData?.fixedItems ?? []) {
+                            result.push({
+                                productId: 0,
+                                productName: f.dishName,
+                                qty: f.quantity,
+                                unitPrice: 0,
+                                isSetMeal: true,
+                                parentIndex: parentIdx,
+                            })
+                        }
+                        for (const s of i.setMealData?.selectedOptions ?? []) {
+                            result.push({
+                                productId: 0,
+                                productName: s.dishName,
+                                qty: s.qty,
+                                unitPrice: 0,
+                                isSetMeal: true,
+                                parentIndex: parentIdx,
+                            })
+                        }
+                    } else {
+                        result.push({
+                            productId: i.productId,
+                            productName: i.productName,
+                            qty: i.qty,
+                            unitPrice: i.unitPrice,
+                            isSetMeal: false,
+                            note: i.note || null,
+                            parentIndex: null,
+                        })
+                    }
+                }
+                // Gift 贈品
+                if (isLoggedIn.value && giftCartItem.value) {
+                    result.push({
+                        productId: giftCartItem.value.productId,
+                        productName: giftCartItem.value.productName,
+                        qty: 1,
+                        unitPrice: 0,
+                        isSetMeal: false,
+                        note: '贈品',
+                        parentIndex: null,
+                    })
+                }
+                return result
+            })(),
         }
         const res = await apiFetch('/Orders/CreatePreOrder', {
             method: 'POST',
@@ -1490,7 +1849,9 @@ function reorder(order) {
     order.items.forEach((item) => {
         const matched = products.value.find((p) => p.productName === item.productName)
         if (matched) {
-            store.cart[matched.productId] = (store.cart[matched.productId] || 0) + item.qty
+            for (let i = 0; i < item.qty; i++) {
+                store.addItem(matched.productId, item.note || '')
+            }
         }
     })
     activeSidebarCat.value = '全部'
@@ -1621,13 +1982,21 @@ html:has(.gate-wrap) footer {
     border: 1px solid rgba(255, 160, 80, 0.45);
     border-left: 3px solid #ff9f4a;
 }
-.notify-toast-card.other-auto {
+.notify-toast-card.info {
+    background: #141c25;
+    border: 1px solid rgba(130, 170, 220, 0.35);
+    border-left: 3px solid #82aadc;
+}
+.notify-toast-card.info .notify-toast-msg {
+    color: rgba(180, 210, 240, 0.8);
+}
+.notify-toast-card.applied {
     background: #221a0e;
-    border: 1px solid rgba(227, 199, 107, 0.35);
+    border: 1px solid rgba(227, 199, 107, 0.45);
     border-left: 3px solid #e3c76b;
 }
-.notify-toast-card.other-auto .notify-toast-msg {
-    color: rgba(227, 199, 107, 0.8);
+.notify-toast-card.applied .notify-toast-msg {
+    color: #f5dfa0;
 }
 .notify-toast-icon {
     font-size: 1.1rem;
@@ -1774,29 +2143,43 @@ html:has(.gate-wrap) footer {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
     display: flex;
     align-items: center;
-    padding: 1rem;
+    padding: 0 1rem;
     gap: 1rem;
 }
 
-/* 左：今日菜單 */
-.dh-brand {
+/* 左：Logo + 今日菜單 */
+.dh-logo {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+.dh-logo-img {
+    height: 3.2rem;
+    width: auto;
+    object-fit: contain;
 }
 .dh-title {
-    font-size: 2rem;
+    font-size: 1.5rem;
     color: #e3c76b;
     font-style: italic;
     margin: 0;
     line-height: 1;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
 }
 
-/* 中：桌號 + 用餐人數，同一行 */
-.dh-center {
+/* 中：彈性填充 */
+.dh-brand {
     flex: 1;
+}
+
+/* 右：桌號 ｜ 人數 ｜ 會員，同一行 */
+.dh-right {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 0.6rem;
+    gap: 0.5rem;
 }
 .dh-label {
     font-size: 1rem;
@@ -2265,8 +2648,8 @@ html:has(.gate-wrap) footer {
         overflow: visible;
     }
 
-    /* dine-header 手機版：隱藏品牌區 */
-    .dh-brand {
+    /* dine-header 手機版：隱藏標題文字，保留彈性填充 */
+    .dh-title {
         display: none;
     }
     .dh-member {
@@ -2555,6 +2938,43 @@ html:has(.gate-wrap) footer {
 .order-item:last-child {
     border-bottom: none;
 }
+/* 套餐列 */
+.setmeal-order-item {
+    background: rgba(227, 199, 107, 0.03);
+    border-left: 2px solid rgba(227, 199, 107, 0.25);
+}
+.setmeal-badge {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: rgba(227, 199, 107, 0.7);
+    margin-bottom: 0.1rem;
+}
+.setmeal-subitems {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+    margin-top: 0.15rem;
+}
+.setmeal-subitem {
+    font-size: 0.68rem;
+    color: rgba(208, 197, 181, 0.5);
+    letter-spacing: 0.04em;
+}
+
+/* 贈品列 */
+.gift-order-item {
+    background: rgba(163, 217, 119, 0.04);
+}
+.gift-order-badge {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    color: #a3d977;
+    background: rgba(163, 217, 119, 0.12);
+    border: 1px solid rgba(163, 217, 119, 0.3);
+    border-radius: 0.2rem;
+    padding: 0.05rem 0.35rem;
+    display: inline-block;
+}
 .order-item-top {
     display: flex;
     align-items: center;
@@ -2568,9 +2988,20 @@ html:has(.gate-wrap) footer {
     white-space: pre-wrap;
     word-break: break-all;
 }
-.order-item-name {
-    margin: 0.2rem 0;
+.order-item-name-wrap {
     flex: 1;
+    min-width: 0;
+    cursor: pointer;
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.2rem;
+    margin: -0.1rem -0.2rem;
+    transition: background 0.15s;
+}
+.order-item-name-wrap:hover {
+    background: rgba(227, 199, 107, 0.07);
+}
+.order-item-name {
+    margin: 0.1rem 0;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2937,6 +3368,29 @@ html:has(.gate-wrap) footer {
     background: rgba(255, 160, 80, 0.15);
     color: #ff9f4a;
     border: 1px solid rgba(255, 160, 80, 0.4);
+}
+
+/* 已套用活動標籤 */
+.applied-event-tag {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    background: rgba(227, 199, 107, 0.07);
+    border: 1px solid rgba(227, 199, 107, 0.3);
+    border-left: 3px solid #e3c76b;
+    border-radius: 0.4rem;
+    padding: 0.45rem 0.7rem;
+}
+.applied-event-icon {
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+}
+.applied-event-text {
+    font-size: 0.72rem;
+    color: rgba(227, 199, 107, 0.85);
+    letter-spacing: 0.04em;
+    line-height: 1.5;
 }
 
 /* ═══ Toast ═══ */
