@@ -32,7 +32,7 @@
           v-reveal="index"
           class="meal-card"
           :class="{ 'is-comparing': compareList.includes(meal.id) }"
-          @click="openModal(meal)"
+          @click="isAvailable(meal) && openModal(meal)"
           @mousemove="onCardMove($event)"
           @mouseleave="activePreview = null"
         >
@@ -99,7 +99,7 @@
                   >{{ group.categoryName }} × {{ group.pickLimit }}</span>
                 </div>
               </div>
-              <button class="tip-more" @click.stop="openModal(meal)">查看完整資訊 →</button>
+              <button class="tip-more" @click.stop="isAvailable(meal) && openModal(meal)">查看完整資訊 →</button>
             </div>
           </Transition>
 
@@ -921,7 +921,8 @@ onUnmounted(() => {
   justify-content: center;
   z-index: 5;
   border-radius: inherit;
-  pointer-events: none;
+  pointer-events: all;
+  cursor: not-allowed;
 }
 .time-overlay-text {
   font-family: var(--font-label);

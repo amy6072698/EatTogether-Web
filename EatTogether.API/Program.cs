@@ -111,6 +111,7 @@ namespace EatTogether.API
             // 註冊Repository
             builder.Services.AddScoped<ICouponRepository, CouponRepository>();
             builder.Services.AddScoped<IEventRepository, EventRepository>();
+            builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
             builder.Services.AddScoped<IDishRepository, DishRepository>();
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
             builder.Services.AddScoped<ISetMealRepository, SetMealRepository>();
@@ -131,8 +132,9 @@ namespace EatTogether.API
             builder.Services.AddScoped<IOrderService, OrderService>();
             builder.Services.AddScoped<IPasswordResetEmailService, PasswordResetEmailService>();			
 			builder.Services.AddSingleton<EatTogether.API.Models.Infra.JwtHelper>();
-			// 結帳相關
-			builder.Services.AddMemoryCache();
+            builder.Services.AddScoped<CategoryService>();
+            // 結帳相關
+            builder.Services.AddMemoryCache();
 			builder.Services.AddHttpClient();
 
             // 前台寄信服務
