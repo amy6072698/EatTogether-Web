@@ -347,6 +347,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 import { useToast } from '@/composables/useToast.js'
+import apiFetch from '@/utils/apiFetch.js'
 const { show } = useToast()
 
 // ── Intersection Observer 進場動畫 ───────────────────
@@ -640,9 +641,8 @@ const hasChanges = computed(() => upcomingDishes.value.length > 0 || expiringSoo
 // ── API ───────────────────────────────────────────────
 const fetchLimited = async () => {
   if (dishes.value.length === 0) loading.value = true
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
   try {
-    const res = await fetch(`${API_BASE}/Dishes/active`)
+    const res = await apiFetch('/Dishes/active')
     if (!res.ok) throw new Error(`抓取失敗 (${res.status})`)
     dishes.value = await res.json()
     error.value = null
@@ -1219,6 +1219,7 @@ onUnmounted(() => {
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1330,6 +1331,7 @@ onUnmounted(() => {
   margin: 0 0 0.65rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

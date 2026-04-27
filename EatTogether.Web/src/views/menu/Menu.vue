@@ -2,7 +2,8 @@
     <div class="menu-page">
         <header class="menu-header">
             <div class="menu-header-bg" ref="headerBgRef"></div>
-            <div class="container">
+            <div class="menu-header-overlay"></div>
+            <div class="container" style="position:relative;z-index:2;">
                 <span class="menu-eyebrow">Signature Flavors</span>
                 <h1 class="eat-h1">精選菜單</h1>
 
@@ -38,19 +39,11 @@
                 <div class="filter-chips">
                     <button
                         class="filter-chip"
-                        :class="{ active: filterVeg }"
-                        @click="filterVeg = !filterVeg"
+                        :class="{ active: filterPopular }"
+                        @click="filterPopular = !filterPopular"
                         @mousedown="ripple"
                     >
-                        🥬 素食
-                    </button>
-                    <button
-                        class="filter-chip"
-                        :class="{ active: filterSpicy }"
-                        @click="filterSpicy = !filterSpicy"
-                        @mousedown="ripple"
-                    >
-                        🌶️ 有辣
+                        👑 人氣餐點
                     </button>
                     <button
                         class="filter-chip"
@@ -62,19 +55,27 @@
                     </button>
                     <button
                         class="filter-chip"
+                        :class="{ active: filterSpicy }"
+                        @click="filterSpicy = !filterSpicy"
+                        @mousedown="ripple"
+                    >
+                        🌶️ 有辣
+                    </button>
+                    <button
+                        class="filter-chip"
+                        :class="{ active: filterVeg }"
+                        @click="filterVeg = !filterVeg"
+                        @mousedown="ripple"
+                    >
+                        🥬 素食
+                    </button>
+                    <button
+                        class="filter-chip"
                         :class="{ active: filterFav }"
                         @click="filterFav = !filterFav"
                         @mousedown="ripple"
                     >
                         ❤️ 我的最愛
-                    </button>
-                    <button
-                        class="filter-chip"
-                        :class="{ active: filterAvailable }"
-                        @click="filterAvailable = !filterAvailable"
-                        @mousedown="ripple"
-                    >
-                        ✅ 供應中
                     </button>
                 </div>
                 <div class="view-toggle">
@@ -134,7 +135,7 @@
                     :key="dish.id"
                     class="dish-card"
                     :class="{ 'is-soldout': dish.stockStatus === 2 }"
-                    @click="openModal(dish)"
+                    @click="dish.stockStatus !== 2 && openModal(dish)"
                     @mousemove="handleMouseMove($event)"
                     @mouseleave="handleMouseLeave"
                 >
@@ -195,7 +196,12 @@
                     <div class="dish-info">
                         <div class="dish-title-row">
                             <h3 class="dish-name">{{ dish.dishName }}</h3>
-                            <span class="dish-price">NT$ {{ dish.price.toLocaleString() }}</span>
+                            <div class="dish-price-wrap">
+                                <span class="dish-price">NT$ {{ dish.price.toLocaleString() }}</span>
+                                <span class="dish-card-rating" v-if="dish.ratingCount > 0">
+                                    ★ {{ dish.averageScore.toFixed(1) }}（{{ dish.ratingCount }}）
+                                </span>
+                            </div>
                         </div>
                         <p class="dish-desc">
                             {{
@@ -245,6 +251,7 @@
                             :src="formatImageUrl(selectedDish.imageUrl)"
                             :alt="selectedDish.dishName"
                             class="modal-img"
+                            ref="modalImgRef"
                         />
                         <div v-else class="modal-img-placeholder">
                             <span>{{ selectedDish.dishName.charAt(0) }}</span>
@@ -286,7 +293,7 @@
                     </div>
 
                     <!-- 資訊區 -->
-                    <div class="modal-body">
+                    <div class="modal-body" ref="modalBodyRef">
                         <div class="modal-header-row">
                             <h2 class="modal-title">{{ selectedDish.dishName }}</h2>
                             <div class="modal-price">
@@ -367,27 +374,74 @@
                         </div>
 
                         <!-- 評分 -->
-                        <div class="modal-section">
-                            <div class="modal-section-label">為這道餐點評分</div>
+                        <div class="modal-section rating-section">
+                            <template v-if="dishRatingMap[selectedDish.id]?.ratingCount > 0">
+                                <div class="modal-section-label rating-section-title">評分總覽</div>
+                                <p class="rating-avg">
+                                    平均 {{ dishRatingMap[selectedDish.id].averageScore.toFixed(1) }} 分（{{ dishRatingMap[selectedDish.id].ratingCount }} 人評分）
+                                </p>
+
+                                <!-- 唯讀平均分星星列 -->
+                                <div class="avg-star-row">
+                                    <span
+                                        v-for="star in 5"
+                                        :key="star"
+                                        class="avg-star"
+                                        :class="getAvgStarType(dishRatingMap[selectedDish.id].averageScore, star)"
+                                    >
+                                        <span class="avg-star-bg">★</span>
+                                        <span class="avg-star-fg">★</span>
+                                    </span>
+                                    <span class="avg-star-label">
+                                        {{ dishRatingMap[selectedDish.id].averageScore.toFixed(1) }} ★ ({{ dishRatingMap[selectedDish.id].ratingCount }} 人)
+                                    </span>
+                                </div>
+
+                                <!-- 星數分佈條 -->
+                                <div class="rating-bars">
+                                    <div
+                                        v-for="level in [5, 4, 3, 2, 1]"
+                                        :key="level"
+                                        class="rating-bar-row"
+                                    >
+                                        <span class="bar-label">{{ level }} ★</span>
+                                        <div class="bar-track">
+                                            <div
+                                                class="bar-fill"
+                                                :style="{ width: getBarWidth(dishRatingMap[selectedDish.id].averageScore, level) + '%' }"
+                                            ></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="rating-divider"></div>
+                            </template>
+
+                            <p class="rating-avg rating-avg--empty" v-else>尚無評分，成為第一個！</p>
+
+                            <!-- 互動評分 -->
+                            <div class="modal-section-label" style="margin-top:0.5rem;">為這道餐點評分</div>
                             <div class="star-row">
                                 <button
                                     v-for="star in 5"
                                     :key="star"
                                     class="star-btn"
+                                    :class="{ 'is-rated': hasRated(selectedDish.id) }"
+                                    :disabled="hasRated(selectedDish.id)"
                                     @click="submitRating(selectedDish.id, star)"
-                                    @mouseenter="hoverStar = star"
+                                    @mouseenter="!hasRated(selectedDish.id) && (hoverStar = star)"
                                     @mouseleave="hoverStar = 0"
                                     :aria-label="`${star} 顆星`"
                                 >
                                     {{
-                                        (hoverStar || userRatings[selectedDish.id] || 0) >= star
+                                        (hoverStar || selectedStar || 0) >= star
                                             ? '★'
                                             : '☆'
                                     }}
                                 </button>
                             </div>
-                            <p v-if="userRatings[selectedDish.id]" class="star-voted">
-                                您已評 {{ userRatings[selectedDish.id] }} 顆星
+                            <p v-if="hasRated(selectedDish.id)" class="star-voted">
+                                已評 {{ ratedScore(selectedDish.id) }} 顆星 ★
                             </p>
                         </div>
                     </div>
@@ -402,6 +456,7 @@ import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from
 import { useRoute, useRouter } from 'vue-router'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 import { useToast } from '@/composables/useToast.js'
+import apiFetch from '@/utils/apiFetch.js'
 
 // ── 安全解析食材 JSON ────────────────────────────────
 const parseIngredients = (jsonString) => {
@@ -466,11 +521,9 @@ const fetchIngredientInfo = async (name) => {
     activeIngredient.value = name
     ingredientInfo.value = ''
     loadingIngredient.value = true
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
     try {
-        const res = await fetch(`${API_BASE}/Ingredients/info`, {
+        const res = await apiFetch('/Ingredients/info', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ingredientName: name }),
         })
         if (!res.ok) throw new Error()
@@ -540,6 +593,31 @@ const getCountdown = (endDateString, startDateString) => {
     return `倒數 ${hh}:${mm}:${ss}`
 }
 
+// ── Polling ──────────────────────────────────────────
+let _pollTimer = null
+let _dishFingerprint = ''
+
+const getDishFingerprint = (data) =>
+    [...data]
+        .sort((a, b) => a.id - b.id)
+        .map(d => `${d.id}|${d.dishName}|${d.price}|${d.stockStatus}|${d.isActive ?? 1}`)
+        .join(',')
+
+const pollMenu = async () => {
+    try {
+        const res = await apiFetch('/Dishes/active')
+        if (!res.ok) return
+        const newData = await res.json()
+        const newFp = getDishFingerprint(newData)
+        if (newFp !== _dishFingerprint) {
+            _dishFingerprint = newFp
+            dishes.value = newData
+        }
+    } catch (e) {
+        console.warn('[pollMenu]', e)
+    }
+}
+
 // ── State ────────────────────────────────────────────
 const dishes = ref([])
 const loading = ref(true)
@@ -550,23 +628,38 @@ const filterVeg = ref(false)
 const filterSpicy = ref(false)
 const filterRec = ref(false)
 const filterFav = ref(false)
-const filterAvailable = ref(false)
+const filterPopular = ref(false)
 const sortOrder = ref('default')
 const viewMode = ref('grid')
 
 // ── 評分 ──────────────────────────────────────────────
-const userRatings = reactive(JSON.parse(localStorage.getItem('menu-ratings') || '{}'))
+const dishRatingMap = reactive({})
 const hoverStar = ref(0)
+const selectedStar = ref(0)
 
-const submitRating = (dishId, star) => {
-    userRatings[dishId] = star
-    localStorage.setItem('menu-ratings', JSON.stringify(userRatings))
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
-    fetch(`${API_BASE}/Dishes/${dishId}/Rate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ score: star }),
-    }).catch(() => {}) // fire-and-forget，忽略錯誤
+const _ratedMap = () => JSON.parse(localStorage.getItem('menu-ratings') || '{}')
+const hasRated = (dishId) => !!_ratedMap()[dishId]
+const ratedScore = (dishId) => _ratedMap()[dishId] || 0
+
+const submitRating = async (dishId, star) => {
+    if (hasRated(dishId)) return
+    try {
+        const res = await apiFetch(`/Dishes/${dishId}/Rate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ score: star }),
+        })
+        if (!res.ok) throw new Error()
+        const data = await res.json()
+        const stored = _ratedMap()
+        stored[dishId] = star
+        localStorage.setItem('menu-ratings', JSON.stringify(stored))
+        selectedStar.value = star
+        dishRatingMap[dishId] = { averageScore: data.averageScore, ratingCount: data.ratingCount }
+        show('⭐ 感謝您的評分！', 'success')
+    } catch {
+        show('評分失敗，請稍後再試', 'error')
+    }
 }
 
 // ── 收藏 ──────────────────────────────────────────────
@@ -576,8 +669,10 @@ const toggleFavorite = (dishId) => {
     const idx = favorites.value.indexOf(dishId)
     if (idx === -1) {
         favorites.value.push(dishId)
+        show('❤️ 已加入收藏', 'success')
     } else {
         favorites.value.splice(idx, 1)
+        show('🤍 已取消收藏', 'info')
     }
     localStorage.setItem('menu-favorites', JSON.stringify(favorites.value))
 }
@@ -605,6 +700,8 @@ const handleParallax = () => {
 const isModalOpen = ref(false)
 const selectedDish = ref(null)
 const modalBoxRef = ref(null)
+const modalImgRef = ref(null)
+const modalBodyRef = ref(null)
 
 const btnPos = reactive({ top: '1rem', closeRight: '1rem', shareRight: '3.5rem' })
 const updateBtnPos = () => {
@@ -619,6 +716,57 @@ watch(isModalOpen, async (open) => {
     if (!open) return
     await nextTick()
     updateBtnPos()
+
+    // Ken Burns：圖片從放大縮回原比例
+    const img = modalImgRef.value
+    if (img) {
+        img.style.transition = 'none'
+        img.style.transform = 'scale(1.18)'
+        img.offsetHeight
+        img.style.transition = 'transform 7s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+        img.style.transform = 'scale(1.0)'
+    }
+
+    const body = modalBodyRef.value
+    if (!body) return
+
+    const sections = [...body.children]
+
+    // Chips 預先隱藏
+    const chips = body.querySelectorAll('.attr-chip')
+    chips.forEach(chip => {
+        chip.style.transition = 'none'
+        chip.style.opacity = '0'
+        chip.style.transform = 'scale(0) translateY(6px)'
+    })
+
+    // Body sections 預先隱藏
+    sections.forEach(el => {
+        el.style.transition = 'none'
+        el.style.opacity = '0'
+        el.style.transform = 'translateY(30px) scale(0.96)'
+    })
+
+    body.offsetHeight
+
+    // Body sections 依序淡入
+    sections.forEach((el, i) => {
+        setTimeout(() => {
+            el.style.transition = 'opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1), transform 0.55s cubic-bezier(0.22, 1, 0.36, 1)'
+            el.style.opacity = '1'
+            el.style.transform = 'translateY(0) scale(1)'
+        }, i * 90)
+    })
+
+    // Chips 彈跳進場
+    const chipsDelay = (sections.length - 1) * 90 + 180
+    chips.forEach((chip, i) => {
+        setTimeout(() => {
+            chip.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease'
+            chip.style.opacity = '1'
+            chip.style.transform = 'scale(1) translateY(0)'
+        }, chipsDelay + i * 55)
+    })
 })
 
 const categories = [
@@ -631,11 +779,22 @@ const categories = [
 ]
 
 // ── Modal ────────────────────────────────────────────
-const openModal = (dish) => {
+const openModal = async (dish) => {
     selectedDish.value = dish
     isModalOpen.value = true
     document.body.style.overflow = 'hidden'
+    selectedStar.value = ratedScore(dish.id)
+
+    try {
+        const res = await apiFetch(`/Dishes/${dish.id}/Rating`)
+        if (res.ok) {
+            const data = await res.json()
+            dishRatingMap[dish.id] = data
+        }
+    } catch (_e) { /* 忽略評分載入錯誤 */ }
 }
+
+
 
 const closeModal = () => {
     isModalOpen.value = false
@@ -656,6 +815,20 @@ const spicyLabel = (level) => {
     return ['', '微辣', '中辣', '大辣', '極辣'][level] ?? '辣'
 }
 
+const getAvgStarType = (avg, starPos) => {
+    if (avg >= starPos) return 'full'
+    if (avg >= starPos - 0.5) return 'half'
+    return 'empty'
+}
+
+const getBarWidth = (avg, star) => {
+    const levels = [5, 4, 3, 2, 1]
+    const raw = levels.map(s => Math.max(0, 100 - Math.abs(s - avg) * 100))
+    const max = Math.max(...raw)
+    if (max === 0) return 0
+    return Math.round(raw[levels.indexOf(star)] / max * 100)
+}
+
 const formatImageUrl = (url) => {
     if (!url) return null
     return url.startsWith('/images/') ? url : null
@@ -665,9 +838,8 @@ const formatImageUrl = (url) => {
 const fetchMenu = async () => {
     loading.value = true
     error.value = null
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
     try {
-        const res = await fetch(`${API_BASE}/Dishes/active`)
+        const res = await apiFetch('/Dishes/active')
         if (!res.ok) throw new Error(`抓取失敗 (${res.status})`)
         dishes.value = await res.json()
     } catch (err) {
@@ -686,7 +858,7 @@ const hasActiveFilter = computed(
         filterSpicy.value ||
         filterRec.value ||
         filterFav.value ||
-        filterAvailable.value ||
+        filterPopular.value ||
         currentCategory.value !== 0 ||
         sortOrder.value !== 'default'
 )
@@ -704,7 +876,7 @@ const filteredDishes = computed(() => {
         if (filterSpicy.value && !(d.spicyLevel > 0)) return false
         if (filterRec.value && !d.isRecommended) return false
         if (filterFav.value && !favorites.value.includes(d.id)) return false
-        if (filterAvailable.value && d.stockStatus === 2) return false
+        if (filterPopular.value && !d.isPopular) return false
         return true
     })
 
@@ -724,6 +896,8 @@ const filteredDishes = computed(() => {
 
 onMounted(async () => {
     await fetchMenu()
+    _dishFingerprint = getDishFingerprint(dishes.value)
+    _pollTimer = setInterval(pollMenu, 3000)
     window.addEventListener('scroll', handleParallax, { passive: true })
     document.addEventListener('click', handleShareClickOutside)
     window.addEventListener('resize', updateBtnPos)
@@ -736,6 +910,7 @@ onMounted(async () => {
     }
 })
 onUnmounted(() => {
+    clearInterval(_pollTimer)
     window.removeEventListener('scroll', handleParallax)
     document.removeEventListener('click', handleShareClickOutside)
     window.removeEventListener('resize', updateBtnPos)
@@ -751,21 +926,28 @@ onUnmounted(() => {
 }
 
 .menu-header {
-    padding: 8rem 0 4rem;
+    padding: 8rem 0 2rem;
     text-align: center;
     position: relative;
     overflow: hidden;
 }
 .menu-header-bg {
     position: absolute;
-    inset: -40% 0;
-    background: linear-gradient(to bottom, rgba(24, 11, 6, 0.95), var(--eat-surface));
+    inset: 0;
+    background-image: url('https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=1400&q=80');
+    background-size: cover;
+    background-position: center 40%;
     will-change: transform;
-    z-index: 0;
 }
-.menu-header .container {
-    position: relative;
-    z-index: 1;
+.menu-header-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to bottom,
+        rgba(24, 11, 6, 0.80) 0%,
+        rgba(24, 11, 6, 0.70) 55%,
+        var(--eat-surface) 100%
+    );
 }
 
 .menu-eyebrow {
@@ -1008,31 +1190,24 @@ onUnmounted(() => {
 }
 .menu-list .dish-desc {
     -webkit-line-clamp: unset;
+    line-clamp: unset;
     display: block;
     overflow: visible;
 }
 
 /* ── Card 進場動畫 ── */
 .card-enter-active {
-    transition:
-        opacity 0.5s ease,
-        transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: opacity 0.35s ease;
 }
 .card-leave-active {
-    transition:
-        opacity 0.3s ease,
-        transform 0.3s ease;
+    transition: opacity 0.25s ease;
 }
-.card-enter-from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.97);
-}
+.card-enter-from,
 .card-leave-to {
     opacity: 0;
-    transform: translateY(-8px) scale(0.97);
 }
 .card-move {
-    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform 0.3s ease;
 }
 
 .dish-card {
@@ -1078,6 +1253,7 @@ onUnmounted(() => {
 }
 .dish-card.is-soldout {
     opacity: 0.6;
+    cursor: not-allowed;
 }
 
 /* ── 售完遮罩 ── */
@@ -1289,6 +1465,22 @@ onUnmounted(() => {
 .dish-card:hover .dish-name::after {
     width: 100%;
 }
+.dish-price-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.12rem;
+    margin-left: 0.5rem;
+    flex-shrink: 0;
+}
+.dish-card-rating {
+    font-family: var(--font-label);
+    font-size: 0.62rem;
+    color: var(--eat-primary);
+    letter-spacing: 0.03em;
+    opacity: 0.72;
+    white-space: nowrap;
+}
 .dish-price {
     font-family: var(--font-label);
     color: var(--eat-secondary);
@@ -1296,7 +1488,6 @@ onUnmounted(() => {
     font-weight: 500;
     margin-top: 0.25rem;
     white-space: nowrap;
-    margin-left: 0.5rem;
     position: relative;
     transition: color 0.3s ease;
 }
@@ -1326,6 +1517,7 @@ onUnmounted(() => {
     font-style: italic;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -1611,20 +1803,120 @@ onUnmounted(() => {
 .star-btn:hover {
     transform: scale(1.2);
 }
-.star-btn:not(:hover) {
-    /* 讓未 hover 的保持原色 */
-}
-/* ☆ 未達評分 → 降低不透明度 */
-.star-btn:has(+ .star-btn) {
-    /* 非最後一顆，靠 v-bind 控制 */
-}
 
+.rating-avg {
+    font-family: var(--font-label);
+    font-size: 0.78rem;
+    color: var(--eat-primary);
+    letter-spacing: 0.04em;
+    margin: 0 0 0.6rem;
+}
+.rating-avg--empty {
+    color: rgba(249, 221, 211, 0.35);
+    font-style: italic;
+}
+.star-btn.is-rated {
+    cursor: default;
+    opacity: 0.75;
+}
+.star-btn:disabled {
+    pointer-events: none;
+}
 .star-voted {
     font-family: var(--font-label);
     font-size: 0.7rem;
     color: rgba(249, 221, 211, 0.45);
     letter-spacing: 0.05em;
     margin: 0;
+}
+
+/* ── 評分總覽區塊 ── */
+.rating-section-title {
+    font-family: var(--font-label);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: rgba(249, 221, 211, 0.4);
+    margin-bottom: 0.65rem;
+    opacity: 1 !important;
+}
+
+/* 唯讀平均分星星列 */
+.avg-star-row {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    margin-bottom: 0.9rem;
+}
+.avg-star {
+    position: relative;
+    display: inline-block;
+    font-size: 1.2rem;
+    line-height: 1;
+    width: 1.2rem;
+    height: 1.2rem;
+}
+.avg-star-bg {
+    color: rgba(227, 199, 107, 0.15);
+}
+.avg-star-fg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: var(--eat-primary);
+    overflow: hidden;
+    white-space: nowrap;
+    width: 0%;
+}
+.avg-star.full .avg-star-fg  { width: 100%; }
+.avg-star.half .avg-star-fg  { width: 50%; }
+.avg-star.empty .avg-star-fg { width: 0%; }
+.avg-star-label {
+    font-family: var(--font-label);
+    font-size: 0.75rem;
+    color: var(--eat-primary);
+    margin-left: 0.5rem;
+    letter-spacing: 0.03em;
+    opacity: 0.85;
+}
+
+/* 星數分佈條 */
+.rating-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.28rem;
+    margin-bottom: 0.5rem;
+}
+.rating-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.bar-label {
+    font-family: var(--font-label);
+    font-size: 0.62rem;
+    color: rgba(249, 221, 211, 0.4);
+    width: 2rem;
+    flex-shrink: 0;
+    text-align: right;
+}
+.bar-track {
+    flex: 1;
+    height: 4px;
+    background: rgba(227, 199, 107, 0.08);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--eat-primary), rgba(227, 199, 107, 0.55));
+    border-radius: 2px;
+    transition: width 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.rating-divider {
+    height: 1px;
+    background: rgba(227, 199, 107, 0.1);
+    margin: 0.75rem 0 0;
 }
 
 .attr-chip.veg {
@@ -1694,7 +1986,7 @@ onUnmounted(() => {
     padding: 0 2rem;
 }
 .py-5 {
-    padding-top: 4rem;
+    padding-top: 2rem;
     padding-bottom: 6rem;
 }
 
