@@ -95,7 +95,7 @@
                             />
                         </RouterLink>
                         <Button
-                            class="py-2 px-3 w-100 w-lg-auto"
+                            class="btn-eat-sm w-100 w-lg-auto"
                             variant="primary"
                             @click="openAuthModal"
                             aria-label="開啟登入或註冊視窗"
@@ -104,7 +104,7 @@
                         </Button>
                         <!-- 暫時登出按鈕，供 1-4 測試用；2-1 Navbar 重構時整合至頭像 Dropdown -->
                         <Button
-                            class="py-2 px-3 w-100 w-lg-auto ms-2"
+                            class="btn-eat-sm w-100 w-lg-auto ms-2"
                             variant="secondary"
                             @click="authStore.logout()"
                             aria-label="登出"

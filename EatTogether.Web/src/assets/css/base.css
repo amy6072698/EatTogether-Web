@@ -69,3 +69,21 @@ img {
     background: rgba(227, 199, 107, 0.25);
     color: var(--eat-primary-fixed);
 }
+
+/* 針對自動填入狀態的 input */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    /* 用內陰影蓋掉瀏覽器預設背景色，直接套用您的 Surface Container 變數 */
+    -webkit-box-shadow: 0 0 0 1000px var(--eat-surface-high) inset !important;
+
+    /* 強制設定文字顏色，直接套用您的 On-Surface 變數 */
+    -webkit-text-fill-color: var(--eat-on-surface) !important;
+
+    /* 👇 加上這行！強制將閃爍游標顏色設定為您的文字色（或直接寫 #ffffff） */
+    caret-color: var(--eat-on-surface) !important;
+
+    /* 讓背景色變化延遲，避免瞬間閃爍 */
+    transition: background-color 5000s ease-in-out 0s;
+}

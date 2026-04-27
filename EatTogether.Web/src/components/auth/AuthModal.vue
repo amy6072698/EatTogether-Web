@@ -423,7 +423,11 @@ onMounted(() => {
                         <!-- 登入表單 -->
                         <template v-else>
                             <div class="d-flex flex-column gap-2">
-                                <Button variant="secondary" class="fs-6 py-2 mb-2" :disabled="true">
+                                <Button
+                                    variant="secondary"
+                                    class="btn-eat-md mb-2"
+                                    :disabled="true"
+                                >
                                     使用 Google 登入
                                 </Button>
 
@@ -535,7 +539,7 @@ onMounted(() => {
 
                                 <Button
                                     variant="primary"
-                                    class="fs-6 py-2 mt-3"
+                                    class="btn-eat-md mt-3"
                                     :loading="isLoginSubmitting"
                                     @click="handleLogin"
                                 >
@@ -573,7 +577,7 @@ onMounted(() => {
 
                             <!-- 註冊表單 -->
                             <template v-else>
-                                <Button variant="primary" class="fs-6 py-2 mb-2" :disabled="true">
+                                <Button variant="primary" class="btn-eat-md mb-2" :disabled="true">
                                     使用 Google 快速註冊
                                 </Button>
 
@@ -766,7 +770,7 @@ onMounted(() => {
 
                                 <Button
                                     variant="primary"
-                                    class="fs-6 py-2 mt-3"
+                                    class="btn-eat-md mt-3"
                                     :loading="isSubmitting"
                                     @click="handleRegister"
                                 >
@@ -803,6 +807,7 @@ onMounted(() => {
     padding: 0.65rem 0.85rem;
     outline: none;
     transition: border-color 0.25s;
+    line-height: 1;
 }
 
 .form-eat:focus {

@@ -1,162 +1,36 @@
 /* =====================================================
-   義起吃 EatTogether — Buttons
+   義起吃 EatTogether — Buttons (Refactored)
    ===================================================== */
 
-/* ── Primary（金色填滿，主要 CTA）──────────────────── */
-.btn-eat-primary {
-    background: linear-gradient(135deg, var(--eat-primary) 0%, var(--eat-primary-container) 100%);
-    color: var(--eat-on-primary);
-    font-family: var(--font-label);
-    font-size: 0.8rem;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    border: none;
-    border-radius: var(--eat-radius-sm);
-    padding: 0.85rem 2.5rem;
-    transition: var(--eat-transition);
-    box-shadow: 0 4px 20px rgba(227, 199, 107, 0.2);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    text-decoration: none;
-    white-space: nowrap;
-}
-.btn-eat-primary:hover {
-    filter: brightness(1.12);
-    box-shadow: 0 6px 28px rgba(227, 199, 107, 0.35);
-    color: var(--eat-on-primary);
-}
-.btn-eat-primary:active {
-    transform: scale(0.97);
-    color: var(--eat-on-primary);
-}
-
-/* ── Secondary（金色外框 Ghost，Hero 次要 CTA）──────── */
-.btn-eat-secondary {
-    background: transparent;
-    color: var(--eat-primary);
-    font-family: var(--font-label);
-    font-size: 0.8rem;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    border: 1px solid var(--eat-primary);
-    border-radius: var(--eat-radius-sm);
-    padding: 0.85rem 2.5rem;
-    transition: var(--eat-transition);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    text-decoration: none;
-    white-space: nowrap;
-}
-.btn-eat-secondary:hover {
-    background: rgba(227, 199, 107, 0.1);
-    box-shadow: 0 0 16px rgba(227, 199, 107, 0.2);
-    color: var(--eat-primary);
-}
-.btn-eat-secondary:active {
-    transform: scale(0.97);
-}
-
-/* ── Tertiary（暗色細線外框斜體，段落 CTA 用）─────── */
-.btn-eat-tertiary {
-    background: transparent;
-    color: var(--eat-on-surface);
-    font-family: var(--font-body);
-    font-style: italic;
-    font-size: 0.9rem;
-    letter-spacing: 0.2em;
-    border: 1px solid var(--eat-outline-variant);
-    border-radius: var(--eat-radius-sm);
-    padding: 0.85rem 2.5rem;
-    transition: var(--eat-transition);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    text-decoration: none;
-    white-space: nowrap;
-}
-.btn-eat-tertiary:hover {
-    border-color: var(--eat-primary);
-    color: var(--eat-primary);
-    background: transparent;
-}
-.btn-eat-tertiary:active {
-    transform: scale(0.97);
-}
-
-/* ── Danger（錯誤 / 刪除操作）──────────────────────── */
-.btn-eat-danger {
-    background: var(--eat-error-container);
-    color: var(--eat-error);
-    font-family: var(--font-label);
-    font-size: 0.8rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    border: none;
-    border-radius: var(--eat-radius-sm);
-    padding: 0.85rem 2.5rem;
-    transition: var(--eat-transition);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    text-decoration: none;
-}
-.btn-eat-danger:hover {
-    filter: brightness(1.15);
-    color: var(--eat-error);
-}
-
-/* ── Cart（加入購物車，卡片全寬版）─────────────────── */
+/* ── 1. 共用基底樣式 (Base Styles) ───────────────────────── */
+/* 將所有按鈕重複的排版、動畫、對齊屬性統一寫在這裡 */
+.btn-eat-primary,
+.btn-eat-secondary,
+.btn-eat-tertiary,
+.btn-eat-danger,
 .btn-eat-cart {
-    width: 100%;
-    background: linear-gradient(135deg, var(--eat-primary) 0%, var(--eat-primary-container) 100%);
-    color: var(--eat-on-primary);
-    font-family: var(--font-label);
-    font-size: 0.78rem;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    border: none;
-    border-radius: var(--eat-radius-sm);
-    padding: 0.75rem 1rem;
-    cursor: pointer;
-    transition: var(--eat-transition);
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.4rem;
-    box-shadow: 0 4px 16px rgba(227, 199, 107, 0.18);
+    border-radius: var(--eat-radius-sm);
+    cursor: pointer;
+    transition: var(--eat-transition);
     text-decoration: none;
     white-space: nowrap;
-}
-.btn-eat-cart:hover {
-    filter: brightness(1.1);
-    box-shadow: 0 6px 24px rgba(227, 199, 107, 0.32);
-    color: var(--eat-on-primary);
-}
-.btn-eat-cart:active {
-    transform: scale(0.98);
+
+    /* 預設多數按鈕共用的外觀 */
+    font-family: var(--font-label);
+    text-transform: uppercase;
+    padding: 0.85rem 2.5rem;
 }
 
-/* ── Disabled（所有按鈕通用）───────────────────────── */
+/* 統一的 Disabled 狀態 */
 .btn-eat-primary:disabled,
-.btn-eat-primary[disabled],
 .btn-eat-secondary:disabled,
-.btn-eat-secondary[disabled],
 .btn-eat-tertiary:disabled,
-.btn-eat-tertiary[disabled],
 .btn-eat-danger:disabled,
-.btn-eat-danger[disabled],
-.btn-eat-cart:disabled,
-.btn-eat-cart[disabled] {
+.btn-eat-cart:disabled {
     opacity: 0.35;
     cursor: not-allowed;
     pointer-events: none;
@@ -165,19 +39,114 @@
     box-shadow: none;
 }
 
-/* ── Button 內嵌 Spinner 色系修正 ─────────────────── */
-/* primary 按鈕內的 spinner 用深色（底色為金色）        */
-.btn-eat-primary .spinner-border-eat {
+/* 統一的按下縮放動畫 (Danger 預設無縮放) */
+.btn-eat-primary:active:not(:disabled),
+.btn-eat-secondary:active:not(:disabled),
+.btn-eat-tertiary:active:not(:disabled),
+.btn-eat-cart:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+/* ── 2. 各別按鈕樣式變異 (Modifiers) ─────────────────────── */
+
+/* ── 尺寸修飾：小尺寸 (Small Button) ────────────────── */
+.btn-eat-md {
+    padding: 0.5rem 1rem !important;
+    font-size: 1rem !important;
+}
+
+.btn-eat-sm {
+    padding: 0.25rem 0.5rem !important;
+    /* 稍微縮減字母間距，讓小按鈕文字不至於太散 */
+    letter-spacing: 0.1em !important;
+}
+
+/* Primary（金色填滿，主要 CTA） */
+.btn-eat-primary {
+    background: linear-gradient(135deg, var(--eat-primary) 0%, var(--eat-primary-container) 100%);
+    color: var(--eat-on-primary);
+    font-size: 0.9rem;
+    letter-spacing: 0.25em;
+    border: none;
+    box-shadow: 0 4px 20px rgba(227, 199, 107, 0.2);
+}
+.btn-eat-primary:hover {
+    filter: brightness(1.12);
+    box-shadow: 0 6px 28px rgba(227, 199, 107, 0.35);
+}
+
+/* Secondary（金色外框 Ghost，Hero 次要 CTA） */
+.btn-eat-secondary {
+    background: transparent;
+    color: var(--eat-primary);
+    font-size: 0.9rem;
+    letter-spacing: 0.25em;
+    border: 1px solid var(--eat-primary);
+}
+.btn-eat-secondary:hover {
+    background: rgba(227, 199, 107, 0.1);
+    box-shadow: 0 0 16px rgba(227, 199, 107, 0.2);
+}
+
+/* Tertiary（暗色細線外框斜體，段落 CTA 用） */
+.btn-eat-tertiary {
+    background: transparent;
+    color: var(--eat-on-surface);
+    font-family: var(--font-body); /* 覆寫預設字體 */
+    font-style: italic;
+    font-size: 0.9rem;
+    letter-spacing: 0.2em;
+    text-transform: none; /* 取消預設大寫 */
+    border: 1px solid var(--eat-outline-variant);
+}
+.btn-eat-tertiary:hover {
+    border-color: var(--eat-primary);
+    color: var(--eat-primary);
+}
+
+/* Danger（錯誤 / 刪除操作） */
+.btn-eat-danger {
+    background: var(--eat-error-container);
+    color: var(--eat-error);
+    font-size: 0.9rem;
+    letter-spacing: 0.2em;
+    border: none;
+}
+.btn-eat-danger:hover {
+    filter: brightness(1.15);
+}
+
+/* Cart（加入購物車，卡片全寬版） */
+.btn-eat-cart {
+    width: 100%;
+    background: linear-gradient(135deg, var(--eat-primary) 0%, var(--eat-primary-container) 100%);
+    color: var(--eat-on-primary);
+    font-size: 0.78rem;
+    letter-spacing: 0.22em;
+    border: none;
+    padding: 0.75rem 1rem; /* 覆寫預設 Padding */
+    box-shadow: 0 4px 16px rgba(227, 199, 107, 0.18);
+}
+.btn-eat-cart:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 6px 24px rgba(227, 199, 107, 0.32);
+}
+
+/* ── 3. 內嵌元件 (Spinners & Toggles) ──────────────────── */
+
+/* primary / cart 按鈕內的 spinner 用深色 */
+.btn-eat-primary .spinner-border-eat,
+.btn-eat-cart .spinner-border-eat {
     border-color: rgba(59, 47, 0, 0.25);
     border-top-color: var(--eat-on-primary);
 }
-/* secondary 按鈕內的 spinner 用金色                   */
+/* secondary 按鈕內的 spinner 用金色 */
 .btn-eat-secondary .spinner-border-eat {
     border-color: rgba(227, 199, 107, 0.2);
     border-top-color: var(--eat-primary);
 }
 
-/* ── 密碼顯示切換按鈕 ── */
+/* 密碼顯示切換按鈕 */
 .btn-eat-password-toggle {
     position: absolute;
     right: 0.75rem;
@@ -191,7 +160,6 @@
     line-height: 1;
     transition: color 0.2s;
 }
-
 .btn-eat-password-toggle:hover {
     color: var(--eat-on-surface);
 }
