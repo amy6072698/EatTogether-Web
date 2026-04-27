@@ -424,9 +424,11 @@ onMounted(() => {
                     <div v-show="activeTab === 'login'">
                         <!-- 登入成功狀態 -->
                         <div v-if="loginSuccess" class="auth-success-box text-center py-3">
-                            <p class="eat-h3 mb-2">✓</p>
+                            <div class="icon-eat icon-eat--success mb-2">
+                                <i class="bi bi-check-lg"></i>
+                            </div>
                             <p class="eat-body mb-1">登入成功</p>
-                            <p class="eat-body-muted mb-0">歡迎回來，即將為您跳轉。</p>
+                            <p class="eat-body-muted mb-0">歡迎回來，即將為您跳轉</p>
                         </div>
 
                         <!-- 登入表單 -->
@@ -472,7 +474,6 @@ onMounted(() => {
                                     </Button>
                                 </div>
 
-                                <!-- Email 未驗證：補寄驗證信 -->
                                 <!-- Email 未驗證：補寄驗證信 -->
                                 <div v-if="showResendEmail" class="d-flex flex-column gap-2">
                                     <p class="eat-body-muted mb-0" style="font-size: 0.85rem">
@@ -579,9 +580,11 @@ onMounted(() => {
                         <div class="d-flex flex-column gap-2">
                             <!-- 成功狀態 -->
                             <div v-if="registerSuccess" class="auth-success-box text-center py-3">
-                                <p class="eat-h3 mb-2">✉</p>
+                                <div class="icon-eat icon-eat--success mb-2">
+                                    <i class="bi bi-envelope"></i>
+                                </div>
                                 <p class="eat-body mb-1">驗證信已寄出</p>
-                                <p class="eat-body-muted mb-0">請至信箱點擊驗證連結以完成註冊。</p>
+                                <p class="eat-body-muted mb-0">請至信箱點擊驗證連結以完成註冊</p>
                             </div>
 
                             <!-- 註冊表單 -->
@@ -779,7 +782,7 @@ onMounted(() => {
 
                                 <Button
                                     variant="primary"
-                                    class="btn-eat-md mt-3"
+                                    class="btn-eat-md mt-3 mb-4"
                                     :loading="isSubmitting"
                                     @click="handleRegister"
                                 >

@@ -65,6 +65,16 @@ async function handleSubmit() {
         }
 
         status.value = 'success'
+        window.scrollTo({ top: 0 })
+        setTimeout(() => {
+            router.push({ name: 'Home' }).then(() => {
+                const modalEl = document.querySelector('#authModal')
+                if (modalEl) {
+                    const modal = Modal.getInstance(modalEl) || new Modal(modalEl)
+                    modal.show()
+                }
+            })
+        }, 3000)
     } catch {
         // 網路錯誤由 apiFetch 統一 Toast 處理
     } finally {
@@ -72,20 +82,10 @@ async function handleSubmit() {
     }
 }
 
-function goToLogin() {
-    router.push({ name: 'Home' }).then(() => {
-        const modalEl = document.querySelector('#authModal')
-        if (modalEl) {
-            const modal = Modal.getInstance(modalEl) || new Modal(modalEl)
-            modal.show()
-        }
-    })
-}
-
-// token 無效狀態：導回首頁並開啟忘記密碼 Modal，讓使用者重新申請
+// token 無效狀態：導回首頁並開啟重新申請 Modal，讓使用者重新申請
 function goToForgotPassword() {
     router.push({ name: 'Home' }).then(() => {
-        const modalEl = document.querySelector('#forgotPasswordModal')
+        const modalEl = document.querySelector('#resendResetPasswordModal')
         if (modalEl) {
             const modal = Modal.getInstance(modalEl) || new Modal(modalEl)
             modal.show()
@@ -128,11 +128,11 @@ onMounted(async () => {
 
                         <!-- 連結無效 -->
                         <div v-else-if="status === 'invalid'" class="text-center py-2">
-                            <div class="rp-icon rp-icon--error mb-3">
+                            <div class="icon-eat icon-eat--error mb-2">
                                 <i class="bi bi-x-lg"></i>
                             </div>
                             <h1 class="eat-h3 fw-bolder fst-normal mb-2">連結無效或已過期</h1>
-                            <p class="eat-body-muted mb-4">此重設密碼連結已失效，請重新申請</p>
+                            <p class="eat-body-muted mb-3">此重設密碼連結已失效，請重新申請</p>
                             <button class="rp-back-link" @click="goToForgotPassword">
                                 重新申請重設密碼
                             </button>
@@ -140,8 +140,8 @@ onMounted(async () => {
 
                         <!-- 重設表單 -->
                         <div v-else-if="status === 'form'">
-                            <div class="text-center mb-4">
-                                <div class="rp-icon mb-3">
+                            <div class="text-center mb-3">
+                                <div class="icon-eat mb-2">
                                     <i class="bi bi-lock"></i>
                                 </div>
                                 <h1 class="eat-h3 fw-bolder fst-normal mb-2">重設密碼</h1>
@@ -245,22 +245,16 @@ onMounted(async () => {
                             >
                                 {{ isLoading ? '更新中...' : '確認重設密碼' }}
                             </Button>
-
-                            <div class="text-center mt-3">
-                                <button class="rp-back-link" @click="goToLogin">返回登入</button>
-                            </div>
                         </div>
 
                         <!-- 成功畫面 -->
                         <div v-else class="text-center py-2">
-                            <div class="rp-icon rp-icon--success mb-3">
+                            <div class="icon-eat icon-eat--success mb-3">
                                 <i class="bi bi-check-lg"></i>
                             </div>
                             <h1 class="eat-h3 fw-bolder fst-normal mb-2">密碼已重設</h1>
                             <p class="eat-body-muted mb-4">您的密碼已成功更新，請使用新密碼登入</p>
-                            <Button variant="primary" class="btn-eat-md" @click="goToLogin">
-                                前往登入
-                            </Button>
+                            <p class="eat-body-muted mt-1">3 秒後自動返回登入...</p>
                         </div>
                     </div>
                 </div>
@@ -272,43 +266,20 @@ onMounted(async () => {
 <style scoped>
 .reset-password-main {
     min-height: calc(100vh - 80px - 80px);
-    padding: 3rem 0;
+    padding: 2rem 0;
 }
 
 .rp-card {
     background: var(--eat-surface-container);
     border: 1px solid var(--eat-outline-variant);
     border-radius: var(--eat-radius-lg);
-    padding: 2.5rem 2rem;
+    padding: 2rem;
 }
 
 .rp-spinner {
     color: var(--eat-primary);
     width: 3rem;
     height: 3rem;
-}
-
-.rp-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 4rem;
-    height: 4rem;
-    border-radius: 50%;
-    background: var(--eat-primary-container);
-    color: var(--eat-on-primary);
-    font-size: 1.75rem;
-    line-height: 1;
-}
-
-.rp-icon--success {
-    background: var(--eat-primary-container);
-    color: var(--eat-on-primary);
-}
-
-.rp-icon--error {
-    background: var(--eat-error-container);
-    color: var(--eat-error);
 }
 
 .rp-input {

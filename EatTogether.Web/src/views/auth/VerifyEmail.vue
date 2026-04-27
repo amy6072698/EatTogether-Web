@@ -110,7 +110,9 @@ onMounted(async () => {
 
                         <!-- 驗證成功 -->
                         <div v-else-if="status === 'success'" class="text-center py-4">
-                            <div class="verify-icon verify-icon--success mb-3">✓</div>
+                            <div class="icon-eat icon-eat--success mb-3">
+                                <i class="bi bi-check-lg"></i>
+                            </div>
                             <h1 class="eat-h2 mb-2">Email 驗證成功！</h1>
                             <p class="eat-body mb-1">您的帳號已完成驗證，歡迎加入義起吃。</p>
                             <p class="eat-body-muted mb-0">
@@ -121,7 +123,9 @@ onMounted(async () => {
                         <!-- 驗證失效 -->
                         <div v-else class="py-2">
                             <div class="text-center mb-4">
-                                <div class="verify-icon verify-icon--error mb-3">✕</div>
+                                <div class="icon-eat icon-eat--error mb-3">
+                                    <i class="bi bi-x-lg"></i>
+                                </div>
                                 <h1 class="eat-h2 mb-2">驗證連結無效或已過期</h1>
                                 <p class="eat-body mb-0">請輸入您的 Email，重新寄送驗證信。</p>
                             </div>
@@ -202,27 +206,6 @@ onMounted(async () => {
     color: var(--eat-primary);
     width: 3rem;
     height: 3rem;
-}
-
-.verify-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 4rem;
-    height: 4rem;
-    border-radius: 50%;
-    font-size: 1.75rem;
-    font-weight: bold;
-}
-
-.verify-icon--success {
-    background: var(--eat-primary-container);
-    color: var(--eat-on-primary);
-}
-
-.verify-icon--error {
-    background: var(--eat-error-container);
-    color: var(--eat-error);
 }
 
 .verify-input {

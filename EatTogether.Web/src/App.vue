@@ -2,6 +2,7 @@
     <Navbar />
     <AuthModal />
     <ForgotPasswordModal />
+    <ResendResetPasswordModal />
     <RouterView />
     <Footer />
     <ToastContainer />
@@ -16,6 +17,7 @@ import Footer from '@/components/common/Footer.vue'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 import AuthModal from '@/components/auth/AuthModal.vue'
 import ForgotPasswordModal from '@/components/auth/ForgotPasswordModal.vue'
+import ResendResetPasswordModal from '@/components/auth/ResendResetPasswordModal.vue'
 
 const authStore = useAuthStore()
 const route = useRoute()
