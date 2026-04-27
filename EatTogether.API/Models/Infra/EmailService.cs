@@ -31,6 +31,7 @@ namespace EatTogether.API.Models.Infra
 		private readonly string _password;
 		private readonly string _fromName;
 		private readonly string _fromAddress;
+		private readonly string _frontendBaseUrl;
 
 		public EmailService(IConfiguration configuration)
 		{
@@ -41,6 +42,7 @@ namespace EatTogether.API.Models.Infra
 			_password = configuration["Smtp:Password"]!;
 			_fromName = configuration["Smtp:FromName"]!;
 			_fromAddress = configuration["Smtp:FromAddress"]!;
+			_frontendBaseUrl = configuration["FrontendBaseUrl"]!;
 		}
 
 		// 建立 SMTP 連線物件的私有方法
@@ -115,6 +117,9 @@ namespace EatTogether.API.Models.Infra
 		public async Task SendSecurityNoticeAsync(string toEmail, string action)
 		{
 			const string subject = "義起吃 - 帳號安全通知";
+
+			var frontendBaseUrl = _frontendBaseUrl;
+
 			var body = $@"
 <div style=""font-family:sans-serif;max-width:600px;margin:auto;"">
     <h2 style=""color:#c0392b;"">義起吃 | 義式料理</h2>
@@ -122,7 +127,7 @@ namespace EatTogether.API.Models.Infra
     <p style=""padding:12px;background:#f9f9f9;border-left:4px solid #c0392b;"">
         {action}
     </p>
-    <p style=""color:#888;font-size:13px;"">若此操作並非您本人執行，請立即登入並修改密碼，或聯繫客服。</p>
+    <p style=""color:#888;font-size:13px;"">若此操作並非您本人執行，請<a href=""{frontendBaseUrl}"" style=""color:#c0392b;"">登入網站</a>並修改密碼，或聯繫客服。</p>
 </div>";
 
 			using var smtp = BuildSmtpClient();

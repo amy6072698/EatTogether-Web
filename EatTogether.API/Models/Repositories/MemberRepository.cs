@@ -18,6 +18,30 @@ namespace EatTogether.API.Models.Repositories
 		Task<bool> HasPendingConfirmTokenAsync(int memberId);
 		Task CreateConfirmTokenAsync(MemberConfirmToken token);
 
+		// -----前台一般登入用------------------------------
+		Task<Member?> GetMemberByAccountAsync(string account);
+		Task SaveRefreshTokenAsync(MemberRefreshToken token);
+
+		// -----前台登出用------------------------------
+		Task RevokeRefreshTokenByTokenStringAsync(string token);
+
+		// -----前台 Refresh Token 用------------------------------
+		Task<MemberRefreshToken?> GetRefreshTokenAsync(string token);
+		Task RevokeRefreshTokenAsync(int tokenId);
+
+		// -----前台復原帳號用------------------------------
+		Task RestoreAccountAsync(int memberId);
+
+		// -----前台忘記密碼用------------------------------
+		Task<bool> HasPendingPasswordResetTokenAsync(int memberId);
+		Task CreatePasswordResetTokenAsync(MemberPasswordResetToken token);
+
+		// -----前台重設密碼用------------------------------
+		Task<MemberPasswordResetToken?> GetPasswordResetTokenAsync(string token);
+		Task MarkPasswordResetTokenUsedAsync(int tokenId);
+		Task UpdateMemberPasswordAsync(int memberId, string hashedPassword);
+		Task RevokeAllRefreshTokensByMemberIdAsync(int memberId);
+
 		// -----前台 Email 驗證用------------------------------
 		Task<MemberConfirmToken?> GetConfirmTokenAsync(string token);
 		Task MarkConfirmTokenUsedAsync(int tokenId);
@@ -27,6 +51,11 @@ namespace EatTogether.API.Models.Repositories
 		Task UpdateEmailAndMarkTokenUsedAsync(int memberId, string newEmail, int tokenId);
 		Task MarkOldConfirmTokensUsedAsync(int memberId);
 		Task<Member?> GetMemberByIdAsync(int id);
+
+		// -----前台 Google OAuth 用------------------------------
+		Task<MemberExternalLogin?> GetExternalLoginAsync(string provider, string providerUserId);
+		Task CreateExternalLoginAsync(MemberExternalLogin login);
+		Task<MemberExternalLogin?> GetExternalLoginByMemberIdAsync(int memberId, string provider);
 	}
 
 	public class MemberRepository : IMemberRepository
@@ -201,6 +230,141 @@ namespace EatTogether.API.Models.Repositories
 		public async Task<Member?> GetMemberByIdAsync(int id)
 		{
 			return await _context.Members.FindAsync(id);
+		}
+
+		// -----前台一般登入用------------------------------
+
+		public async Task<Member?> GetMemberByAccountAsync(string account)
+		{
+			return await _context.Members
+				.Include(m => m.MemberExternalLogins)
+				.FirstOrDefaultAsync(m => m.Account == account);
+		}
+
+		public async Task SaveRefreshTokenAsync(MemberRefreshToken token)
+		{
+			_context.MemberRefreshTokens.Add(token);
+			await _context.SaveChangesAsync();
+		}
+
+		// -----前台登出用------------------------------
+
+		public async Task RevokeRefreshTokenByTokenStringAsync(string token)
+		{
+			var refreshToken = await _context.MemberRefreshTokens
+				.FirstOrDefaultAsync(t => t.Token == token);
+			if (refreshToken == null || refreshToken.IsRevoked) return;
+			refreshToken.IsRevoked = true;
+			await _context.SaveChangesAsync();
+		}
+
+		// -----前台 Refresh Token 用------------------------------
+
+		// 含 Member 及其 MemberExternalLogins，供 RefreshTokenAsync 建構 MemberViewModel
+		public async Task<MemberRefreshToken?> GetRefreshTokenAsync(string token)
+		{
+			return await _context.MemberRefreshTokens
+				.Include(t => t.Member)
+				.ThenInclude(m => m.MemberExternalLogins)
+				.FirstOrDefaultAsync(t => t.Token == token);
+		}
+
+		public async Task RevokeRefreshTokenAsync(int tokenId)
+		{
+			var token = await _context.MemberRefreshTokens.FindAsync(tokenId);
+			if (token == null) return;
+			token.IsRevoked = true;
+			await _context.SaveChangesAsync();
+		}
+
+		// -----前台復原帳號用------------------------------
+
+		public async Task RestoreAccountAsync(int memberId)
+		{
+			var member = await _context.Members.FindAsync(memberId);
+			if (member == null) return;
+			member.IsDeleted = false;
+			member.DeletedAt = null;
+			await _context.SaveChangesAsync();
+		}
+
+		// -----前台忘記密碼用------------------------------
+
+		// 寄信保護：查詢是否已有未過期且未使用的密碼重設 token
+		public async Task<bool> HasPendingPasswordResetTokenAsync(int memberId)
+		{
+			return await _context.MemberPasswordResetTokens.AnyAsync(t =>
+				t.MemberId == memberId &&
+				!t.IsUsed &&
+				t.ExpiresAt > DateTime.Now);
+		}
+
+		public async Task CreatePasswordResetTokenAsync(MemberPasswordResetToken token)
+		{
+			_context.MemberPasswordResetTokens.Add(token);
+			await _context.SaveChangesAsync();
+		}
+
+		// -----前台重設密碼用------------------------------
+
+		// 含 Member 導覽屬性，供驗證 IsDeleted / IsBlacklisted
+		public async Task<MemberPasswordResetToken?> GetPasswordResetTokenAsync(string token)
+		{
+			return await _context.MemberPasswordResetTokens
+				.Include(t => t.Member)
+				.FirstOrDefaultAsync(t => t.Token == token);
+		}
+
+		public async Task MarkPasswordResetTokenUsedAsync(int tokenId)
+		{
+			var token = await _context.MemberPasswordResetTokens.FindAsync(tokenId);
+			if (token == null) return;
+			token.IsUsed = true;
+			await _context.SaveChangesAsync();
+		}
+
+		public async Task UpdateMemberPasswordAsync(int memberId, string hashedPassword)
+		{
+			var member = await _context.Members.FindAsync(memberId);
+			if (member == null) return;
+			member.HashedPassword = hashedPassword;
+			await _context.SaveChangesAsync();
+		}
+
+		// 密碼重設後撤銷該會員所有 RefreshToken（踢除所有裝置）
+		public async Task RevokeAllRefreshTokensByMemberIdAsync(int memberId)
+		{
+			var tokens = await _context.MemberRefreshTokens
+				.Where(t => t.MemberId == memberId && !t.IsRevoked)
+				.ToListAsync();
+			if (tokens.Count == 0) return;
+			foreach (var t in tokens)
+				t.IsRevoked = true;
+			await _context.SaveChangesAsync();
+		}
+
+		// -----前台 Google OAuth 用------------------------------
+
+		// 以 Provider + ProviderUserId 查詢外部登入紀錄（含 Member 導覽屬性）
+		public async Task<MemberExternalLogin?> GetExternalLoginAsync(string provider, string providerUserId)
+		{
+			return await _context.MemberExternalLogins
+				.Include(e => e.Member)
+				.FirstOrDefaultAsync(e => e.Provider == provider && e.ProviderUserId == providerUserId);
+		}
+
+		// 新增外部登入紀錄
+		public async Task CreateExternalLoginAsync(MemberExternalLogin login)
+		{
+			_context.MemberExternalLogins.Add(login);
+			await _context.SaveChangesAsync();
+		}
+
+		// 以 MemberId + Provider 查詢外部登入紀錄（用於確認該會員是否已綁定指定 Provider）
+		public async Task<MemberExternalLogin?> GetExternalLoginByMemberIdAsync(int memberId, string provider)
+		{
+			return await _context.MemberExternalLogins
+				.FirstOrDefaultAsync(e => e.MemberId == memberId && e.Provider == provider);
 		}
 	}
 }

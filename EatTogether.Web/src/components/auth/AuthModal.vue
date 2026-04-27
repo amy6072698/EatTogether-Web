@@ -1,10 +1,31 @@
 <script setup>
 import { onMounted, ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { Modal } from 'bootstrap'
 import apiFetch from '@/utils/apiFetch.js'
 import Button from '@/components/common/Button.vue'
+import { useAuthStore } from '@/stores/auth.js'
+import { generateState, buildGoogleOAuthUrl } from '@/utils/googleOAuth.js'
+
+const router = useRouter()
+const route = useRoute()
+
+const authStore = useAuthStore()
 
 // Tab 狀態：'login' | 'register'
 const activeTab = ref('login')
+
+// ── 登入 ──
+const loginAccount = ref('')
+const loginPassword = ref('')
+const loginFormError = ref('')
+const loginSuccess = ref(false)
+const isLoginSubmitting = ref(false)
+const showResendEmail = ref(false)
+const loginResendEmail = ref('')
+const isResendSubmitting = ref(false)
+const showAccountDeleted = ref(false) // 控制帳號已刪除提示區塊
+const isRestoring = ref(false) // 重新啟用按鈕 loading 狀態
 
 // 註冊成功狀態
 const registerSuccess = ref(false)
@@ -82,6 +103,145 @@ function validateConfirmPassword() {
     }
 }
 
+async function handleLogin() {
+    loginFormError.value = ''
+    showResendEmail.value = false
+    loginResendEmail.value = ''
+    isLoginSubmitting.value = true
+    try {
+        const res = await apiFetch('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({
+                account: loginAccount.value,
+                password: loginPassword.value,
+            }),
+        })
+
+        if (res.ok) {
+            await authStore.fetchMe()
+            const modalEl = document.querySelector('#authModal')
+            Modal.getInstance(modalEl)?.hide()
+            const redirect = route.query.redirect
+            if (redirect) router.push(redirect)
+            return
+        }
+
+        if (res.status >= 500) return
+        if (res.status === 429) {
+            loginFormError.value = '請求過於頻繁，請稍後再試'
+            return
+        }
+        if (res.status === 403) {
+            loginFormError.value = '帳號已停權，請聯繫餐廳'
+            return
+        }
+
+        const data = await res.json()
+
+        if (data.errorCode === 'email_not_verified') {
+            loginFormError.value = '請先驗證 Email'
+            showResendEmail.value = true
+            return
+        }
+        if (data.errorCode === 'account_blacklisted') {
+            loginFormError.value = '帳號已停權，請聯繫餐廳'
+            return
+        }
+        if (data.errorCode === 'account_deleted') {
+            showAccountDeleted.value = true
+            return
+        }
+        loginFormError.value = data.message || '帳號或密碼錯誤'
+    } catch (err) {
+        if (import.meta.env.DEV) {
+            console.error('[handleLogin]', err)
+        }
+    } finally {
+        isLoginSubmitting.value = false
+    }
+}
+
+async function handleResendVerifyEmail() {
+    if (!loginResendEmail.value.trim()) return
+    isResendSubmitting.value = true
+    try {
+        await apiFetch('/auth/resend-verify-email', {
+            method: 'POST',
+            body: JSON.stringify({ email: loginResendEmail.value.trim() }),
+        })
+    } catch (err) {
+        if (import.meta.env.DEV) {
+            console.error('[handleResendVerifyEmail]', err)
+        }
+    } finally {
+        isResendSubmitting.value = false
+    }
+}
+
+async function handleRestoreAccount() {
+    isRestoring.value = true
+    try {
+        const res = await apiFetch('/auth/restore-account', {
+            method: 'POST',
+            body: JSON.stringify({
+                account: loginAccount.value,
+                password: loginPassword.value,
+            }),
+        })
+
+        if (res.ok) {
+            await authStore.fetchMe()
+            showAccountDeleted.value = false
+            const modalEl = document.querySelector('#authModal')
+            Modal.getInstance(modalEl)?.hide()
+            const redirect = route.query.redirect
+            if (redirect) router.push(redirect)
+            return
+        }
+
+        if (res.status >= 500) return
+        if (res.status === 429) {
+            loginFormError.value = '請求過於頻繁，請稍後再試'
+            return
+        }
+        if (res.status === 403) {
+            showAccountDeleted.value = false
+            loginFormError.value = '帳號已停權，請聯繫客服'
+            return
+        }
+
+        const data = await res.json()
+        loginFormError.value = data?.message || '復原失敗，請稍後再試'
+        showAccountDeleted.value = false
+    } catch (err) {
+        if (import.meta.env.DEV) {
+            console.error('[handleRestoreAccount]', err)
+        }
+    } finally {
+        isRestoring.value = false
+    }
+}
+
+function handleGoogleLogin() {
+    const state = generateState(route.fullPath)
+    const url = buildGoogleOAuthUrl(state)
+    window.location.href = url
+}
+
+function handleForgotPassword() {
+    const authModalEl = document.querySelector('#authModal')
+    const fpModalEl = document.querySelector('#forgotPasswordModal')
+    Modal.getInstance(authModalEl)?.hide()
+    // 等 authModal 完全關閉後才開啟 forgotPasswordModal，避免兩個 Modal 同時存在
+    authModalEl.addEventListener(
+        'hidden.bs.modal',
+        () => {
+            Modal.getOrCreateInstance(fpModalEl).show()
+        },
+        { once: true }
+    )
+}
+
 function validateRegisterForm() {
     validateAccount()
     validateName()
@@ -150,8 +310,15 @@ async function handleRegister() {
 
 function switchToRegister() {
     activeTab.value = 'register'
+    loginAccount.value = ''
+    loginPassword.value = ''
+    loginFormError.value = ''
+    loginSuccess.value = false
+    showResendEmail.value = false
+    loginResendEmail.value = ''
     showLoginPassword.value = false
-    // TODO: 實作登入後補上登入表單欄位重置
+    showAccountDeleted.value = false
+    isRestoring.value = false
 }
 
 function switchToLogin() {
@@ -180,6 +347,15 @@ function switchToLogin() {
 onMounted(() => {
     const modalEl = document.querySelector('#authModal')
     modalEl.addEventListener('hidden.bs.modal', () => {
+        // 登入表單重置
+        loginAccount.value = ''
+        loginPassword.value = ''
+        loginFormError.value = ''
+        loginSuccess.value = false
+        showResendEmail.value = false
+        loginResendEmail.value = ''
+        showLoginPassword.value = false
+        // 註冊表單重置
         regAccount.value = ''
         regName.value = ''
         regEmail.value = ''
@@ -195,7 +371,8 @@ onMounted(() => {
         showConfirmPassword.value = false
         registerSuccess.value = false
         activeTab.value = 'login'
-        showLoginPassword.value = false
+        showAccountDeleted.value = false
+        isRestoring.value = false
     })
 })
 </script>
@@ -221,7 +398,10 @@ onMounted(() => {
                 <!-- Header -->
                 <div class="modal-header justify-content-between border-0 px-4 py-0">
                     <div class="w-100 d-flex justify-content-center">
-                        <h2 id="authModalLabel" class="text-eat-primary text-center fs-5 mb-0">
+                        <h2
+                            id="authModalLabel"
+                            class="eat-h3 fw-bolder fst-normal text-center fs-5 mb-0"
+                        >
                             {{ activeTab === 'login' ? '會員登入' : '註冊會員' }}
                         </h2>
                     </div>
@@ -249,61 +429,159 @@ onMounted(() => {
 
                 <!-- Modal Body -->
                 <div class="modal-body px-4 pt-2 pb-4" style="overflow-y: auto; max-height: 70vh">
-                    <!-- ── 登入 Tab（UI 佔位，1-3 實作串接）── -->
+                    <!-- ── 登入 Tab ── -->
                     <div v-show="activeTab === 'login'">
-                        <div class="d-flex flex-column gap-2">
-                            <Button variant="secondary" class="fs-6 py-2 mb-2" :disabled="true">
-                                使用 Google 登入
-                            </Button>
-
-                            <div
-                                class="auth-divider-content feather-divider on-container my-3"
-                            ></div>
-
-                            <div>
-                                <label class="eat-label d-block mb-1">帳號</label>
-                                <input
-                                    type="text"
-                                    class="form-eat w-100"
-                                    placeholder="請輸入帳號"
-                                    disabled
-                                />
+                        <!-- 登入成功狀態 -->
+                        <div v-if="loginSuccess" class="auth-success-box text-center py-3">
+                            <div class="icon-eat icon-eat--success mb-2">
+                                <i class="bi bi-check-lg"></i>
                             </div>
+                            <p class="eat-body mb-1">登入成功</p>
+                            <p class="eat-body-muted mb-0">歡迎回來，即將為您跳轉</p>
+                        </div>
 
-                            <div>
-                                <label class="eat-label d-block mb-1">密碼</label>
-                                <div class="position-relative">
-                                    <input
-                                        :type="showLoginPassword ? 'text' : 'password'"
-                                        class="form-eat w-100"
-                                        placeholder="請輸入密碼"
-                                    />
+                        <!-- 登入表單 -->
+                        <template v-else>
+                            <div class="d-flex flex-column gap-2">
+                                <Button
+                                    variant="secondary"
+                                    class="btn-eat-md mb-2"
+                                    @click="handleGoogleLogin"
+                                >
+                                    使用 Google 登入
+                                </Button>
+
+                                <div
+                                    class="auth-divider-content feather-divider on-container my-3"
+                                ></div>
+
+                                <!-- 通用錯誤橫幅 -->
+                                <div v-if="loginFormError" class="auth-error-banner" role="alert">
+                                    {{ loginFormError }}
+                                </div>
+
+                                <!-- 帳號已停用：重新啟用提示 -->
+                                <div
+                                    v-if="showAccountDeleted"
+                                    class="auth-error-banner position-relative"
+                                    role="alert"
+                                >
                                     <button
                                         type="button"
-                                        class="password-toggle"
-                                        @mousedown.prevent
-                                        @click="showLoginPassword = !showLoginPassword"
-                                        :aria-label="showLoginPassword ? '隱藏密碼' : '顯示密碼'"
+                                        class="btn-close btn-close-white btn-sm position-absolute top-0 end-0 m-1"
+                                        aria-label="關閉"
+                                        @click="showAccountDeleted = false"
+                                    ></button>
+                                    <p class="mb-2">此帳號已停用，是否要重新啟用？</p>
+                                    <Button
+                                        variant="primary"
+                                        class="fs-6 py-1 w-100"
+                                        :loading="isRestoring"
+                                        @click="handleRestoreAccount"
                                     >
-                                        <i
-                                            :class="
-                                                showLoginPassword ? 'bi bi-eye-slash' : 'bi bi-eye'
+                                        {{ isRestoring ? '啟用中...' : '重新啟用帳號' }}
+                                    </Button>
+                                </div>
+
+                                <!-- Email 未驗證：補寄驗證信 -->
+                                <div v-if="showResendEmail" class="d-flex flex-column gap-2">
+                                    <p class="eat-body-muted mb-0" style="font-size: 0.85rem">
+                                        輸入您的 Email，重新寄送驗證信：
+                                    </p>
+                                    <div class="d-flex gap-2">
+                                        <input
+                                            v-model="loginResendEmail"
+                                            type="email"
+                                            class="form-eat flex-grow-1"
+                                            placeholder="請輸入您的 Email"
+                                            autocomplete="email"
+                                        />
+                                        <Button
+                                            variant="secondary"
+                                            class="btn-eat-md flex-shrink-0"
+                                            :loading="isResendSubmitting"
+                                            @click="handleResendVerifyEmail"
+                                        >
+                                            {{ isResendSubmitting ? '寄送中...' : '重寄驗證信' }}
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <!-- 帳號 -->
+                                <div>
+                                    <label for="login-account" class="eat-label d-block mb-1"
+                                        >帳號</label
+                                    >
+                                    <input
+                                        id="login-account"
+                                        v-model="loginAccount"
+                                        type="text"
+                                        class="form-eat w-100"
+                                        placeholder="請輸入帳號"
+                                        autocomplete="username"
+                                    />
+                                </div>
+
+                                <!-- 密碼 -->
+                                <div>
+                                    <label for="login-password" class="eat-label d-block mb-1"
+                                        >密碼</label
+                                    >
+                                    <div class="position-relative">
+                                        <input
+                                            id="login-password"
+                                            v-model="loginPassword"
+                                            :type="showLoginPassword ? 'text' : 'password'"
+                                            class="form-eat w-100"
+                                            placeholder="請輸入密碼"
+                                            autocomplete="current-password"
+                                        />
+                                        <button
+                                            type="button"
+                                            class="btn-eat-password-toggle"
+                                            @mousedown.prevent
+                                            @click="showLoginPassword = !showLoginPassword"
+                                            :aria-label="
+                                                showLoginPassword ? '隱藏密碼' : '顯示密碼'
                                             "
-                                        ></i>
+                                        >
+                                            <i
+                                                :class="
+                                                    showLoginPassword
+                                                        ? 'bi bi-eye-slash'
+                                                        : 'bi bi-eye'
+                                                "
+                                            ></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <Button
+                                    variant="primary"
+                                    class="btn-eat-md mt-3"
+                                    :loading="isLoginSubmitting"
+                                    @click="handleLogin"
+                                >
+                                    {{ isLoginSubmitting ? '登入中...' : '登入' }}
+                                </Button>
+
+                                <div class="text-center">
+                                    <button
+                                        type="button"
+                                        class="eat-body-muted auth-small-link"
+                                        style="
+                                            background: none;
+                                            border: none;
+                                            padding: 0;
+                                            cursor: pointer;
+                                        "
+                                        @click="handleForgotPassword"
+                                    >
+                                        忘記密碼？
                                     </button>
                                 </div>
                             </div>
-
-                            <Button variant="primary" class="fs-6 py-2 mt-3" :disabled="true">
-                                登入
-                            </Button>
-
-                            <div class="text-center">
-                                <a href="/forgot-password" class="eat-body-muted auth-small-link"
-                                    >忘記密碼？</a
-                                >
-                            </div>
-                        </div>
+                        </template>
                     </div>
 
                     <!-- ── 註冊 Tab ── -->
@@ -311,14 +589,20 @@ onMounted(() => {
                         <div class="d-flex flex-column gap-2">
                             <!-- 成功狀態 -->
                             <div v-if="registerSuccess" class="auth-success-box text-center py-3">
-                                <p class="eat-h3 mb-2">✉</p>
+                                <div class="icon-eat icon-eat--success mb-2">
+                                    <i class="bi bi-envelope"></i>
+                                </div>
                                 <p class="eat-body mb-1">驗證信已寄出</p>
-                                <p class="eat-body-muted mb-0">請至信箱點擊驗證連結以完成註冊。</p>
+                                <p class="eat-body-muted mb-0">請至信箱點擊驗證連結以完成註冊</p>
                             </div>
 
                             <!-- 註冊表單 -->
                             <template v-else>
-                                <Button variant="primary" class="fs-6 py-2 mb-2" :disabled="true">
+                                <Button
+                                    variant="primary"
+                                    class="btn-eat-md mb-2"
+                                    @click="handleGoogleLogin"
+                                >
                                     使用 Google 快速註冊
                                 </Button>
 
@@ -437,7 +721,7 @@ onMounted(() => {
                                         />
                                         <button
                                             type="button"
-                                            class="password-toggle"
+                                            class="btn-eat-password-toggle"
                                             @mousedown.prevent
                                             @click="showPassword = !showPassword"
                                             :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
@@ -485,7 +769,7 @@ onMounted(() => {
                                         />
                                         <button
                                             type="button"
-                                            class="password-toggle"
+                                            class="btn-eat-password-toggle"
                                             @click="showConfirmPassword = !showConfirmPassword"
                                             :aria-label="
                                                 showConfirmPassword ? '隱藏密碼' : '顯示密碼'
@@ -511,7 +795,7 @@ onMounted(() => {
 
                                 <Button
                                     variant="primary"
-                                    class="fs-6 py-2 mt-3"
+                                    class="btn-eat-md mt-3 mb-4"
                                     :loading="isSubmitting"
                                     @click="handleRegister"
                                 >
@@ -544,10 +828,11 @@ onMounted(() => {
     border-radius: var(--eat-radius-sm);
     color: var(--eat-on-surface);
     font-family: var(--font-body);
-    font-size: 0.95rem;
-    padding: 0.65rem 0.85rem;
+    font-size: 1rem;
+    padding: 0.375rem 0.75rem;
     outline: none;
     transition: border-color 0.25s;
+    line-height: 1.5;
 }
 
 .form-eat:focus {
@@ -559,6 +844,7 @@ onMounted(() => {
 }
 
 .form-eat::placeholder {
+    font-size: 1rem;
     color: color-mix(in srgb, var(--eat-on-surface) 35%, transparent);
 }
 
@@ -615,25 +901,6 @@ onMounted(() => {
 
 /* ── Success ── */
 .auth-success-box {
-    color: var(--eat-on-surface);
-}
-
-/* ── 密碼顯示切換按鈕 ── */
-.password-toggle {
-    position: absolute;
-    right: 0.75rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: var(--eat-on-surface-variant);
-    cursor: pointer;
-    padding: 0;
-    line-height: 1;
-    transition: color 0.2s;
-}
-
-.password-toggle:hover {
     color: var(--eat-on-surface);
 }
 </style>

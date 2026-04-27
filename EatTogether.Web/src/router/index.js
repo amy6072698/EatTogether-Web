@@ -13,11 +13,6 @@ const routes = [
         component: () => import('@/views/auth/VerifyEmail.vue'),
     },
     {
-        path: '/forgot-password',
-        name: 'ForgotPassword',
-        component: () => import('@/views/auth/ForgotPassword.vue'),
-    },
-    {
         path: '/reset-password',
         name: 'ResetPassword',
         component: () => import('@/views/auth/ResetPassword.vue'),
@@ -30,8 +25,8 @@ const routes = [
 
     // ── 會員專區（需登入）────────────────────────────────
     {
-        path: '/member/profile',
-        name: 'MemberProfile',
+        path: '/member',
+        name: 'Member',
         component: () => import('@/views/member/Profile.vue'),
         meta: { requiresAuth: true },
     },
@@ -111,12 +106,12 @@ const routes = [
     {
         path: '/news',
         name: 'NewsList',
-        component:()=> import('@/views/news/NewsListView.vue'),
+        component: () => import('@/views/news/NewsListView.vue'),
     },
     {
         path: '/news/:id',
         name: 'NewsDetail',
-        component:()=> import('@/views/news/NewsDetailView.vue'),
+        component: () => import('@/views/news/NewsDetailView.vue'),
     },
 
     // ── 404 Not Found ─────────────────────────────────────
@@ -132,9 +127,9 @@ const router = createRouter({
     routes,
     scrollBehavior(to, from, savedPosition) {
         if (savedPosition) {
-            return savedPosition    // 瀏覽器上一頁/下一頁時還原位置
+            return savedPosition // 瀏覽器上一頁/下一頁時還原位置
         }
-        return { top: 0 }           // 一般換頁回到頂部
+        return { top: 0 } // 一般換頁回到頂部
     },
 })
 

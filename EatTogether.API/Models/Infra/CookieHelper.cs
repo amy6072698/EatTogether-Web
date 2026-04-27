@@ -16,7 +16,7 @@ namespace EatTogether.API.Models.Infra
 			};
 		}
 
-		
+
 		public static void SetAccessTokenCookie(HttpResponse response, string token, IWebHostEnvironment env)
 		{
 			// 將 JWT 寫入名為 access_token 的 Cookie，並套用 BuildCookieOptions(env) 產生的安全設定
@@ -28,11 +28,13 @@ namespace EatTogether.API.Models.Infra
 			response.Cookies.Append("refresh_token", token, BuildCookieOptions(env));
 		}
 
-		// 清除兩個 Cookie
-		public static void ClearAuthCookies(HttpResponse response)
+		// 清除兩個 Cookie（傳入 env 讓刪除選項與設定一致，確保瀏覽器正確識別並清除）
+		public static void ClearAuthCookies(HttpResponse response, IWebHostEnvironment env)
 		{
-			response.Cookies.Delete("access_token");
-			response.Cookies.Delete("refresh_token");
+			var options = BuildCookieOptions(env);
+			options.Expires = DateTimeOffset.UnixEpoch; // 明確設為過期
+			response.Cookies.Delete("access_token", options);
+			response.Cookies.Delete("refresh_token", options);
 		}
 	}
 }

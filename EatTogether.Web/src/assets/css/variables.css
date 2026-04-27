@@ -41,8 +41,8 @@
 
     /* ── Typography ─────────────────────────────────── */
     --font-headline: 'Noto Serif TC', serif;
-    --font-body: 'Newsreader', serif;
-    --font-label: 'Work Sans', sans-serif;
+    --font-body: 'Montserrat', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    --font-label: 'Montserrat', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
 
     /* ── Border Radius（Sharp 風格）────────────────────── */
     --eat-radius-sm: 0.125rem;
@@ -54,7 +54,7 @@
     --eat-transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
 
     /* ── Bootstrap 5 變數覆寫 ────────────────────────── */
-    /* 須在 Bootstrap CDN link 之後載入才會生效          */
+    /* 須在 Bootstrap 之後載入才會生效          */
     /* index.html 的引入順序：Bootstrap CDN → main.js   */
     --bs-body-bg: var(--eat-surface);
     --bs-body-color: var(--eat-on-surface);
@@ -67,12 +67,55 @@
     --bs-link-hover-color: var(--eat-primary-fixed);
     --bs-primary: var(--eat-primary);
     --bs-primary-rgb: 227, 199, 107;
+    --bs-border-radius: var(--eat-radius-sm);
+}
 
-    /* VueDatePicker 樣式整合 */
+/* =====================================================
+   VueDatePicker 樣式整合 (強制覆寫預設主題)
+   ===================================================== */
+.dp__theme_light,
+.dp__theme_dark {
+    /* 背景與文字 */
     --dp-background-color: var(--eat-surface-high);
     --dp-text-color: var(--eat-on-surface);
-    --dp-primary-color: var(--eat-primary);
-    --dp-border-color: var(--eat-outline-variant);
-    --dp-border-radius: var(--eat-radius-lg);
     --dp-font-family: var(--font-body);
+
+    /* 懸停狀態 */
+    --dp-hover-color: var(--eat-surface-container);
+    --dp-hover-text-color: var(--eat-primary);
+    --dp-hover-icon-color: var(--eat-primary);
+
+    /* 品牌主色 (選取日期的圈圈) */
+    --dp-primary-color: var(--eat-primary);
+    --dp-primary-disabled-color: var(--eat-outline-variant);
+    --dp-primary-text-color: var(--eat-on-primary);
+
+    /* 邊框與圓角 */
+    --dp-border-color: var(--eat-outline-variant);
+    --dp-menu-border-color: var(--eat-outline-variant);
+    --dp-border-color-hover: var(--eat-primary);
+    --dp-border-color-focus: var(--eat-primary);
+    --dp-border-radius: var(--eat-radius-sm);
+
+    /* 次要顏色與圖示 */
+    --dp-secondary-color: var(--eat-on-surface-variant);
+    --dp-icon-color: var(--eat-on-surface-variant);
+    --dp-danger-color: var(--eat-error);
+    --dp-marker-color: var(--eat-primary);
+
+    /* 停用狀態 */
+    --dp-disabled-color: var(--eat-surface-low);
+    --dp-disabled-color-text: var(--eat-outline);
+
+    /* 範圍選取 (雖然目前沒開，但備用) */
+    --dp-highlight-color: rgba(227, 199, 107, 0.15);
+    --dp-range-between-dates-background-color: rgba(227, 199, 107, 0.1);
+    --dp-range-between-border-color: transparent;
+}
+
+/* ── 調整 VueDatePicker 輸入框的 Placeholder 顏色 ── */
+.dp__input::placeholder {
+    color: color-mix(in srgb, var(--eat-on-surface) 35%, transparent) !important;
+    opacity: 1 !important;
+    font-style: normal;
 }
