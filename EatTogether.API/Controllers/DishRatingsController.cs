@@ -32,7 +32,22 @@ namespace EatTogether.Controllers
                 ratingCount = result.Value.ratingCount
             });
         }
+
+        [HttpGet("{id}/Rating")] // 加入Get端點
+        public async Task<IActionResult> GetRating(int id)
+        {
+            var dish = await _dishService.GetByIdAsync(id);
+            if (dish == null)
+                return Ok(new { averageScore = 0, ratingCount = 0 });
+
+            return Ok(new
+            {
+                averageScore = dish.AverageScore,
+                ratingCount = dish.RatingCount
+            });
+        }
     }
+
 
     public class RateRequest
     {
