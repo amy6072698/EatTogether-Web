@@ -82,6 +82,17 @@ function goToLogin() {
     })
 }
 
+// token 無效狀態：導回首頁並開啟忘記密碼 Modal，讓使用者重新申請
+function goToForgotPassword() {
+    router.push({ name: 'Home' }).then(() => {
+        const modalEl = document.querySelector('#forgotPasswordModal')
+        if (modalEl) {
+            const modal = Modal.getInstance(modalEl) || new Modal(modalEl)
+            modal.show()
+        }
+    })
+}
+
 onMounted(async () => {
     const token = route.query.token
     if (!token) {
@@ -120,9 +131,11 @@ onMounted(async () => {
                             <div class="rp-icon rp-icon--error mb-3">
                                 <i class="bi bi-x-lg"></i>
                             </div>
-                            <h1 class="eat-h2 mb-2">連結無效或已過期</h1>
-                            <p class="eat-body mb-4">此重設密碼連結已失效，請重新申請。</p>
-                            <button class="rp-back-link" @click="goToLogin">返回登入</button>
+                            <h1 class="eat-h3 fw-bolder fst-normal mb-2">連結無效或已過期</h1>
+                            <p class="eat-body-muted mb-4">此重設密碼連結已失效，請重新申請</p>
+                            <button class="rp-back-link" @click="goToForgotPassword">
+                                重新申請重設密碼
+                            </button>
                         </div>
 
                         <!-- 重設表單 -->
@@ -131,8 +144,8 @@ onMounted(async () => {
                                 <div class="rp-icon mb-3">
                                     <i class="bi bi-lock"></i>
                                 </div>
-                                <h1 class="eat-h2 mb-2">重設密碼</h1>
-                                <p class="eat-body-muted mb-0">請輸入您的新密碼。</p>
+                                <h1 class="eat-h3 fw-bolder fst-normal mb-2">重設密碼</h1>
+                                <p class="eat-body-muted mb-0">請輸入您的新密碼</p>
                             </div>
 
                             <div class="mb-3">
@@ -226,7 +239,7 @@ onMounted(async () => {
 
                             <Button
                                 variant="primary"
-                                class="w-100 fs-6 py-2 mt-2"
+                                class="w-100 btn-eat-md mt-2"
                                 :loading="isLoading"
                                 @click="handleSubmit"
                             >
@@ -243,9 +256,9 @@ onMounted(async () => {
                             <div class="rp-icon rp-icon--success mb-3">
                                 <i class="bi bi-check-lg"></i>
                             </div>
-                            <h1 class="eat-h2 mb-2">密碼已重設</h1>
-                            <p class="eat-body mb-4">您的密碼已成功更新，請使用新密碼登入。</p>
-                            <Button variant="primary" class="fs-6 py-2 px-5" @click="goToLogin">
+                            <h1 class="eat-h3 fw-bolder fst-normal mb-2">密碼已重設</h1>
+                            <p class="eat-body-muted mb-4">您的密碼已成功更新，請使用新密碼登入</p>
+                            <Button variant="primary" class="btn-eat-md" @click="goToLogin">
                                 前往登入
                             </Button>
                         </div>

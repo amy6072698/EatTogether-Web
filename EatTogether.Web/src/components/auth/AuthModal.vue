@@ -1,12 +1,10 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
 import apiFetch from '@/utils/apiFetch.js'
 import Button from '@/components/common/Button.vue'
 import { useAuthStore } from '@/stores/auth.js'
 
-const router = useRouter()
 const authStore = useAuthStore()
 
 // Tab 狀態：'login' | 'register'
@@ -222,9 +220,17 @@ async function handleRestoreAccount() {
 }
 
 function handleForgotPassword() {
-    const modalEl = document.querySelector('#authModal')
-    Modal.getInstance(modalEl)?.hide()
-    router.push('/forgot-password')
+    const authModalEl = document.querySelector('#authModal')
+    const fpModalEl = document.querySelector('#forgotPasswordModal')
+    Modal.getInstance(authModalEl)?.hide()
+    // 等 authModal 完全關閉後才開啟 forgotPasswordModal，避免兩個 Modal 同時存在
+    authModalEl.addEventListener(
+        'hidden.bs.modal',
+        () => {
+            Modal.getOrCreateInstance(fpModalEl).show()
+        },
+        { once: true }
+    )
 }
 
 function validateRegisterForm() {
@@ -383,7 +389,10 @@ onMounted(() => {
                 <!-- Header -->
                 <div class="modal-header justify-content-between border-0 px-4 py-0">
                     <div class="w-100 d-flex justify-content-center">
-                        <h2 id="authModalLabel" class="text-eat-primary text-center fs-5 mb-0">
+                        <h2
+                            id="authModalLabel"
+                            class="eat-h3 fw-bolder fst-normal text-center fs-5 mb-0"
+                        >
                             {{ activeTab === 'login' ? '會員登入' : '註冊會員' }}
                         </h2>
                     </div>
@@ -479,7 +488,7 @@ onMounted(() => {
                                         />
                                         <Button
                                             variant="secondary"
-                                            class="fs-6 py-2 flex-shrink-0"
+                                            class="btn-eat-md flex-shrink-0"
                                             :loading="isResendSubmitting"
                                             @click="handleResendVerifyEmail"
                                         >
@@ -803,11 +812,11 @@ onMounted(() => {
     border-radius: var(--eat-radius-sm);
     color: var(--eat-on-surface);
     font-family: var(--font-body);
-    font-size: 0.95rem;
-    padding: 0.65rem 0.85rem;
+    font-size: 1rem;
+    padding: 0.375rem 0.75rem;
     outline: none;
     transition: border-color 0.25s;
-    line-height: 1;
+    line-height: 1.5;
 }
 
 .form-eat:focus {
@@ -819,6 +828,7 @@ onMounted(() => {
 }
 
 .form-eat::placeholder {
+    font-size: 1rem;
     color: color-mix(in srgb, var(--eat-on-surface) 35%, transparent);
 }
 

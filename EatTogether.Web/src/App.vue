@@ -1,6 +1,7 @@
 <template>
     <Navbar />
     <AuthModal />
+    <ForgotPasswordModal />
     <RouterView />
     <Footer />
     <ToastContainer />
@@ -14,6 +15,7 @@ import Navbar from '@/components/common/Navbar.vue'
 import Footer from '@/components/common/Footer.vue'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 import AuthModal from '@/components/auth/AuthModal.vue'
+import ForgotPasswordModal from '@/components/auth/ForgotPasswordModal.vue'
 
 const authStore = useAuthStore()
 const route = useRoute()
