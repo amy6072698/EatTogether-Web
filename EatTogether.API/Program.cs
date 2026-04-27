@@ -123,9 +123,16 @@ namespace EatTogether.API
 
 			// 註冊 JWT Helper：生成 JWT Token 的 infra 工具
 			builder.Services.AddSingleton<JwtHelper>();
+            
 
-			// 結帳相關
-			builder.Services.AddMemoryCache();
+            // 註冊菜單
+            builder.Services.AddScoped<CategoryService>();
+            builder.Services.AddScoped<DishService>();
+            builder.Services.AddScoped<SetMealService>();
+
+
+            // 結帳相關
+            builder.Services.AddMemoryCache();
 			builder.Services.AddHttpClient();
 
             // 前台寄信服務

@@ -29,7 +29,7 @@ namespace EatTogether.Controllers
             return Ok(new
             {
                 averageScore = result.Value.averageScore,
-                ratingCount  = result.Value.ratingCount
+                ratingCount = result.Value.ratingCount
             });
         }
     }

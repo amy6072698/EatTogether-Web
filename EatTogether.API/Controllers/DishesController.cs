@@ -5,6 +5,7 @@ using EatTogether.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,18 +14,19 @@ using System.Threading.Tasks;
 
 namespace EatTogether.Controllers
 {
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class DishesController : Controller
     {
         private readonly DishService _dishService;
         private readonly CategoryService _categoryService;
+        private readonly IConfiguration _configuration;
 
-        public DishesController(DishService dishService, CategoryService categoryService)
+        public DishesController(DishService dishService, CategoryService categoryService, IConfiguration configuration)
         {
             _dishService = dishService;
             _categoryService = categoryService;
+            _configuration = configuration;
         }
-
         [HttpGet("Index")]
         public async Task<IActionResult> Index(bool newDish = false)
         {
@@ -217,8 +219,10 @@ namespace EatTogether.Controllers
         public async Task<IActionResult> GetActiveJson()
         {
             var dtos = await _dishService.GetAllActiveAsync();
-            var baseFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
-
+            var staticRoot = _configuration["StaticFilesRoot"];
+            var baseFolder = !string.IsNullOrEmpty(staticRoot) && Directory.Exists(Path.Combine(staticRoot, "images"))
+                ? Path.Combine(staticRoot, "images")
+                : Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
             return Json(dtos.Select(d => {
                 string imageUrl = d.ImageUrl;
 
@@ -346,6 +350,7 @@ namespace EatTogether.Controllers
             await System.IO.File.WriteAllBytesAsync(savePath, bytes);
 
             return "/images/" + newJpgFileName;
+
         }
     }
 }
