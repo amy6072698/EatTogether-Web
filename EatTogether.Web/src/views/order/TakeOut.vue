@@ -1,0 +1,3348 @@
+<template>
+    <div class="out-wrap">
+        <!-- ══ 步驟 Banner ══ -->
+        <div class="step-banner">
+            <div class="step-items">
+                <div :class="['step-dot', step === 1 ? 'active' : 'done']">
+                    <svg
+                        v-if="step > 1"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        fill="currentColor"
+                        viewBox="0 0 16 16"
+                    >
+                        <path
+                            d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"
+                        />
+                    </svg>
+                    <span v-else>1</span>
+                </div>
+                <span :class="['step-lbl', step === 1 ? 'active' : 'done-lbl']">選餐</span>
+                <div class="step-line"></div>
+                <div :class="['step-dot', step === 2 ? 'active' : step > 2 ? 'done' : '']">
+                    <svg
+                        v-if="step > 2"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        fill="currentColor"
+                        viewBox="0 0 16 16"
+                    >
+                        <path
+                            d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"
+                        />
+                    </svg>
+                    <span v-else>2</span>
+                </div>
+                <span :class="['step-lbl', step === 2 ? 'active' : step > 2 ? 'done-lbl' : '']"
+                    >填寫資料</span
+                >
+                <div class="step-line"></div>
+                <div :class="['step-dot', step === 3 ? 'active' : '']">3</div>
+                <span :class="['step-lbl', step === 3 ? 'active' : '']">確認送出</span>
+            </div>
+            <!-- 取餐時段顯示 -->
+            <div v-if="pickupTime" class="pickup-pill">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="12"
+                    height="12"
+                    fill="currentColor"
+                    viewBox="0 0 16 16"
+                >
+                    <path
+                        d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"
+                    />
+                    <path
+                        d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"
+                    />
+                </svg>
+                取餐時段：<strong>{{ pickupTime }}</strong>
+            </div>
+        </div>
+
+        <!-- ══ STEP 1：選餐 ══ -->
+        <div v-if="step === 1" class="out-layout">
+            <!-- 手機分類捲動列 -->
+            <div class="mobile-cat-bar">
+                <nav class="mobile-cat-tabs">
+                    <button
+                        v-for="cat in sidebarCategories"
+                        :key="cat.key"
+                        :class="['mobile-cat-btn', { active: activeSidebarCat === cat.key }]"
+                        @click="scrollToSection(cat.key)"
+                    >
+                        {{ cat.label }}<span class="cat-badge">{{ cat.count }}</span>
+                    </button>
+                </nav>
+            </div>
+
+            <!-- 左 Sidebar -->
+            <aside class="out-sidebar">
+                <div class="sidebar-search-wrap">
+                    <svg
+                        style="color: rgba(208, 197, 181, 0.4); flex-shrink: 0"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="13"
+                        height="13"
+                        fill="currentColor"
+                        viewBox="0 0 16 16"
+                    >
+                        <path
+                            d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"
+                        />
+                    </svg>
+                    <input
+                        v-model="searchQuery"
+                        type="text"
+                        class="input-line"
+                        style="font-size: 0.85rem"
+                        placeholder="搜尋料理名稱…"
+                    />
+                </div>
+                <nav class="sidebar-nav">
+                    <template v-for="(cat, idx) in sidebarCategories" :key="cat.key">
+                        <div
+                            v-if="
+                                idx > 0 &&
+                                !['今日推薦', '主廚特選'].includes(cat.key) &&
+                                ['今日推薦', '主廚特選'].includes(sidebarCategories[idx - 1].key)
+                            "
+                            class="cat-divider"
+                        ></div>
+                        <button
+                            :class="[
+                                'cat-link',
+                                { active: activeSidebarCat === cat.key },
+                                { 'cat-special': ['今日推薦', '主廚特選'].includes(cat.key) },
+                            ]"
+                            @click="scrollToSection(cat.key)"
+                        >
+                            <span>{{ cat.label }}</span>
+                            <span class="cat-count">{{ cat.count }}</span>
+                        </button>
+                    </template>
+                </nav>
+            </aside>
+
+            <!-- 中：菜單主體 -->
+            <main class="out-menu" id="outMenuMain">
+                <!-- Toolbar -->
+                <div class="toolbar">
+                    <div class="mobile-search-wrap">
+                        <svg
+                            style="color: rgba(208, 197, 181, 0.4); flex-shrink: 0"
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="13"
+                            height="13"
+                            fill="currentColor"
+                            viewBox="0 0 16 16"
+                        >
+                            <path
+                                d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"
+                            />
+                        </svg>
+                        <input
+                            v-model="searchQuery"
+                            type="text"
+                            class="input-line"
+                            style="font-size: 0.85rem"
+                            placeholder="搜尋料理名稱…"
+                        />
+                    </div>
+                    <div class="toolbar-row">
+                        <div class="chips-wrap">
+                            <span class="chip-label">篩選條件：</span>
+                            <button
+                                @click="toggleChip('veg')"
+                                :class="['chip-btn', { active: activeChip === 'veg' }]"
+                            >
+                                素食
+                            </button>
+                            <button
+                                @click="toggleChip('spicy')"
+                                :class="['chip-btn', { active: activeChip === 'spicy' }]"
+                            >
+                                辣味
+                            </button>
+                        </div>
+                        <div class="view-toggle">
+                            <button
+                                @click="curView = 'list'"
+                                :class="['view-btn', { active: curView === 'list' }]"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="13"
+                                    height="13"
+                                    fill="currentColor"
+                                    viewBox="0 0 16 16"
+                                >
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"
+                                    />
+                                </svg>
+                            </button>
+                            <button
+                                @click="curView = 'grid'"
+                                :class="['view-btn', { active: curView === 'grid' }]"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="13"
+                                    height="13"
+                                    fill="currentColor"
+                                    viewBox="0 0 16 16"
+                                >
+                                    <path
+                                        d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm8 0A1.5 1.5 0 0 1 10.5 9h3A1.5 1.5 0 0 1 15 10.5v3A1.5 1.5 0 0 1 13.5 15h-3A1.5 1.5 0 0 1 9 13.5v-3z"
+                                    />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="loading" class="status-msg">菜單載入中…</div>
+                <div v-else-if="loadError" class="status-msg" style="color: #ffb4ab">
+                    {{ loadError }}
+                </div>
+
+                <div v-else class="menu-sections">
+                    <template v-for="section in displaySections" :key="section.key">
+                        <div v-show="section.dishes.length > 0" :id="'out-sec-' + section.key">
+                            <h2 class="section-title">{{ section.label }}</h2>
+                            <div class="dishes-wrap" :class="{ 'grid-view': curView === 'grid' }">
+                                <div
+                                    v-for="dish in section.dishes"
+                                    :key="dish.productId"
+                                    class="dish-row mb-3"
+                                    :class="{ 'dish-row-grid': curView === 'grid' }"
+                                    @click="openDetail(dish)"
+                                >
+                                    <img
+                                        v-if="dish.imageUrl && !imgErrors.has(dish.productId)"
+                                        class="dish-img"
+                                        :src="
+                                            imgFallback.get(dish.productId) ||
+                                            resolveImage(dish.imageUrl)
+                                        "
+                                        :alt="dish.productName"
+                                        @error="handleImgError(dish)"
+                                    />
+                                    <div v-else class="dish-img dish-img-placeholder">🍽️</div>
+                                    <div
+                                        class="dish-content"
+                                        :class="{ 'dish-content-grid': curView === 'grid' }"
+                                    >
+                                        <h3
+                                            class="font-headline dish-name italic"
+                                            style="color: #e3c76b"
+                                        >
+                                            {{ dish.productName }}
+                                        </h3>
+                                        <p
+                                            class="font-body text-xs italic leading-relaxed"
+                                            style="color: rgba(249, 221, 211, 0.5); margin: 0"
+                                        >
+                                            {{ dish.description }}
+                                        </p>
+                                        <template v-if="curView !== 'grid'">
+                                            <div class="dish-badges">
+                                                <span
+                                                    v-if="dish.isRecommended"
+                                                    class="badge badge-new"
+                                                    >推薦</span
+                                                >
+                                                <span v-if="dish.isPopular" class="badge badge-chef"
+                                                    >主廚特選</span
+                                                >
+                                                <span
+                                                    v-if="dish.isVegetarian"
+                                                    class="badge badge-veg"
+                                                    >素</span
+                                                >
+                                                <span
+                                                    v-if="dish.spicyLevel > 0"
+                                                    class="badge badge-spicy"
+                                                    >辣</span
+                                                >
+                                            </div>
+                                            <div class="list-footer" @click.stop="">
+                                                <p
+                                                    class="font-label text-xs tracking-wider"
+                                                    style="color: #d5b478"
+                                                >
+                                                    NT$ {{ dish.unitPrice?.toLocaleString() }}
+                                                </p>
+                                                <div class="qty-col">
+                                                    <button
+                                                        class="qty-btn"
+                                                        @click.stop="handleRemove(dish)"
+                                                    >
+                                                        −
+                                                    </button>
+                                                    <span
+                                                        class="font-label text-xs qty-num"
+                                                        :class="{
+                                                            active:
+                                                                (store.cart[dish.productId] || 0) >
+                                                                0,
+                                                        }"
+                                                        style="font-size: 20px"
+                                                        >{{ store.cart[dish.productId] || 0 }}</span
+                                                    >
+                                                    <button
+                                                        class="qty-btn"
+                                                        @click.stop="openDetail(dish)"
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <!-- 網格視圖底部 -->
+                                    <div
+                                        v-if="curView === 'grid'"
+                                        class="grid-footer"
+                                        @click.stop=""
+                                    >
+                                        <div class="dish-badges" style="justify-content: center">
+                                            <span v-if="dish.isRecommended" class="badge badge-new"
+                                                >推薦</span
+                                            >
+                                            <span v-if="dish.isPopular" class="badge badge-chef"
+                                                >主廚特選</span
+                                            >
+                                            <span v-if="dish.isVegetarian" class="badge badge-veg"
+                                                >素</span
+                                            >
+                                            <span
+                                                v-if="dish.spicyLevel > 0"
+                                                class="badge badge-spicy"
+                                                >辣</span
+                                            >
+                                        </div>
+                                        <p class="font-label grid-price mb-2">
+                                            NT$ {{ dish.unitPrice?.toLocaleString() }}
+                                        </p>
+                                        <div class="qty-row">
+                                            <button
+                                                class="qty-btn"
+                                                @click.stop="handleRemove(dish)"
+                                            >
+                                                −
+                                            </button>
+                                            <span
+                                                class="font-label text-xs qty-num"
+                                                :class="{
+                                                    active: (store.cart[dish.productId] || 0) > 0,
+                                                }"
+                                                style="font-size: 20px"
+                                                >{{ store.cart[dish.productId] || 0 }}</span
+                                            >
+                                            <button class="qty-btn" @click.stop="openDetail(dish)">
+                                                +
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="feather-divider my-5"></div>
+                        </div>
+                    </template>
+                </div>
+            </main>
+
+            <!-- 右：購物車 -->
+            <aside class="out-cart" :class="{ 'cart-open': cartOpen }">
+                <div class="cart-header candle-glow">
+                    <span class="font-headline" style="color: #e3c76b; font-size: 1.1rem"
+                        >外帶訂單</span
+                    >
+                    <div style="display: flex; align-items: center; gap: 0.75rem">
+                        <span
+                            class="font-label"
+                            style="
+                                color: rgba(208, 197, 181, 0.5);
+                                font-size: 0.75rem;
+                                letter-spacing: 0.12em;
+                            "
+                            >共 {{ store.totalItems }} 項</span
+                        >
+                        <button @click="cartOpen = false" class="cart-close-btn">✕</button>
+                    </div>
+                </div>
+
+                <!-- 取餐時段 -->
+                <div class="cart-pickup">
+                    <label class="font-label pickup-label" :class="{ 'pickup-error': pickupError }">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="12"
+                            height="12"
+                            fill="currentColor"
+                            viewBox="0 0 16 16"
+                        >
+                            <path
+                                d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"
+                            />
+                            <path
+                                d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"
+                            />
+                        </svg>
+                        取餐時段
+                    </label>
+                    <select
+                        v-model="pickupTime"
+                        :class="[
+                            'pickup-select font-label',
+                            { 'pickup-select-error': pickupError },
+                        ]"
+                        @change="pickupError = false"
+                    >
+                        <option value="" disabled style="padding: 0">選擇時段…</option>
+                        <option v-for="slot in pickupTimeOptions" :key="slot" :value="slot">
+                            {{ slot }}
+                        </option>
+                    </select>
+                    <p v-if="pickupError" class="font-label pickup-error-msg">請先選擇取餐時段</p>
+                </div>
+
+                <!-- 餐點清單 -->
+                <div class="cart-items">
+                    <div
+                        v-if="store.totalItems === 0"
+                        style="text-align: center; padding: 3rem 1rem"
+                    >
+                        <p style="font-size: 2.5rem; opacity: 0.15; margin-bottom: 0.75rem">🛍️</p>
+                        <p class="font-body" style="color: rgba(249, 221, 211, 0.4)">
+                            尚未加入餐點
+                        </p>
+                        <p
+                            class="font-label"
+                            style="
+                                color: rgba(208, 197, 181, 0.35);
+                                font-size: 0.7rem;
+                                letter-spacing: 0.18em;
+                                text-transform: uppercase;
+                                margin-top: 0.5rem;
+                            "
+                        >
+                            點擊料理即可加入
+                        </p>
+                    </div>
+                    <div
+                        v-for="item in cartItemsWithDetails"
+                        :key="item.lineId"
+                        :class="['order-item', { 'setmeal-order-item': item.isSetMeal }]"
+                    >
+                        <div class="order-item-top">
+                            <div
+                                class="order-item-name-wrap"
+                                @click="openCartItemEdit(item)"
+                                title="點擊編輯"
+                            >
+                                <div v-if="item.isSetMeal" class="setmeal-badge font-label">
+                                    🍱 套餐
+                                </div>
+                                <p class="font-headline order-item-name" style="color: #e3c76b">
+                                    {{ item.productName }}
+                                </p>
+                                <div v-if="item.isSetMeal" class="setmeal-subitems">
+                                    <span
+                                        v-for="f in item.setMealData?.fixedItems"
+                                        :key="'f-' + f.dishId"
+                                        class="font-label setmeal-subitem"
+                                        >{{ f.dishName }} × {{ f.quantity }}</span
+                                    >
+                                    <span
+                                        v-for="s in item.setMealData?.selectedOptions"
+                                        :key="'s-' + s.dishId"
+                                        class="font-label setmeal-subitem"
+                                        >{{ s.dishName }} × {{ s.qty }}</span
+                                    >
+                                </div>
+                                <p v-if="item.note" class="font-body order-item-note">
+                                    {{ item.note }}
+                                </p>
+                            </div>
+                            <div class="order-item-right">
+                                <span class="font-label order-item-price"
+                                    >NT$ {{ (item.unitPrice * item.qty).toLocaleString() }}</span
+                                >
+                                <button
+                                    class="qty-btn-order"
+                                    @click.stop="store.removeLineItem(item.lineId)"
+                                >
+                                    −
+                                </button>
+                                <span class="font-label order-item-qty" style="color: #f9ddd3">{{
+                                    item.qty
+                                }}</span>
+                                <button
+                                    v-if="!item.isSetMeal"
+                                    class="qty-btn-order"
+                                    @click.stop="store.addItem(item.productId, item.note)"
+                                >
+                                    +
+                                </button>
+                                <span v-else style="width: 1.6rem"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 贈品列 -->
+                    <div v-if="isLoggedIn && giftCartItem" class="order-item gift-order-item">
+                        <div class="order-item-top">
+                            <p class="font-headline order-item-name" style="color: #e3c76b">
+                                {{ giftCartItem.productName }}
+                            </p>
+                            <div class="order-item-right">
+                                <span class="gift-order-badge font-label">🎁 贈品</span>
+                                <span
+                                    class="font-label order-item-qty"
+                                    style="color: rgba(208, 197, 181, 0.55); font-size: 0.75rem"
+                                    >× 1</span
+                                >
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 購物車底部 -->
+                <div class="cart-footer">
+                    <div
+                        style="
+                            padding: 0.75rem 1rem;
+                            border-bottom: 1px solid rgba(77, 70, 58, 0.2);
+                        "
+                    >
+                        <textarea
+                            v-model="store.specialRequest"
+                            class="note-textarea font-body resize-none"
+                            rows="2"
+                            placeholder="備註：過敏食材、特殊需求…"
+                        ></textarea>
+
+                        <!-- 訪客：已符合門檻活動提示 -->
+                        <div
+                            v-if="total > 0 && !isLoggedIn && autoEvents.length"
+                            class="notify-events"
+                        >
+                            <div
+                                v-for="ev in autoEvents"
+                                :key="'guest-auto-' + ev.id"
+                                class="notify-event-card eligible guest-login-hint"
+                            >
+                                <div class="notify-event-top">
+                                    <span class="notify-event-icon">⭐</span>
+                                    <span class="font-label notify-event-title">{{
+                                        ev.title
+                                    }}</span>
+                                    <span class="notify-event-badge font-label eligible-badge"
+                                        >已符合門檻</span
+                                    >
+                                </div>
+                                <p class="font-body notify-event-desc">
+                                    登入即享限時優惠：{{ ev.discountDescription }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- 差額提示 -->
+                        <div v-if="total > 0 && nearAutoEvents.length" class="notify-events">
+                            <div
+                                v-for="ev in nearAutoEvents"
+                                :key="'near-' + ev.id"
+                                class="notify-event-card near-threshold"
+                            >
+                                <div class="notify-event-top">
+                                    <span class="notify-event-icon">🔥</span>
+                                    <span class="font-label notify-event-title">{{
+                                        ev.title
+                                    }}</span>
+                                    <span class="notify-event-badge font-label near-badge"
+                                        >差 NT${{ ev.minSpend - total }}</span
+                                    >
+                                </div>
+                                <p class="font-body notify-event-desc">
+                                    再消費 NT${{ ev.minSpend - total }} 即可享{{
+                                        isLoggedIn ? '' : '（登入後）'
+                                    }}限時優惠：{{ ev.discountDescription }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- 優惠券 -->
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem">
+                            <input
+                                v-model="couponCode"
+                                type="text"
+                                class="input-line font-body"
+                                style="flex: 1; font-size: 0.85rem"
+                                placeholder="輸入優惠券代碼"
+                                @keyup.enter="applyCoupon"
+                            />
+                            <button
+                                @click="applyCoupon"
+                                class="font-label"
+                                style="
+                                    padding: 0.4rem 0.75rem;
+                                    background: transparent;
+                                    border: 1px solid rgba(227, 199, 107, 0.5);
+                                    color: #e3c76b;
+                                    border-radius: 0.25rem;
+                                    font-size: 0.75rem;
+                                    letter-spacing: 0.1em;
+                                    cursor: pointer;
+                                    white-space: nowrap;
+                                "
+                            >
+                                套用
+                            </button>
+                        </div>
+                        <p
+                            v-if="couponMsg"
+                            class="font-label mb-0"
+                            style="font-size: 0.7rem; margin-top: 0.25rem"
+                            :style="{ color: couponOk ? '#a3d977' : '#ffb4ab' }"
+                        >
+                            {{ couponMsg }}
+                        </p>
+                    </div>
+
+                    <!-- 合計區 -->
+                    <div
+                        style="
+                            padding: 0.75rem 1rem;
+                            display: flex;
+                            flex-direction: column;
+                            gap: 0.5rem;
+                        "
+                    >
+                        <div style="display: flex; flex-direction: column; gap: 0.3rem">
+                            <!-- 已套用活動標籤 -->
+                            <div v-if="isLoggedIn && bestAutoEvent" class="applied-event-tag">
+                                <span class="applied-event-icon">🎉</span>
+                                <span class="font-label applied-event-text"
+                                    >已參加「{{ bestAutoEvent.title }}」活動 （滿 NT${{
+                                        bestAutoEvent.minSpend
+                                    }}
+                                    可享 {{ bestAutoEvent.discountDescription }}）</span
+                                >
+                            </div>
+                            <!-- 活動折扣 -->
+                            <div
+                                v-if="isLoggedIn && autoEventDiscount > 0"
+                                style="
+                                    display: flex;
+                                    justify-content: space-between;
+                                    align-items: center;
+                                "
+                            >
+                                <span
+                                    class="font-label"
+                                    style="
+                                        font-size: 0.8rem;
+                                        color: rgba(163, 217, 119, 0.8);
+                                        letter-spacing: 0.06em;
+                                    "
+                                    >活動折扣</span
+                                >
+                                <span
+                                    class="font-label"
+                                    style="
+                                        font-size: 0.8rem;
+                                        color: #a3d977;
+                                        letter-spacing: 0.06em;
+                                    "
+                                    >－ NT$ {{ autoEventDiscount.toLocaleString() }}</span
+                                >
+                            </div>
+                            <!-- 優惠券折扣 -->
+                            <div
+                                v-if="couponOk && couponDiscount > 0"
+                                style="
+                                    display: flex;
+                                    justify-content: space-between;
+                                    align-items: center;
+                                "
+                            >
+                                <span
+                                    class="font-label"
+                                    style="
+                                        font-size: 0.8rem;
+                                        color: rgba(163, 217, 119, 0.8);
+                                        letter-spacing: 0.06em;
+                                    "
+                                    >優惠券折扣</span
+                                >
+                                <span
+                                    class="font-label"
+                                    style="
+                                        font-size: 0.8rem;
+                                        color: #a3d977;
+                                        letter-spacing: 0.06em;
+                                    "
+                                    >－ NT$ {{ couponDiscount.toLocaleString() }}</span
+                                >
+                            </div>
+                            <!-- 合計 -->
+                            <div
+                                style="
+                                    display: flex;
+                                    justify-content: space-between;
+                                    align-items: center;
+                                "
+                            >
+                                <span
+                                    class="font-headline"
+                                    style="color: #e3c76b; font-size: 1.1rem"
+                                    >合計</span
+                                >
+                                <span
+                                    class="font-label"
+                                    style="
+                                        color: #e3c76b;
+                                        font-size: 1.1rem;
+                                        letter-spacing: 0.08em;
+                                    "
+                                    >NT$ {{ finalTotal.toLocaleString() }}</span
+                                >
+                            </div>
+                        </div>
+                        <button
+                            @click="goToStep2"
+                            :disabled="store.totalItems === 0"
+                            class="submit-btn font-label"
+                            style="
+                                display: block;
+                                width: 100%;
+                                padding: 0.875rem 0;
+                                font-size: 1rem;
+                                letter-spacing: 0.28em;
+                                text-transform: uppercase;
+                            "
+                        >
+                            下一步：填寫資料
+                        </button>
+                        <button
+                            @click="clearAll"
+                            class="clear-btn font-label"
+                            style="
+                                display: block;
+                                width: 100%;
+                                padding: 0.625rem 0;
+                                font-size: 0.85rem;
+                                letter-spacing: 0.1em;
+                                text-transform: uppercase;
+                            "
+                        >
+                            清空訂單
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- 手機底部列（Step 1） -->
+        <div v-if="step === 1" class="mobile-bottom-bar" @click="cartOpen = true">
+            <div style="display: flex; align-items: center; gap: 0.75rem">
+                <span class="bottom-badge">{{ store.totalItems }}</span>
+                <span
+                    class="font-label text-xs tracking-widest uppercase"
+                    style="color: rgba(208, 197, 181, 0.7)"
+                    >查看訂單</span
+                >
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.75rem">
+                <span class="font-label text-sm" style="color: #e3c76b"
+                    >NT$ {{ finalTotal.toLocaleString() }}</span
+                >
+                <span
+                    class="bottom-cta font-label text-xs"
+                    style="letter-spacing: 0.2em; text-transform: uppercase"
+                    >下一步</span
+                >
+            </div>
+        </div>
+        <div v-if="cartOpen" @click="cartOpen = false" class="mobile-overlay"></div>
+
+        <!-- ══ STEP 2：填寫資料 ══ -->
+        <div v-else-if="step === 2" class="step-page">
+            <div class="step-card">
+                <h2 class="step-card-title font-headline">填寫取餐資料</h2>
+
+                <div class="form-group">
+                    <label class="form-label font-label" :class="{ 'form-label-error': nameError }">
+                        姓名 <span class="required-mark">*</span>
+                    </label>
+                    <input
+                        v-model="customerName"
+                        type="text"
+                        :class="['form-input font-body', { 'input-error': nameError }]"
+                        placeholder="請輸入取餐人姓名"
+                        @input="nameError = false"
+                    />
+                    <p v-if="nameError" class="form-error-msg font-label">請填寫姓名</p>
+                </div>
+
+                <div class="form-group">
+                    <label
+                        class="form-label font-label"
+                        :class="{ 'form-label-error': phoneError }"
+                    >
+                        電話 <span class="required-mark">*</span>
+                    </label>
+                    <input
+                        v-model="customerPhone"
+                        type="tel"
+                        :class="['form-input font-body', { 'input-error': phoneError }]"
+                        placeholder="09xx-xxxxxx"
+                        @input="phoneError = false"
+                    />
+                    <p v-if="phoneError" class="form-error-msg font-label">請填寫有效電話號碼</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label font-label">取餐時段</label>
+                    <div class="pickup-display font-label">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="13"
+                            height="13"
+                            fill="currentColor"
+                            viewBox="0 0 16 16"
+                        >
+                            <path
+                                d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"
+                            />
+                            <path
+                                d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"
+                            />
+                        </svg>
+                        今日 {{ pickupTime }}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label font-label">備註（選填）</label>
+                    <textarea
+                        v-model="store.specialRequest"
+                        class="form-textarea font-body"
+                        rows="3"
+                        placeholder="過敏食材、特殊需求…"
+                    ></textarea>
+                </div>
+
+                <!-- 小計摘要 -->
+                <div class="step2-summary">
+                    <div style="display: flex; justify-content: space-between">
+                        <span
+                            class="font-label"
+                            style="color: rgba(208, 197, 181, 0.6); font-size: 0.8rem"
+                            >小計</span
+                        >
+                        <span class="font-label" style="font-size: 0.8rem"
+                            >NT$ {{ total.toLocaleString() }}</span
+                        >
+                    </div>
+                    <div
+                        v-if="isLoggedIn && autoEventDiscount > 0"
+                        style="display: flex; justify-content: space-between"
+                    >
+                        <span class="font-label" style="color: #a3d977; font-size: 0.8rem"
+                            >活動折扣</span
+                        >
+                        <span class="font-label" style="color: #a3d977; font-size: 0.8rem"
+                            >－ NT$ {{ autoEventDiscount.toLocaleString() }}</span
+                        >
+                    </div>
+                    <div
+                        v-if="couponOk && couponDiscount > 0"
+                        style="display: flex; justify-content: space-between"
+                    >
+                        <span class="font-label" style="color: #a3d977; font-size: 0.8rem"
+                            >優惠券折扣</span
+                        >
+                        <span class="font-label" style="color: #a3d977; font-size: 0.8rem"
+                            >－ NT$ {{ couponDiscount.toLocaleString() }}</span
+                        >
+                    </div>
+                    <div class="step2-total-row">
+                        <span class="font-headline" style="color: #e3c76b">應付金額</span>
+                        <span
+                            class="font-label"
+                            style="color: #e3c76b; font-size: 1.15rem; letter-spacing: 0.08em"
+                            >NT$ {{ finalTotal.toLocaleString() }}</span
+                        >
+                    </div>
+                </div>
+
+                <div class="step-nav">
+                    <button @click="step = 1" class="step-back-btn font-label">← 返回選餐</button>
+                    <button @click="goToStep3" class="submit-btn font-label step-next-btn">
+                        確認資料 →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ STEP 3：確認送出 ══ -->
+        <div v-else-if="step === 3" class="step-page">
+            <div class="step-card">
+                <h2 class="step-card-title font-headline">確認訂單</h2>
+
+                <!-- 取餐資訊 -->
+                <div class="confirm-info">
+                    <div class="confirm-info-row">
+                        <span class="font-label confirm-info-label">取餐人</span>
+                        <span class="font-body confirm-info-val">{{ customerName }}</span>
+                    </div>
+                    <div class="confirm-info-row">
+                        <span class="font-label confirm-info-label">電話</span>
+                        <span class="font-body confirm-info-val">{{ customerPhone }}</span>
+                    </div>
+                    <div class="confirm-info-row">
+                        <span class="font-label confirm-info-label">取餐時段</span>
+                        <span class="font-body confirm-info-val" style="color: #e3c76b"
+                            >今日 {{ pickupTime }}</span
+                        >
+                    </div>
+                    <div v-if="store.specialRequest" class="confirm-info-row">
+                        <span class="font-label confirm-info-label">備註</span>
+                        <span class="font-body confirm-info-val">{{ store.specialRequest }}</span>
+                    </div>
+                </div>
+
+                <div class="feather-divider" style="margin: 1.25rem 0"></div>
+
+                <!-- 品項明細 -->
+                <h3
+                    class="font-label"
+                    style="
+                        color: rgba(208, 197, 181, 0.5);
+                        font-size: 0.75rem;
+                        letter-spacing: 0.18em;
+                        text-transform: uppercase;
+                        margin-bottom: 0.75rem;
+                    "
+                >
+                    品項明細
+                </h3>
+                <div class="confirm-items">
+                    <template v-for="item in cartItemsWithDetails" :key="item.lineId">
+                        <div class="confirm-item">
+                            <div class="confirm-item-left">
+                                <div
+                                    v-if="item.isSetMeal"
+                                    class="setmeal-badge font-label"
+                                    style="margin-bottom: 0.15rem"
+                                >
+                                    🍱 套餐
+                                </div>
+                                <span class="font-body confirm-item-name">{{
+                                    item.productName
+                                }}</span>
+                                <div
+                                    v-if="item.isSetMeal"
+                                    class="setmeal-subitems"
+                                    style="margin-top: 0.2rem"
+                                >
+                                    <span
+                                        v-for="f in item.setMealData?.fixedItems"
+                                        :key="'cf-' + f.dishId"
+                                        class="font-label setmeal-subitem"
+                                        >{{ f.dishName }} × {{ f.quantity }}</span
+                                    >
+                                    <span
+                                        v-for="s in item.setMealData?.selectedOptions"
+                                        :key="'cs-' + s.dishId"
+                                        class="font-label setmeal-subitem"
+                                        >{{ s.dishName }} × {{ s.qty }}</span
+                                    >
+                                </div>
+                                <p
+                                    v-if="item.note"
+                                    class="font-label"
+                                    style="
+                                        color: rgba(208, 197, 181, 0.45);
+                                        font-size: 0.8rem;
+                                        margin: 0.1rem 0 0;
+                                    "
+                                >
+                                    {{ item.note }}
+                                </p>
+                            </div>
+                            <div class="confirm-item-right">
+                                <span
+                                    class="font-label"
+                                    style="color: rgba(208, 197, 181, 0.5); font-size: 0.85rem"
+                                    >× {{ item.qty }}</span
+                                >
+                                <span class="font-label" style="color: #d5b478; font-size: 0.9rem"
+                                    >NT$ {{ (item.unitPrice * item.qty).toLocaleString() }}</span
+                                >
+                            </div>
+                        </div>
+                    </template>
+                    <!-- 贈品 -->
+                    <div
+                        v-if="isLoggedIn && giftCartItem"
+                        class="confirm-item"
+                        style="background: rgba(163, 217, 119, 0.04)"
+                    >
+                        <span class="font-body confirm-item-name">{{
+                            giftCartItem.productName
+                        }}</span>
+                        <div class="confirm-item-right">
+                            <span class="gift-order-badge font-label">🎁 贈品</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feather-divider" style="margin: 1.25rem 0"></div>
+
+                <!-- 金額明細 -->
+                <div class="confirm-totals">
+                    <div class="confirm-total-row">
+                        <span class="font-label" style="color: rgba(208, 197, 181, 0.6)">小計</span>
+                        <span class="font-label">NT$ {{ total.toLocaleString() }}</span>
+                    </div>
+                    <div v-if="isLoggedIn && bestAutoEvent" class="confirm-total-row">
+                        <span
+                            class="font-label"
+                            style="color: rgba(208, 197, 181, 0.6); font-size: 0.78rem"
+                            >已參加「{{ bestAutoEvent.title }}」</span
+                        >
+                        <span></span>
+                    </div>
+                    <div v-if="isLoggedIn && autoEventDiscount > 0" class="confirm-total-row">
+                        <span class="font-label" style="color: #a3d977">活動折扣</span>
+                        <span class="font-label" style="color: #a3d977"
+                            >－ NT$ {{ autoEventDiscount.toLocaleString() }}</span
+                        >
+                    </div>
+                    <div v-if="couponOk && couponDiscount > 0" class="confirm-total-row">
+                        <span class="font-label" style="color: #a3d977">優惠券折扣</span>
+                        <span class="font-label" style="color: #a3d977"
+                            >－ NT$ {{ couponDiscount.toLocaleString() }}</span
+                        >
+                    </div>
+                    <div class="confirm-total-row confirm-grand">
+                        <span class="font-headline" style="color: #e3c76b; font-size: 1.15rem"
+                            >應付金額</span
+                        >
+                        <span
+                            class="font-label"
+                            style="color: #e3c76b; font-size: 1.2rem; letter-spacing: 0.08em"
+                            >NT$ {{ finalTotal.toLocaleString() }}</span
+                        >
+                    </div>
+                </div>
+
+                <div class="step-nav" style="margin-top: 1.5rem">
+                    <button @click="step = 2" class="step-back-btn font-label">← 返回修改</button>
+                    <button
+                        @click="submitOrder"
+                        :disabled="submitting"
+                        class="submit-btn font-label step-next-btn"
+                    >
+                        {{ submitting ? '送出中…' : '確認送出' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ Detail Modal ══ -->
+        <DishDetailModal
+            :dish="activeDetail"
+            :edit-mode="editingLineId !== null"
+            :initial-qty="
+                editingLineId !== null
+                    ? (cartItemsWithDetails.find((i) => i.lineId === editingLineId)?.qty ?? 1)
+                    : 1
+            "
+            :initial-note="
+                editingLineId !== null
+                    ? (cartItemsWithDetails.find((i) => i.lineId === editingLineId)?.note ?? '')
+                    : ''
+            "
+            @close="((activeDetail = null), (editingLineId = null))"
+            @confirm="onDetailConfirm"
+        />
+
+        <!-- 套餐選項 Modal -->
+        <SetMealSelectModal
+            :meal="activeMeal"
+            :edit-mode="editingMealLineId !== null"
+            :initial-qty="
+                editingMealLineId !== null
+                    ? (store.lines.find((l) => l.lineId === editingMealLineId)?.qty ?? 1)
+                    : 1
+            "
+            :initial-note="
+                editingMealLineId !== null
+                    ? (store.lines.find((l) => l.lineId === editingMealLineId)?.note ?? '')
+                    : ''
+            "
+            :initial-sel="editingMealLineId !== null ? buildInitialSel(editingMealLineId) : {}"
+            @close="((activeDetail = null), (editingLineId = null))"
+            @confirm="onSetMealConfirm"
+        />
+
+        <!-- 成功 Modal -->
+        <Teleport to="body">
+            <Transition name="success-modal">
+                <div v-if="successModalOpen" class="success-overlay" @click.self="onSuccessClose">
+                    <div class="success-card">
+                        <div class="success-icon">🛍️</div>
+                        <h2 class="font-headline success-title">訂單送出成功</h2>
+                        <p class="font-body success-sub">訂單編號</p>
+                        <p class="font-label success-number">{{ orderNumber }}</p>
+                        <div class="success-info-box">
+                            <div class="success-info-row">
+                                <span class="font-label" style="color: rgba(208, 197, 181, 0.55)"
+                                    >取餐時段</span
+                                >
+                                <span class="font-label" style="color: #e3c76b"
+                                    >今日 {{ confirmedPickupTime }}</span
+                                >
+                            </div>
+                            <div class="success-info-row">
+                                <span class="font-label" style="color: rgba(208, 197, 181, 0.55)"
+                                    >取餐人</span
+                                >
+                                <span class="font-body">{{ confirmedName }}</span>
+                            </div>
+                            <div class="success-info-row">
+                                <span class="font-label" style="color: rgba(208, 197, 181, 0.55)"
+                                    >應付金額</span
+                                >
+                                <span class="font-label" style="color: #e3c76b"
+                                    >NT$ {{ confirmedTotal.toLocaleString() }}</span
+                                >
+                            </div>
+                        </div>
+                        <p
+                            class="font-label"
+                            style="
+                                color: rgba(208, 197, 181, 0.45);
+                                font-size: 0.75rem;
+                                margin-top: 0.5rem;
+                            "
+                        >
+                            請於取餐時間至櫃台取餐
+                        </p>
+                        <button @click="onSuccessClose" class="success-close-btn font-label">
+                            返回菜單
+                        </button>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
+
+        <!-- 簡易 Toast -->
+        <Teleport to="body">
+            <div
+                class="simple-toast"
+                :style="
+                    toastVisible
+                        ? 'opacity:1;transform:translateX(-50%) translateY(0)'
+                        : 'opacity:0;pointer-events:none;transform:translateX(-50%) translateY(10px)'
+                "
+            >
+                <div
+                    class="px-5 py-3 shadow-xl flex items-center gap-3"
+                    style="background: #362620; border: 1px solid rgba(77, 70, 58, 0.4)"
+                >
+                    <span style="color: #e3c76b">+</span>
+                    <span
+                        class="font-label text-xs tracking-widest uppercase"
+                        style="color: #f9ddd3"
+                        >{{ toastMsg }}</span
+                    >
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Notify Toasts -->
+        <Teleport to="body">
+            <div class="notify-toast-stack">
+                <TransitionGroup name="notify-toast">
+                    <div
+                        v-for="toast in notifyToasts"
+                        :key="toast.key"
+                        :class="[
+                            'notify-toast-card',
+                            toast.type === 'near'
+                                ? 'near'
+                                : toast.type === 'eligible-notify'
+                                  ? 'eligible'
+                                  : toast.type === 'one-event-note'
+                                    ? 'info'
+                                    : toast.type === 'applied-event'
+                                      ? 'applied'
+                                      : 'eligible',
+                        ]"
+                    >
+                        <button class="notify-toast-close" @click="dismissToast(toast.key)">
+                            ✕
+                        </button>
+                        <div class="notify-toast-icon">
+                            {{
+                                toast.type === 'near'
+                                    ? '🔥'
+                                    : toast.type === 'one-event-note'
+                                      ? 'ℹ️'
+                                      : toast.type === 'applied-event'
+                                        ? '🎉'
+                                        : '🎁'
+                            }}
+                        </div>
+                        <p class="font-body notify-toast-msg">
+                            <template v-if="toast.type === 'near'"
+                                >差 NT${{ toast.ev.minSpend - total }} 即可參加「{{
+                                    toast.ev.title
+                                }}」活動，享 {{ toast.ev.discountDescription }} 優惠！</template
+                            >
+                            <template v-else-if="toast.type === 'eligible-notify'"
+                                >恭喜！金額已達門檻，可參加「{{ toast.ev.title }}」活動{{
+                                    toast.ev.summary ? `(${toast.ev.summary})` : ''
+                                }}！（請洽現場服務人員）</template
+                            >
+                            <template v-else-if="toast.type === 'one-event-note'"
+                                >每次用餐能參加一個活動，不得與其他優惠活動合併使用</template
+                            >
+                            <template v-else-if="toast.type === 'applied-event'"
+                                >已參加「{{ toast.ev.title }}」活動 （滿 NT${{
+                                    toast.ev.minSpend
+                                }}
+                                可享 {{ toast.ev.discountDescription }}）</template
+                            >
+                        </p>
+                    </div>
+                </TransitionGroup>
+            </div>
+        </Teleport>
+    </div>
+</template>
+
+<script setup>
+import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
+import { useOrderStore } from '@/stores/order'
+import { useAuthStore } from '@/stores/auth'
+import apiFetch from '@/utils/apiFetch'
+import DishDetailModal from '@/components/Order/DishDetailModal.vue'
+import SetMealSelectModal from '@/components/Order/SetMealSelectModal.vue'
+
+const store = useOrderStore()
+const authStore = useAuthStore()
+
+// ── 步驟 & 畫面狀態 ──────────────────────────────────
+const step = ref(1)
+const cartOpen = ref(false)
+
+// ── 會員狀態（從全域 authStore）─────────────────────
+const isLoggedIn = computed(() => authStore.isLoggedIn)
+
+// ── 菜單 ─────────────────────────────────────────────
+const products = ref([])
+const loading = ref(true)
+const loadError = ref('')
+const searchQuery = ref('')
+const activeChip = ref('all')
+const activeSidebarCat = ref('')
+const curView = ref('list')
+
+const imgErrors = reactive(new Set())
+const imgFallback = reactive(new Map())
+
+// ── 取餐時段 ─────────────────────────────────────────
+const pickupTime = ref('')
+const pickupError = ref(false)
+
+const pickupTimeOptions = computed(() => {
+    const slots = []
+    const now = new Date()
+    const open = 11 * 60 // 11:00
+    const close = 21 * 60 // 21:00
+    const minPrep = 30 // 30 分鐘備餐時間
+    const nowMins = now.getHours() * 60 + now.getMinutes() + minPrep
+    const start = Math.max(open, Math.ceil(nowMins / 30) * 30)
+    for (let m = start; m <= close; m += 30) {
+        const h = Math.floor(m / 60)
+        const mm = m % 60
+        slots.push(`${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`)
+    }
+    return slots
+})
+
+// ── 顧客資料 ─────────────────────────────────────────
+const customerName = ref('')
+const customerPhone = ref('')
+const nameError = ref(false)
+const phoneError = ref(false)
+
+// ── 訂單完成後儲存（Modal 顯示用）─────────────────
+const confirmedPickupTime = ref('')
+const confirmedName = ref('')
+const confirmedTotal = ref(0)
+
+// ── Modal 狀態 ───────────────────────────────────────
+const activeDetail = ref(null)
+const editingLineId = ref(null)
+const activeMeal = ref(null)
+const editingMealLineId = ref(null)
+const successModalOpen = ref(false)
+const orderNumber = ref('')
+const submitting = ref(false)
+
+// ── 優惠券 ──────────────────────────────────────────
+const couponCode = ref('')
+const couponMsg = ref('')
+const couponOk = ref(false)
+const couponId = ref(null)
+const couponDiscount = ref(0)
+
+function resetCoupon() {
+    couponCode.value = ''
+    couponMsg.value = ''
+    couponOk.value = false
+    couponId.value = null
+    couponDiscount.value = 0
+}
+
+// ── 活動 ─────────────────────────────────────────────
+const autoEvents = ref([])
+const notifyEvents = ref([])
+const nearAutoEvents = ref([])
+const giftCartItem = ref(null)
+const notifyToasts = ref([])
+let _toastKeySeq = 0
+const _nearToastKeys = new Map()
+const _eligibleNotifyKeys = new Map()
+let _oneEventNoteKey = null
+let _lastBestEventId = null
+let _appliedEventToastTimer = null
+
+// ── Toast ────────────────────────────────────────────
+const toastVisible = ref(false)
+const toastMsg = ref('')
+let toastTimer = null
+
+function showToast(msg) {
+    toastMsg.value = msg
+    toastVisible.value = true
+    clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => {
+        toastVisible.value = false
+    }, 2500)
+}
+
+function dismissToast(key) {
+    notifyToasts.value = notifyToasts.value.filter((t) => t.key !== key)
+}
+function pushToast(ev, opts = {}) {
+    const key = ++_toastKeySeq
+    notifyToasts.value.push({ key, ev: { ...ev }, ...opts })
+    return key
+}
+
+// ── Computed ─────────────────────────────────────────
+
+const cartItemsWithDetails = computed(() =>
+    store.lines
+        .map((line) => {
+            if (line.isSetMeal) {
+                return {
+                    lineId: line.lineId,
+                    productId: line.productId,
+                    productName: line.setMealData?.name ?? '套餐',
+                    unitPrice: line.unitPrice ?? 0,
+                    qty: line.qty,
+                    note: line.note,
+                    isSetMeal: true,
+                    setMealData: line.setMealData,
+                }
+            }
+            const d = products.value.find((p) => p.productId === line.productId)
+            return d ? { ...d, lineId: line.lineId, qty: line.qty, note: line.note } : null
+        })
+        .filter(Boolean)
+)
+
+const total = computed(() =>
+    cartItemsWithDetails.value.reduce((s, i) => s + i.unitPrice * i.qty, 0)
+)
+
+const bestAutoEvent = computed(() => {
+    if (!autoEvents.value.length) return null
+    return [...autoEvents.value].sort((a, b) =>
+        b.minSpend !== a.minSpend
+            ? b.minSpend - a.minSpend
+            : (b.calculatedDiscount ?? 0) - (a.calculatedDiscount ?? 0)
+    )[0]
+})
+
+const autoEventDiscount = computed(() =>
+    isLoggedIn.value && bestAutoEvent.value ? (bestAutoEvent.value.calculatedDiscount ?? 0) : 0
+)
+
+const finalTotal = computed(() =>
+    Math.max(0, total.value - couponDiscount.value - autoEventDiscount.value)
+)
+
+// ── 分類 Computed ─────────────────────────────────────
+const CATEGORY_ORDER = ['套餐', '主餐', '湯品', '甜點', '附餐', '飲料']
+
+const sidebarCategories = computed(() => {
+    const specials = [
+        {
+            key: '今日推薦',
+            label: '今日推薦',
+            count: products.value.filter((p) => p.isRecommended).length,
+        },
+        {
+            key: '主廚特選',
+            label: '主廚特選',
+            count: products.value.filter((p) => p.isPopular).length,
+        },
+    ].filter((s) => s.count > 0)
+
+    const map = new Map()
+    products.value.forEach((p) => {
+        if (!p.categoryName) return
+        if (!map.has(p.categoryName))
+            map.set(p.categoryName, { key: p.categoryName, label: p.categoryName, count: 0 })
+        map.get(p.categoryName).count++
+    })
+    const cats = Array.from(map.values()).sort((a, b) => {
+        const ai = CATEGORY_ORDER.indexOf(a.key),
+            bi = CATEGORY_ORDER.indexOf(b.key)
+        return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi)
+    })
+
+    return [...specials, { key: '全部', label: '全部', count: products.value.length }, ...cats]
+})
+
+const filteredProducts = computed(() => {
+    let r = products.value
+    if (searchQuery.value) {
+        const t = searchQuery.value.toLowerCase()
+        r = r.filter((p) => p.productName?.toLowerCase().includes(t))
+    }
+    if (activeChip.value === 'veg') r = r.filter((p) => p.isVegetarian)
+    if (activeChip.value === 'spicy') r = r.filter((p) => p.spicyLevel > 0)
+    return r
+})
+
+const displaySections = computed(() => {
+    if (searchQuery.value.trim()) {
+        const dishes = filteredProducts.value
+        return dishes.length ? [{ key: 'search', label: `搜尋：${searchQuery.value}`, dishes }] : []
+    }
+    if (activeSidebarCat.value === '今日推薦') {
+        const dishes = filteredProducts.value.filter((p) => p.isRecommended)
+        return dishes.length ? [{ key: '今日推薦', label: '今日推薦', dishes }] : []
+    }
+    if (activeSidebarCat.value === '主廚特選') {
+        const dishes = filteredProducts.value.filter((p) => p.isPopular)
+        return dishes.length ? [{ key: '主廚特選', label: '主廚特選', dishes }] : []
+    }
+    if (activeSidebarCat.value === '全部') {
+        return CATEGORY_ORDER.map((cat) => ({
+            key: cat,
+            label: cat,
+            dishes: filteredProducts.value.filter((p) => p.categoryName === cat),
+        })).filter((s) => s.dishes.length > 0)
+    }
+    const dishes = filteredProducts.value.filter((p) => p.categoryName === activeSidebarCat.value)
+    return dishes.length
+        ? [{ key: activeSidebarCat.value, label: activeSidebarCat.value, dishes }]
+        : []
+})
+
+// ── 活動 API ─────────────────────────────────────────
+async function fetchActiveEvents() {
+    try {
+        const res = await apiFetch(`/Orders/ActiveEvents?amount=${total.value}`)
+        if (!res.ok) return
+        const data = await res.json()
+        autoEvents.value = data.autoEvents ?? []
+        notifyEvents.value = data.notifyEvents ?? []
+        nearAutoEvents.value = data.nearAutoEvents ?? []
+
+        const nearAutoIdSet = new Set(nearAutoEvents.value.map((e) => e.id))
+        const hasBest = !!bestAutoEvent.value
+
+        for (const [id, key] of _nearToastKeys) {
+            const stillNearAuto = nearAutoIdSet.has(id)
+            const stillNearNotify = notifyEvents.value.some(
+                (e) => e.id === id && !e.isEligible && e.minSpend - total.value <= 100
+            )
+            if (!stillNearAuto && !stillNearNotify) {
+                dismissToast(key)
+                _nearToastKeys.delete(id)
+            }
+        }
+        for (const [id, key] of _eligibleNotifyKeys) {
+            const stillEligible = notifyEvents.value.some((e) => e.id === id && e.isEligible)
+            if (!stillEligible || hasBest) {
+                dismissToast(key)
+                _eligibleNotifyKeys.delete(id)
+            }
+        }
+        if (!hasBest && _oneEventNoteKey !== null) {
+            dismissToast(_oneEventNoteKey)
+            _oneEventNoteKey = null
+        }
+
+        nearAutoEvents.value.forEach((ev) => {
+            if (!_nearToastKeys.has(ev.id)) {
+                _nearToastKeys.set(ev.id, pushToast(ev, { persistent: true, type: 'near' }))
+            }
+        })
+        notifyEvents.value.forEach((ev) => {
+            const gap = ev.minSpend - total.value
+            if (ev.isEligible) {
+                const nearKey = _nearToastKeys.get(ev.id)
+                if (nearKey !== undefined) {
+                    dismissToast(nearKey)
+                    _nearToastKeys.delete(ev.id)
+                }
+                if (!hasBest && !_eligibleNotifyKeys.has(ev.id)) {
+                    _eligibleNotifyKeys.set(
+                        ev.id,
+                        pushToast(ev, { persistent: true, type: 'eligible-notify' })
+                    )
+                }
+            } else if (gap <= 100 && !_nearToastKeys.has(ev.id)) {
+                _nearToastKeys.set(ev.id, pushToast(ev, { persistent: true, type: 'near' }))
+            }
+        })
+        const hasOtherEligible =
+            notifyEvents.value.some((e) => e.isEligible) || autoEvents.value.length > 1
+        if (hasBest && hasOtherEligible && _oneEventNoteKey === null) {
+            _oneEventNoteKey = pushToast(
+                { id: -1, title: '', discountDescription: '' },
+                { persistent: true, type: 'one-event-note' }
+            )
+        }
+    } catch {
+        /* 靜默 */
+    }
+}
+
+watch(total, (val) => {
+    if (val > 0) {
+        fetchActiveEvents()
+    } else {
+        autoEvents.value = []
+        notifyEvents.value = []
+        nearAutoEvents.value = []
+        notifyToasts.value = []
+        _nearToastKeys.clear()
+        _eligibleNotifyKeys.clear()
+        _oneEventNoteKey = null
+        giftCartItem.value = null
+        _lastBestEventId = null
+        clearTimeout(_appliedEventToastTimer)
+    }
+})
+
+watch(bestAutoEvent, (newEv) => {
+    giftCartItem.value = null
+    if (isLoggedIn.value && newEv?.discountType === 'Gift' && newEv.rewardDishId) {
+        const dish = products.value.find((p) => p.productId === newEv.rewardDishId)
+        if (dish)
+            giftCartItem.value = {
+                productId: dish.productId,
+                productName: dish.productName,
+                qty: 1,
+            }
+    }
+    const newId = newEv?.id ?? null
+    if (newId !== _lastBestEventId) {
+        _lastBestEventId = newId
+        if (newEv) {
+            clearTimeout(_appliedEventToastTimer)
+            const key = pushToast(newEv, { persistent: false, type: 'applied-event' })
+            _appliedEventToastTimer = setTimeout(() => dismissToast(key), 3000)
+        }
+    }
+})
+
+// ── 優惠券 API ───────────────────────────────────────
+async function applyCoupon() {
+    if (!couponCode.value.trim()) return
+    couponOk.value = false
+    couponId.value = null
+    couponDiscount.value = 0
+    couponMsg.value = ''
+    try {
+        const res = await apiFetch('/Orders/ValidateCoupon', {
+            method: 'POST',
+            body: JSON.stringify({
+                code: couponCode.value.trim().toUpperCase(),
+                orderAmount: total.value,
+            }),
+        })
+        const data = await res.json()
+        if (data.isValid) {
+            couponMsg.value = data.message || `折抵 NT$ ${data.discount}`
+            couponOk.value = true
+            couponId.value = data.couponId
+            couponDiscount.value = data.discount ?? 0
+        } else {
+            couponMsg.value = data.message || '優惠券無效或不符條件'
+        }
+    } catch {
+        couponMsg.value = '驗證失敗，請稍後再試'
+    }
+}
+
+// ── 步驟流程 ─────────────────────────────────────────
+function goToStep2() {
+    if (store.totalItems === 0) return
+    if (!pickupTime.value) {
+        pickupError.value = true
+        showToast('請先選擇取餐時段')
+        return
+    }
+    step.value = 2
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function goToStep3() {
+    let valid = true
+    if (!customerName.value.trim()) {
+        nameError.value = true
+        valid = false
+    }
+    if (!customerPhone.value.trim() || !/^[\d\-\+\s]{8,}$/.test(customerPhone.value.trim())) {
+        phoneError.value = true
+        valid = false
+    }
+    if (!valid) return
+    step.value = 3
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// ── 菜單互動 ─────────────────────────────────────────
+function toggleChip(c) {
+    activeChip.value = activeChip.value === c ? 'all' : c
+}
+
+function scrollToSection(cat) {
+    activeSidebarCat.value = cat
+    searchQuery.value = ''
+    // menu 本身是捲動容器，捲回頂部
+    document.getElementById('outMenuMain')?.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function handleRemove(dish) {
+    store.removeItem(dish.productId)
+}
+
+async function openDetail(dish) {
+    if (dish.isSetMeal && dish.setMealId) {
+        editingMealLineId.value = null
+        try {
+            const res = await apiFetch(`/SetMeals/${dish.setMealId}`)
+            if (res.ok) activeMeal.value = await res.json()
+        } catch {
+            /* 靜默 */
+        }
+        return
+    }
+    editingLineId.value = null
+    activeDetail.value = dish
+}
+
+async function openCartItemEdit(item) {
+    if (item.isSetMeal) {
+        editingMealLineId.value = item.lineId
+        const smId = item.setMealData?.id
+        if (!smId) return
+        try {
+            const res = await apiFetch(`/SetMeals/${smId}`)
+            if (res.ok) activeMeal.value = await res.json()
+        } catch {
+            /* 靜默 */
+        }
+        return
+    }
+    editingLineId.value = item.lineId
+    activeDetail.value = products.value.find((p) => p.productId === item.productId) ?? item
+}
+
+function onDetailConfirm(dish, qty, note) {
+    if (editingLineId.value !== null) {
+        store.removeLineItem(editingLineId.value)
+        for (let i = 0; i < qty; i++) store.addItem(dish.productId, note || '')
+        showToast(`「${dish.productName}」已更新`)
+        editingLineId.value = null
+    } else {
+        for (let i = 0; i < qty; i++) store.addItem(dish.productId, note || '')
+        showToast(`「${dish.productName}」× ${qty} 已加入訂單`)
+    }
+    activeDetail.value = null
+}
+
+function buildInitialSel(lineId) {
+    const line = store.lines.find((l) => l.lineId === lineId)
+    if (!line?.setMealData?.selectedOptions) return {}
+    const sel = {}
+    for (const opt of line.setMealData.selectedOptions) {
+        sel[opt.groupNo ?? 0] = sel[opt.groupNo ?? 0] ?? {}
+        sel[opt.groupNo ?? 0][opt.dishId] = opt.qty
+    }
+    return sel
+}
+
+function onSetMealConfirm(meal, qty, note, selectedOptions) {
+    const setMealData = {
+        id: meal.id,
+        name: meal.setMealName,
+        fixedItems: (meal.items ?? []).filter((i) => !i.isOptional),
+        selectedOptions,
+    }
+    if (editingMealLineId.value !== null) {
+        store.updateSetMealLine(editingMealLineId.value, meal.setPrice, note, setMealData)
+        showToast(`「${meal.setMealName}」已更新`)
+        editingMealLineId.value = null
+    } else {
+        for (let i = 0; i < qty; i++) {
+            store.addSetMeal(
+                products.value.find((p) => p.setMealId === meal.id && p.isSetMeal)?.productId ?? 0,
+                meal.setPrice,
+                note,
+                setMealData
+            )
+        }
+        showToast(`「${meal.setMealName}」× ${qty} 已加入訂單`)
+    }
+    activeMeal.value = null
+}
+
+// ── 送出訂單 ─────────────────────────────────────────
+async function submitOrder() {
+    if (store.totalItems === 0 || submitting.value) return
+    submitting.value = true
+    try {
+        const itemsPayload = (() => {
+            const result = []
+            for (const i of cartItemsWithDetails.value) {
+                if (i.isSetMeal) {
+                    const parentIdx = result.length
+                    result.push({
+                        productId: i.productId,
+                        productName: i.productName,
+                        qty: i.qty,
+                        unitPrice: i.unitPrice,
+                        isSetMeal: true,
+                        note: i.note || null,
+                        parentIndex: null,
+                    })
+                    for (const f of i.setMealData?.fixedItems ?? []) {
+                        for (let q = 0; q < (f.quantity || 1); q++) {
+                            result.push({
+                                productId: 0,
+                                productName: f.dishName,
+                                qty: 1,
+                                unitPrice: 0,
+                                isSetMeal: true,
+                                parentIndex: parentIdx,
+                            })
+                        }
+                    }
+                    for (const s of i.setMealData?.selectedOptions ?? []) {
+                        for (let q = 0; q < (s.qty || 1); q++) {
+                            result.push({
+                                productId: 0,
+                                productName: s.dishName,
+                                qty: 1,
+                                unitPrice: 0,
+                                isSetMeal: true,
+                                parentIndex: parentIdx,
+                            })
+                        }
+                    }
+                } else {
+                    result.push({
+                        productId: i.productId,
+                        productName: i.productName,
+                        qty: i.qty,
+                        unitPrice: i.unitPrice,
+                        isSetMeal: false,
+                        note: i.note || null,
+                        parentIndex: null,
+                    })
+                }
+            }
+            if (isLoggedIn.value && giftCartItem.value) {
+                result.push({
+                    productId: giftCartItem.value.productId,
+                    productName: giftCartItem.value.productName,
+                    qty: 1,
+                    unitPrice: 0,
+                    isSetMeal: false,
+                    note: '贈品',
+                    parentIndex: null,
+                })
+            }
+            return result
+        })()
+
+        const body = {
+            tableId: 0,
+            inOrOut: false,
+            peopleNum: 1,
+            isAddOrder: false,
+            payMethod: 'Cash',
+            note: store.specialRequest || null,
+            pickupTime: pickupTime.value,
+            customerName: customerName.value.trim(),
+            customerPhone: customerPhone.value.trim(),
+            couponId: couponId.value,
+            discountAmount: (couponOk.value ? couponDiscount.value : 0) + autoEventDiscount.value,
+            items: itemsPayload,
+        }
+
+        const res = await apiFetch('/Orders/CreatePreOrder', {
+            method: 'POST',
+            body: JSON.stringify(body),
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+
+        orderNumber.value = data.orderNumber
+        confirmedPickupTime.value = pickupTime.value
+        confirmedName.value = customerName.value
+        confirmedTotal.value = finalTotal.value
+
+        store.clearOrder()
+        resetCoupon()
+        successModalOpen.value = true
+        step.value = 1
+    } catch (err) {
+        console.error(err)
+        showToast('送出失敗，請稍後再試')
+    } finally {
+        submitting.value = false
+    }
+}
+
+function onSuccessClose() {
+    successModalOpen.value = false
+    step.value = 1
+    pickupTime.value = ''
+    customerName.value = ''
+    customerPhone.value = ''
+    window.scrollTo({ top: 0 })
+}
+
+function clearAll() {
+    store.clearOrder()
+    resetCoupon()
+}
+
+function handleImgError(dish) {
+    const current = imgFallback.get(dish.productId) || resolveImage(dish.imageUrl)
+    if (/\.jpg$/i.test(current)) {
+        imgFallback.set(dish.productId, current.replace(/\.jpg$/i, '.png'))
+    } else {
+        imgErrors.add(dish.productId)
+    }
+}
+
+function resolveImage(url) {
+    if (!url) return ''
+    let path = url.replace(/\\/g, '/').replace(/^~\//, '')
+    const match = /\/wwwroot\/(.*)/i.exec('/' + path)
+    if (match?.[1]) path = match[1]
+    return `/${path.replace(/^\//, '')}`
+}
+
+onMounted(async () => {
+    // 量 navbar + step-banner 真實高度，設成 CSS 變數供各欄位定位用
+    const navbar = document.querySelector('nav.navbar-eat') ?? document.querySelector('.navbar')
+    const banner = document.querySelector('.step-banner')
+    if (navbar) {
+        const navH = Math.ceil(navbar.getBoundingClientRect().height)
+        document.documentElement.style.setProperty('--navbar-h', `${navH}px`)
+        // step-banner 在 navbar 正下方，量好後算出總固定高度
+        await nextTick()
+        const banH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 73
+        document.documentElement.style.setProperty('--top-fixed', `${navH + banH}px`)
+    }
+
+    try {
+        const res = await apiFetch('/Orders/MenuItems')
+        if (!res.ok) throw new Error()
+        products.value = await res.json()
+        activeSidebarCat.value = sidebarCategories.value[0]?.key ?? ''
+    } catch {
+        loadError.value = '菜單載入失敗，請稍後再試。'
+    } finally {
+        loading.value = false
+    }
+})
+</script>
+
+<style>
+/* ── Notify Toast（右下角，Teleport to body） ── */
+.notify-toast-stack {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.25rem;
+    z-index: 8500;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.6rem;
+    max-width: 300px;
+    pointer-events: none;
+}
+.notify-toast-card {
+    position: relative;
+    border-radius: 0.6rem;
+    padding: 0.75rem 2.2rem 0.75rem 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    pointer-events: all;
+}
+.notify-toast-card.eligible {
+    background: #1e2d1a;
+    border: 1px solid rgba(163, 217, 119, 0.45);
+    border-left: 3px solid #a3d977;
+}
+.notify-toast-card.near {
+    background: #2a1e10;
+    border: 1px solid rgba(255, 160, 80, 0.45);
+    border-left: 3px solid #ff9f4a;
+}
+.notify-toast-card.info {
+    background: #141c25;
+    border: 1px solid rgba(130, 170, 220, 0.35);
+    border-left: 3px solid #82aadc;
+}
+.notify-toast-card.applied {
+    background: #221a0e;
+    border: 1px solid rgba(227, 199, 107, 0.45);
+    border-left: 3px solid #e3c76b;
+}
+.notify-toast-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+}
+.notify-toast-msg {
+    font-size: 0.78rem;
+    line-height: 1.5;
+    margin: 0;
+    color: #f9ddd3;
+}
+.notify-toast-card.eligible .notify-toast-msg {
+    color: #c4eda0;
+}
+.notify-toast-card.near .notify-toast-msg {
+    color: #ffd0a0;
+}
+.notify-toast-card.info .notify-toast-msg {
+    color: rgba(180, 210, 240, 0.8);
+}
+.notify-toast-card.applied .notify-toast-msg {
+    color: #f5dfa0;
+}
+.notify-toast-close {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    color: rgba(208, 197, 181, 0.35);
+    font-size: 0.7rem;
+    cursor: pointer;
+    padding: 0.15rem 0.3rem;
+    transition: color 0.2s;
+    line-height: 1;
+}
+.notify-toast-close:hover {
+    color: rgba(208, 197, 181, 0.8);
+}
+.notify-toast-enter-active {
+    transition:
+        opacity 0.3s,
+        transform 0.3s;
+}
+.notify-toast-leave-active {
+    transition:
+        opacity 0.25s,
+        transform 0.25s;
+    position: absolute;
+}
+.notify-toast-enter-from {
+    opacity: 0;
+    transform: translateX(40px);
+}
+.notify-toast-leave-to {
+    opacity: 0;
+    transform: translateX(40px);
+}
+
+/* ── simple toast ── */
+.simple-toast {
+    position: fixed;
+    bottom: 4.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9900;
+    transition:
+        opacity 0.3s,
+        transform 0.3s;
+    border-radius: 0.375rem;
+    overflow: hidden;
+}
+
+/* ── 成功 Modal Transition ── */
+.success-modal-enter-active {
+    transition: opacity 0.3s;
+}
+.success-modal-leave-active {
+    transition: opacity 0.25s;
+}
+.success-modal-enter-from,
+.success-modal-leave-to {
+    opacity: 0;
+}
+</style>
+
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Newsreader:ital,wght@0,400;0,600;1,400&family=Work+Sans:wght@300;400&display=swap');
+
+/* ════ 全域包裝 ════ */
+.out-wrap {
+    background: #1e100b;
+    color: #f9ddd3;
+    font-family: 'Newsreader', serif;
+    min-height: 100vh;
+    padding-top: calc(61px); /* navbar + step-banner */
+}
+
+/* ════ Step Banner ════ */
+.step-banner {
+    background: #180b06;
+    border-bottom: 1px solid rgba(77, 70, 58, 0.3);
+    padding: 1rem 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    position: fixed;
+    top: var(--navbar-h, 80px);
+    left: 0;
+    right: 0;
+    z-index: 60;
+}
+.step-items {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    width: 100%;
+}
+.step-dot {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Work Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border: 1.5px solid rgba(77, 70, 58, 0.6);
+    color: rgba(208, 197, 181, 0.4);
+    background: #2b1c16;
+    transition: all 0.35s;
+    flex-shrink: 0;
+}
+.step-dot.active {
+    border-color: #e3c76b;
+    color: #e3c76b;
+    background: rgba(227, 199, 107, 0.1);
+}
+.step-dot.done {
+    border-color: #c6ab53;
+    background: #c6ab53;
+    color: #3b2f00;
+}
+.step-line {
+    flex: 1;
+    height: 1px;
+    background: rgba(77, 70, 58, 0.45);
+}
+.step-lbl {
+    font-family: 'Work Sans', sans-serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(208, 197, 181, 0.4);
+    white-space: nowrap;
+}
+.step-lbl.active {
+    color: #e3c76b;
+}
+.step-lbl.done-lbl {
+    color: rgba(208, 197, 181, 0.6);
+}
+.pickup-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'Work Sans', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: rgba(208, 197, 181, 0.6);
+}
+.pickup-pill strong {
+    color: #e3c76b;
+}
+
+/* ════ Step 1 三欄佈局 ════ */
+.out-layout {
+    display: grid;
+    grid-template-columns: 200px 1fr 360px;
+    min-height: calc(100vh - var(--top-fixed, 153px));
+    align-items: start;
+}
+
+/* ── Left Sidebar ── */
+.out-sidebar {
+    background: #180b06;
+    border-right: 1px solid rgba(77, 70, 58, 0.2);
+    position: sticky;
+    top: var(--top-fixed, 153px);
+    height: calc(100vh - var(--top-fixed, 153px));
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+.sidebar-search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid rgba(77, 70, 58, 0.2);
+}
+.sidebar-nav {
+    flex: 1;
+    padding: 0.5rem 0;
+}
+.cat-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem 1.25rem;
+    font-family: 'Work Sans', sans-serif;
+    font-size: 1.2rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(208, 197, 181, 0.6);
+    border-left: 2px solid transparent;
+    border-right: none;
+    border-top: none;
+    border-bottom: none;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.3s;
+    width: 100%;
+}
+.cat-link:hover {
+    color: #e3c76b;
+    background: rgba(227, 199, 107, 0.04);
+}
+.cat-link.active {
+    color: #e3c76b;
+    border-left-color: #e3c76b;
+    background: rgba(227, 199, 107, 0.06);
+}
+.cat-link.cat-special {
+    color: rgba(227, 199, 107, 0.75);
+}
+.cat-link.cat-special.active {
+    color: #e3c76b;
+}
+.cat-count {
+    margin-left: auto;
+    font-size: 0.8rem;
+    color: rgba(208, 197, 181, 0.35);
+}
+.cat-divider {
+    height: 1px;
+    background: linear-gradient(90deg, rgba(77, 70, 58, 0.5), transparent);
+    margin: 0.3rem 1.25rem;
+}
+
+/* ── Centre: Menu ── */
+.out-menu {
+    background: #1e100b;
+    min-height: calc(100vh - var(--top-fixed, 153px));
+    overflow-x: hidden;
+}
+.menu-sections {
+    padding: 0 1.5rem 4rem;
+}
+
+/* Toolbar */
+.toolbar {
+    position: sticky;
+    top: 0; /* sticky 在 .out-menu 捲動容器內 */
+    z-index: 20;
+    background: #1e100b;
+    border-bottom: 1px solid rgba(77, 70, 58, 0.25);
+    padding: 0.85rem 1.25rem;
+}
+.mobile-search-wrap {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+.toolbar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: nowrap;
+}
+.chips-wrap {
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+    flex: 1 1 0;
+    min-width: 0;
+    scrollbar-width: none;
+}
+.chips-wrap::-webkit-scrollbar {
+    display: none;
+}
+.view-toggle {
+    display: flex;
+    flex-shrink: 0;
+}
+
+/* ── Right: Cart ── */
+.out-cart {
+    background: #180b06;
+    border-left: 1px solid rgba(77, 70, 58, 0.2);
+    position: sticky;
+    top: var(--top-fixed, 153px);
+    height: calc(100vh - var(--top-fixed, 153px));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.cart-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(77, 70, 58, 0.2);
+    background: radial-gradient(
+        ellipse 80% 60% at 50% 0%,
+        rgba(227, 199, 107, 0.1) 0%,
+        transparent 70%
+    );
+}
+.cart-close-btn {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: rgba(208, 197, 181, 0.7);
+    font-size: 1.4rem;
+    line-height: 1;
+    padding: 0;
+}
+.cart-pickup {
+    flex-shrink: 0;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(77, 70, 58, 0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+.pickup-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(208, 197, 181, 0.55);
+}
+.pickup-label.pickup-error {
+    color: #ffb4ab;
+}
+.pickup-select {
+    width: 100%;
+    background: #2b1c16;
+    border: 1px solid rgba(77, 70, 58, 0.5);
+    border-radius: 0.25rem;
+    color: #f9ddd3;
+    font-size: 0.85rem;
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.25s;
+}
+.pickup-select:focus {
+    border-color: #e3c76b;
+}
+.pickup-select-error {
+    border-color: #ffb4ab !important;
+}
+.pickup-select option {
+    background: #2b1c16;
+}
+.pickup-error-msg {
+    font-size: 0.7rem;
+    color: #ffb4ab;
+    margin: 0;
+    letter-spacing: 0.06em;
+}
+.cart-items {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0.25rem 1rem;
+}
+.cart-footer {
+    flex-shrink: 0;
+    border-top: 1px solid rgba(77, 70, 58, 0.2);
+}
+
+/* ════ Steps 2 & 3 ════ */
+.step-page {
+    min-height: calc(100vh - 3.5rem);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 2.5rem 1rem 4rem;
+}
+.step-card {
+    width: 100%;
+    max-width: 560px;
+    background: #271813;
+    border: 1px solid rgba(77, 70, 58, 0.4);
+    border-radius: 0.75rem;
+    padding: 2rem;
+}
+.step-card-title {
+    font-size: 1.7rem;
+    font-style: italic;
+    color: #e3c76b;
+    margin: 0 0 1.5rem;
+}
+
+/* Form */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 1.25rem;
+}
+.form-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(208, 197, 181, 0.55);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.form-label.form-label-error {
+    color: #ffb4ab;
+}
+.required-mark {
+    color: #ffb4ab;
+}
+.form-input {
+    width: 100%;
+    background: #1e100b;
+    border: 1px solid rgba(77, 70, 58, 0.5);
+    border-radius: 0.25rem;
+    color: #f9ddd3;
+    font-size: 0.95rem;
+    padding: 0.6rem 0.85rem;
+    outline: none;
+    transition: border-color 0.25s;
+    font-style: italic;
+}
+.form-input:focus {
+    border-color: #e3c76b;
+}
+.form-input.input-error {
+    border-color: #ffb4ab;
+}
+.form-input::placeholder {
+    color: rgba(208, 197, 181, 0.3);
+}
+.form-error-msg {
+    font-size: 0.7rem;
+    color: #ffb4ab;
+    margin: 0;
+}
+.form-textarea {
+    width: 100%;
+    resize: vertical;
+    background: #1e100b;
+    border: 1px solid rgba(77, 70, 58, 0.5);
+    border-radius: 0.25rem;
+    color: #f9ddd3;
+    font-size: 0.92rem;
+    padding: 0.6rem 0.85rem;
+    outline: none;
+    transition: border-color 0.25s;
+    font-style: italic;
+    font-family: 'Newsreader', serif;
+}
+.form-textarea:focus {
+    border-color: rgba(227, 199, 107, 0.5);
+}
+.form-textarea::placeholder {
+    color: rgba(208, 197, 181, 0.3);
+}
+.pickup-display {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+    color: #e3c76b;
+    letter-spacing: 0.06em;
+    padding: 0.5rem 0.85rem;
+    background: rgba(227, 199, 107, 0.06);
+    border-radius: 0.25rem;
+    border: 1px solid rgba(227, 199, 107, 0.2);
+}
+.step2-summary {
+    margin-top: 0.5rem;
+    background: rgba(24, 11, 6, 0.6);
+    border: 1px solid rgba(77, 70, 58, 0.35);
+    border-radius: 0.4rem;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.step2-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(77, 70, 58, 0.3);
+    padding-top: 0.5rem;
+    margin-top: 0.2rem;
+}
+
+/* Step Nav */
+.step-nav {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+.step-back-btn {
+    flex: 0 0 auto;
+    padding: 0.75rem 1.25rem;
+    background: transparent;
+    border: 1px solid rgba(77, 70, 58, 0.6);
+    color: rgba(208, 197, 181, 0.6);
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: all 0.25s;
+}
+.step-back-btn:hover {
+    border-color: rgba(208, 197, 181, 0.5);
+    color: rgba(208, 197, 181, 0.9);
+}
+.step-next-btn {
+    flex: 1;
+    font-size: 0.9rem !important;
+    padding: 0.75rem 0 !important;
+}
+
+/* Confirm items */
+.confirm-info {
+    background: rgba(24, 11, 6, 0.5);
+    border: 1px solid rgba(77, 70, 58, 0.35);
+    border-radius: 0.4rem;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.confirm-info-row {
+    display: flex;
+    gap: 1rem;
+    align-items: baseline;
+}
+.confirm-info-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(208, 197, 181, 0.45);
+    min-width: 4.5rem;
+    flex-shrink: 0;
+}
+.confirm-info-val {
+    font-size: 0.95rem;
+    color: #f9ddd3;
+}
+.confirm-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+.confirm-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid rgba(77, 70, 58, 0.2);
+}
+.confirm-item:last-child {
+    border-bottom: none;
+}
+.confirm-item-left {
+    flex: 1;
+    min-width: 0;
+}
+.confirm-item-name {
+    font-size: 0.95rem;
+    color: #f9ddd3;
+}
+.confirm-item-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+    flex-shrink: 0;
+}
+.confirm-totals {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+.confirm-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+}
+.confirm-grand {
+    border-top: 1px solid rgba(77, 70, 58, 0.3);
+    padding-top: 0.6rem;
+    margin-top: 0.2rem;
+}
+
+/* ════ 成功 Modal ════ */
+.success-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9800;
+    background: rgba(24, 11, 6, 0.88);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+.success-card {
+    background: #271813;
+    border: 1px solid rgba(77, 70, 58, 0.45);
+    border-radius: 0.75rem;
+    padding: 2.5rem 2rem;
+    max-width: 400px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: center;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
+}
+.success-icon {
+    font-size: 3rem;
+    margin-bottom: 0.25rem;
+}
+.success-title {
+    font-size: 1.7rem;
+    font-style: italic;
+    color: #e3c76b;
+    margin: 0;
+}
+.success-sub {
+    font-size: 0.75rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(208, 197, 181, 0.4);
+    margin: 0.5rem 0 0;
+}
+.success-number {
+    font-family: 'Work Sans', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.2em;
+    color: #f9ddd3;
+    margin: 0;
+}
+.success-info-box {
+    width: 100%;
+    margin-top: 0.75rem;
+    background: rgba(24, 11, 6, 0.5);
+    border: 1px solid rgba(77, 70, 58, 0.35);
+    border-radius: 0.4rem;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.success-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+}
+.success-close-btn {
+    margin-top: 1rem;
+    width: 100%;
+    padding: 0.85rem;
+    background: linear-gradient(135deg, #e3c76b, #c6ab53);
+    color: #3b2f00;
+    border: none;
+    border-radius: 0.25rem;
+    font-size: 0.85rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: filter 0.2s;
+}
+.success-close-btn:hover {
+    filter: brightness(1.1);
+}
+
+/* ════ 手機底部列 ════ */
+.mobile-bottom-bar {
+    display: none;
+}
+.mobile-overlay {
+    display: none;
+}
+.mobile-cat-bar {
+    display: none;
+}
+
+/* ════ 通用元件 ════ */
+.feather-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #e4c285 50%, transparent);
+    position: relative;
+}
+.feather-divider::after {
+    content: '◈';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: #e4c285;
+    font-size: 0.7rem;
+    background: #1e100b;
+    padding: 0 0.65rem;
+}
+.section-title {
+    font-family: 'Noto Serif TC', serif;
+    font-style: italic;
+    font-size: 2rem;
+    color: #e3c76b;
+    padding-top: 1.5rem;
+    margin-bottom: 0.85rem;
+}
+.status-msg {
+    text-align: center;
+    padding: 5rem 1rem;
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    color: rgba(249, 221, 211, 0.4);
+}
+.input-line {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(77, 70, 58, 0.5);
+    color: #f9ddd3;
+    outline: none;
+    padding: 0.25rem 0.5rem;
+    width: 100%;
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    transition: border-color 0.25s;
+}
+.input-line:focus {
+    border-bottom-color: rgba(227, 199, 107, 0.7);
+}
+.input-line::placeholder {
+    color: rgba(208, 197, 181, 0.3);
+}
+.note-textarea {
+    width: 100%;
+    background: transparent;
+    border: 1px solid rgba(77, 70, 58, 0.35);
+    border-radius: 0.2rem;
+    color: #f9ddd3;
+    font-size: 0.88rem;
+    padding: 0.4rem 0.6rem;
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    outline: none;
+    transition: border-color 0.25s;
+}
+.note-textarea:focus {
+    border-color: rgba(227, 199, 107, 0.4);
+}
+.note-textarea::placeholder {
+    color: rgba(208, 197, 181, 0.3);
+}
+
+/* Submit / Clear buttons */
+.submit-btn {
+    background: linear-gradient(135deg, #e3c76b 0%, #c6ab53 100%);
+    color: #3b2f00;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: filter 0.2s;
+    letter-spacing: 0.18em;
+}
+.submit-btn:hover:not(:disabled) {
+    filter: brightness(1.08);
+}
+.submit-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+.clear-btn {
+    background: transparent;
+    border: 1px solid rgba(77, 70, 58, 0.4);
+    color: rgba(208, 197, 181, 0.4);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.25s;
+}
+.clear-btn:hover {
+    border-color: rgba(255, 100, 100, 0.4);
+    color: rgba(255, 160, 160, 0.6);
+}
+
+/* Dish rows */
+.dish-row {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    align-items: stretch;
+    background: #362620;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition:
+        transform 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.45s ease;
+}
+.dish-row:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+.dish-row.dish-row-grid {
+    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.dish-img {
+    width: 160px;
+    height: 120px;
+    object-fit: cover;
+    align-self: center;
+    display: block;
+    flex-shrink: 0;
+    transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dish-row:hover .dish-img {
+    transform: scale(1.05);
+}
+.dish-row-grid .dish-img {
+    width: 100%;
+    height: 140px;
+}
+.dish-img-placeholder {
+    width: 160px;
+    height: 120px;
+    align-self: center;
+    background: #2b1c16;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: rgba(208, 197, 181, 0.15);
+    font-size: 1.8rem;
+}
+.dish-row-grid .dish-img-placeholder {
+    width: 100%;
+    height: 140px;
+}
+.dish-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.75rem;
+}
+.dish-content-grid {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+}
+.dish-name {
+    font-size: 1.4rem;
+}
+.dish-row-grid .dish-name {
+    font-size: 1.285rem;
+    text-align: center;
+    width: 100%;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.dish-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin: 0.4rem 0;
+}
+.dish-content-grid .dish-badges {
+    justify-content: center;
+}
+.grid-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 0.75rem;
+    border-top: 1px solid rgba(77, 70, 58, 0.25);
+}
+.grid-price {
+    color: #d5b478;
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    text-align: center;
+}
+.list-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: auto;
+    padding-top: 0.4rem;
+}
+.qty-col {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4rem;
+}
+.qty-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.8rem;
+    margin-top: auto;
+}
+.qty-num {
+    color: #f9ddd3;
+    width: 40px;
+    text-align: center;
+}
+.qty-num.active {
+    color: #e3c76b;
+}
+.dishes-wrap.grid-view {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+}
+.qty-btn {
+    width: 30px;
+    height: 30px;
+    border: 1px solid rgba(77, 70, 58, 0.7);
+    background: #2b1c16;
+    color: #f9ddd3;
+    border-radius: 0.125rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    line-height: 1;
+    transition:
+        border-color 0.3s,
+        color 0.3s;
+}
+.qty-btn:hover {
+    border-color: #e3c76b;
+    color: #e3c76b;
+}
+.qty-btn-order {
+    width: 24px;
+    height: 24px;
+    border: 1px solid rgba(77, 70, 58, 0.6);
+    background: #2b1c16;
+    color: #f9ddd3;
+    border-radius: 0.125rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    line-height: 1;
+    transition:
+        border-color 0.3s,
+        color 0.3s;
+    flex-shrink: 0;
+}
+.qty-btn-order:hover {
+    border-color: #e3c76b;
+    color: #e3c76b;
+}
+.chip-label {
+    font-family: 'Work Sans', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(208, 197, 181, 0.45);
+    white-space: nowrap;
+    flex-shrink: 0;
+    align-self: center;
+}
+.chip-btn {
+    font-family: 'Work Sans', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0.28rem 0.8rem;
+    border-radius: 0.75rem;
+    background: #5d4514;
+    color: #e4c285;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.3s;
+    user-select: none;
+}
+.chip-btn.active {
+    background: rgba(227, 199, 107, 0.12);
+    border-color: rgba(227, 199, 107, 0.45);
+    color: #e3c76b;
+}
+.view-btn {
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: 1px solid rgba(77, 70, 58, 0.5);
+    color: rgba(208, 197, 181, 0.45);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s;
+}
+.view-btn.active {
+    border-color: rgba(227, 199, 107, 0.5);
+    color: #e3c76b;
+    background: rgba(227, 199, 107, 0.06);
+}
+
+/* Order item 共用 */
+.order-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(77, 70, 58, 0.25);
+}
+.order-item:last-child {
+    border-bottom: none;
+}
+.setmeal-order-item {
+    background: rgba(227, 199, 107, 0.03);
+    border-left: 2px solid rgba(227, 199, 107, 0.25);
+}
+.setmeal-badge {
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: rgba(227, 199, 107, 0.7);
+    margin-bottom: 0.1rem;
+}
+.setmeal-subitems {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+    margin-top: 0.15rem;
+}
+.setmeal-subitem {
+    font-size: 0.68rem;
+    color: rgba(208, 197, 181, 0.5);
+    letter-spacing: 0.04em;
+}
+.gift-order-item {
+    background: rgba(163, 217, 119, 0.04);
+}
+.gift-order-badge {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    color: #a3d977;
+    background: rgba(163, 217, 119, 0.12);
+    border: 1px solid rgba(163, 217, 119, 0.3);
+    border-radius: 0.2rem;
+    padding: 0.05rem 0.35rem;
+    display: inline-block;
+}
+.order-item-top {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.order-item-note {
+    font-size: 1rem;
+    color: rgba(208, 197, 181, 0.45);
+    margin: 0;
+    padding-left: 0.1rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+.order-item-name-wrap {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.2rem;
+    margin: -0.1rem -0.2rem;
+    transition: background 0.15s;
+}
+.order-item-name-wrap:hover {
+    background: rgba(227, 199, 107, 0.07);
+}
+.order-item-name {
+    margin: 0.1rem 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 1rem;
+}
+.order-item-right {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+.order-item-price {
+    padding-right: 0.6rem;
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    color: #d5b478;
+    white-space: nowrap;
+}
+.order-item-qty {
+    font-size: 1rem;
+    width: 1.5rem;
+    text-align: center;
+}
+.candle-glow {
+    background: radial-gradient(
+        ellipse 80% 60% at 50% 0%,
+        rgba(227, 199, 107, 0.1) 0%,
+        transparent 70%
+    );
+}
+
+/* 活動提示 */
+.notify-events {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.notify-event-card {
+    border-radius: 0.4rem;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid rgba(77, 70, 58, 0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.notify-event-card.near-threshold {
+    background: rgba(42, 30, 16, 0.8);
+    border-color: rgba(255, 160, 80, 0.3);
+}
+.notify-event-card.eligible {
+    background: rgba(30, 45, 26, 0.8);
+    border-color: rgba(163, 217, 119, 0.35);
+}
+.notify-event-card.guest-login-hint {
+    background: rgba(30, 25, 16, 0.8);
+    border-color: rgba(227, 199, 107, 0.25);
+}
+.notify-event-top {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.notify-event-icon {
+    font-size: 0.9rem;
+}
+.notify-event-title {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: rgba(208, 197, 181, 0.8);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.notify-event-badge {
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    padding: 0.05rem 0.35rem;
+    border-radius: 0.2rem;
+}
+.eligible-badge {
+    background: rgba(163, 217, 119, 0.15);
+    color: #a3d977;
+    border: 1px solid rgba(163, 217, 119, 0.3);
+}
+.near-badge {
+    background: rgba(255, 160, 80, 0.12);
+    color: #ff9f4a;
+    border: 1px solid rgba(255, 160, 80, 0.25);
+}
+.notify-event-desc {
+    font-size: 0.75rem;
+    color: rgba(208, 197, 181, 0.55);
+    margin: 0;
+    font-style: italic;
+}
+.applied-event-tag {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    background: rgba(227, 199, 107, 0.06);
+    border: 1px solid rgba(227, 199, 107, 0.2);
+    border-radius: 0.35rem;
+    padding: 0.45rem 0.65rem;
+    margin-bottom: 0.25rem;
+}
+.applied-event-icon {
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+}
+.applied-event-text {
+    font-size: 0.72rem;
+    color: rgba(227, 199, 107, 0.8);
+    letter-spacing: 0.05em;
+    line-height: 1.5;
+}
+
+/* Badge */
+.badge {
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    padding: 0.05rem 0.4rem;
+    border-radius: 0.2rem;
+    font-family: 'Work Sans', sans-serif;
+}
+.badge-new {
+    background: rgba(227, 199, 107, 0.15);
+    color: #e3c76b;
+    border: 1px solid rgba(227, 199, 107, 0.3);
+}
+.badge-chef {
+    background: rgba(200, 150, 60, 0.15);
+    color: #c8963c;
+    border: 1px solid rgba(200, 150, 60, 0.3);
+}
+.badge-veg {
+    background: rgba(100, 200, 100, 0.15);
+    color: #7dc97d;
+    border: 1px solid rgba(100, 200, 100, 0.3);
+}
+.badge-spicy {
+    background: rgba(230, 80, 60, 0.15);
+    color: #e85040;
+    border: 1px solid rgba(230, 80, 60, 0.25);
+}
+
+/* Bottom badge */
+.bottom-badge {
+    min-width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 99px;
+    background: linear-gradient(to right, #e3c76b, #c6ab53);
+    color: #3b2f00;
+    font-family: 'Work Sans', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.bottom-cta {
+    background: linear-gradient(to right, #e3c76b, #c6ab53);
+    color: #3b2f00;
+    padding: 0.45rem 1rem;
+    border-radius: 0.125rem;
+}
+
+/* ════ RWD ≤ 1100px ════ */
+@media (max-width: 1100px) {
+    .out-layout {
+        grid-template-columns: 1fr;
+    }
+    .out-sidebar {
+        display: none;
+    }
+    .mobile-cat-bar {
+        display: block;
+        position: sticky;
+        top: 3.5rem;
+        z-index: 50;
+        background: #180b06;
+        border-bottom: 1px solid rgba(77, 70, 58, 0.3);
+    }
+    .mobile-cat-tabs {
+        display: flex;
+        overflow-x: auto;
+        padding: 0.4rem 0.75rem 0.55rem;
+        scrollbar-width: none;
+        gap: 0;
+    }
+    .mobile-cat-tabs::-webkit-scrollbar {
+        display: none;
+    }
+    .mobile-cat-btn {
+        white-space: nowrap;
+        padding: 0.3rem 0.85rem;
+        font-family: 'Work Sans', sans-serif;
+        font-size: 0.68rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(208, 197, 181, 0.5);
+        border: none;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.25s;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+    .mobile-cat-btn.active {
+        color: #e3c76b;
+        border-bottom-color: #e3c76b;
+    }
+    .cat-badge {
+        font-size: 0.55rem;
+        background: rgba(77, 70, 58, 0.5);
+        color: rgba(208, 197, 181, 0.5);
+        border-radius: 99px;
+        padding: 0.05rem 0.35rem;
+    }
+    .mobile-search-wrap {
+        display: flex;
+    }
+    .toolbar {
+        top: calc(3.5rem + 2.1rem);
+    }
+    .out-menu {
+        min-height: auto;
+    }
+    .out-cart {
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+        transform: translateY(100%);
+        transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        border-left: none;
+        border-top: 1px solid rgba(77, 70, 58, 0.4);
+        height: 100%;
+        top: 0;
+    }
+    .out-cart.cart-open {
+        transform: translateY(0);
+    }
+    .cart-close-btn {
+        display: block;
+    }
+    .mobile-bottom-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 80;
+        background: linear-gradient(135deg, #2b1c16 0%, #1e100b 100%);
+        border-top: 1px solid rgba(77, 70, 58, 0.4);
+        padding: 0.85rem 1.25rem;
+        cursor: pointer;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+    }
+    .mobile-overlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        background: rgba(24, 11, 6, 0.78);
+        pointer-events: auto;
+    }
+    .menu-sections {
+        padding: 0 1rem 6rem;
+    }
+    .step-page {
+        padding: 1.5rem 1rem 3rem;
+    }
+    .step-card {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 560px) {
+    .step-banner {
+        padding: 0.65rem 1rem;
+    }
+    .step-lbl {
+        display: none;
+    }
+    .step-card-title {
+        font-size: 1.4rem;
+    }
+}
+</style>

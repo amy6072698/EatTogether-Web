@@ -173,7 +173,6 @@ const navLinks = [
     { label: '訂位', to: '/reservation' },
     { label: '訂位查詢', to: '/reservation/query' },
     { label: '外帶點餐', to: '/takeout' },
-    { label: '內用', to: '/In' },
 ]
 
 function isActive(path) {
