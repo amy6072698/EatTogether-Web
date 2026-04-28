@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { Modal } from 'bootstrap'
 import apiFetch from '@/utils/apiFetch.js'
 import Button from '@/components/common/Button.vue'
+import FormErrorMessage from '@/components/common/FormErrorMessage.vue'
 
 // 'form' | 'success'
 const status = ref('form')
@@ -79,7 +80,7 @@ onMounted(() => {
         aria-hidden="true"
     >
         <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down fp-modal-dialog">
-            <div class="modal-content fp-modal-content">
+            <div class="modal-content modal-eat-content">
                 <button
                     type="button"
                     class="btn-close btn-close-white btn-sm me-2 mt-2 ms-auto"
@@ -113,8 +114,8 @@ onMounted(() => {
                                 id="fp-modal-email"
                                 v-model="email"
                                 type="email"
-                                class="form-eat w-100"
-                                :class="{ 'form-eat--error': emailError }"
+                                class="form-control w-100"
+                                :class="{ 'is-invalid': emailError }"
                                 placeholder="請輸入您的 Email"
                                 autocomplete="email"
                                 :disabled="isLoading"
@@ -123,13 +124,7 @@ onMounted(() => {
                                 :aria-describedby="emailError ? 'fp-modal-email-error' : undefined"
                                 :aria-invalid="emailError ? 'true' : undefined"
                             />
-                            <p
-                                v-if="emailError"
-                                id="fp-modal-email-error"
-                                class="fp-field-error mt-1 mb-0"
-                            >
-                                {{ emailError }}
-                            </p>
+                            <FormErrorMessage :show="!!emailError" :message="emailError" />
                         </div>
 
                         <Button
@@ -170,53 +165,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.fp-modal-dialog {
-    max-width: 480px;
-}
-
-.fp-modal-content {
-    background: var(--eat-surface-container);
-    border: 1px solid var(--eat-outline-variant);
-    border-radius: var(--eat-radius-lg);
-}
-
-.form-eat {
-    background: var(--eat-surface-high);
-    border: 1px solid var(--eat-outline-variant);
-    border-radius: var(--eat-radius-sm);
-    color: var(--eat-on-surface);
-    font-family: var(--font-body);
-    font-size: 1rem;
-    padding: 0.375rem 0.75rem;
-    outline: none;
-    transition: border-color 0.25s;
-    line-height: 1.5;
-}
-
-.form-eat:focus {
-    border-color: var(--eat-primary);
-}
-
-.form-eat--error {
-    border-color: var(--eat-error);
-}
-
-.form-eat::placeholder {
-    color: color-mix(in srgb, var(--eat-on-surface) 35%, transparent);
-}
-
-.form-eat:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.fp-field-error {
-    color: var(--eat-error);
-    font-family: var(--font-label);
-    font-size: 0.75rem;
-    letter-spacing: 0.08em;
-}
-
 .eat-link-btn {
     background: none;
     border: none;
@@ -236,11 +184,5 @@ onMounted(() => {
 
 .fp-back-link {
     font-size: 0.85rem;
-}
-
-.fp-success-icon {
-    font-size: 2.5rem;
-    line-height: 1;
-    color: var(--eat-primary);
 }
 </style>

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
 import apiFetch from '@/utils/apiFetch.js'
 import Button from '@/components/common/Button.vue'
+import FormErrorMessage from '@/components/common/FormErrorMessage.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -131,7 +132,7 @@ onMounted(async () => {
                             </div>
 
                             <!-- 重寄表單 -->
-                            <div v-if="!resendDone">
+                            <div v-if="!resendDone" class="form-eat">
                                 <div class="mb-3">
                                     <label for="resend-email" class="eat-label d-block mb-1"
                                         >Email</label
@@ -140,7 +141,7 @@ onMounted(async () => {
                                         id="resend-email"
                                         v-model="resendEmail"
                                         type="email"
-                                        class="form-control verify-input"
+                                        class="form-control"
                                         placeholder="請輸入您的 Email"
                                         :disabled="resendLoading"
                                         @blur="validateResendEmail"
@@ -150,13 +151,10 @@ onMounted(async () => {
                                         "
                                         :aria-invalid="resendEmailError ? 'true' : undefined"
                                     />
-                                    <p
-                                        v-if="resendEmailError"
-                                        id="resend-email-error"
-                                        class="verify-field-error mt-1 mb-0"
-                                    >
-                                        {{ resendEmailError }}
-                                    </p>
+                                    <FormErrorMessage
+                                        :show="!!resendEmailError"
+                                        :message="resendEmailError"
+                                    />
                                 </div>
                                 <Button
                                     variant="primary"
@@ -206,28 +204,5 @@ onMounted(async () => {
     color: var(--eat-primary);
     width: 3rem;
     height: 3rem;
-}
-
-.verify-input {
-    background: var(--eat-surface-high);
-    border-color: var(--eat-outline-variant);
-    color: var(--eat-on-surface);
-}
-
-.verify-input:focus {
-    background: var(--eat-surface-high);
-    border-color: var(--eat-primary);
-    box-shadow: 0 0 0 0.2rem rgba(227, 199, 107, 0.2);
-    color: var(--eat-on-surface);
-}
-
-.verify-input:disabled {
-    opacity: 0.6;
-}
-
-.verify-field-error {
-    font-size: 0.8rem;
-    color: var(--eat-error);
-    font-family: var(--font-label);
 }
 </style>

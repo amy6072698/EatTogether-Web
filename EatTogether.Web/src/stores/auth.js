@@ -7,15 +7,15 @@ const INITIAL_MEMBER = () => ({
     name: '',
     email: '',
     avatarFileName: null,
-    hashedPasswordStatus: '',   // 'HAS_PASSWORD' | 'EXTERNAL_LOGIN_NO_PASSWORD'
+    hashedPasswordStatus: '', // 'HAS_PASSWORD' | 'EXTERNAL_LOGIN_NO_PASSWORD'
     googleLinked: false,
 })
 
 export const useAuthStore = defineStore('auth', () => {
     // ── State ──────────────────────────────────────────────
-    const member     = ref(INITIAL_MEMBER())
+    const member = ref(INITIAL_MEMBER())
     const isLoggedIn = ref(false)
-    const isLoading  = ref(false)
+    const isLoading = ref(false)
 
     // ── Getters ────────────────────────────────────────────
     /** 取 member.name 第一個字元，未登入或 name 為空時回傳空字串 */
@@ -38,6 +38,22 @@ export const useAuthStore = defineStore('auth', () => {
      * apiFetch 若遇網路錯誤會 throw，此處 catch 後靜默清空，不讓錯誤繼續往上傳
      */
     async function fetchMe() {
+        // ── 開發 mock（後端 MembersController 完成後移除此 mock）──────
+        // TODO: MembersController 完成後移除此 mock
+        if (import.meta.env.DEV) {
+            member.value = {
+                id: 1,
+                name: '測試會員',
+                email: 'test@example.com',
+                avatarFileName: null,
+                hashedPasswordStatus: 'HAS_PASSWORD',
+                googleLinked: false,
+            }
+            isLoggedIn.value = true
+            return
+        }
+        // ────────────────────────────────────────────────────────────────
+
         isLoading.value = true
         try {
             const res = await apiFetch('/members/me')
