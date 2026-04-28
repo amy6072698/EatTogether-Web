@@ -87,7 +87,9 @@
                 <!-- 會員 -->
                 <div
                     class="dh-member dh-member-btn"
-                    @click.stop="memberDropdownOpen = !memberDropdownOpen"
+                    @click.stop="
+                        isLoggedIn ? (memberDropdownOpen = !memberDropdownOpen) : openAuthModal()
+                    "
                 >
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -116,8 +118,12 @@
                         />
                     </svg>
                     <!-- 下拉選單 -->
-                    <div v-if="memberDropdownOpen" class="member-dropdown" @click.stop="">
-                        <button class="member-dropdown-item font-label" @click="openSwitchAccount">
+                    <div
+                        v-if="memberDropdownOpen && isLoggedIn"
+                        class="member-dropdown"
+                        @click.stop=""
+                    >
+                        <button class="member-dropdown-item font-label" @click="openAuthModal">
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 width="13"
@@ -638,15 +644,21 @@
                                 :key="'f-' + f.dishId"
                                 class="setmeal-subitem-row"
                             >
-                                <span class="font-label setmeal-subitem-name">{{ f.dishName }}</span>
-                                <span class="font-label setmeal-subitem-qty">× {{ f.quantity }}</span>
+                                <span class="font-label setmeal-subitem-name">{{
+                                    f.dishName
+                                }}</span>
+                                <span class="font-label setmeal-subitem-qty"
+                                    >× {{ f.quantity }}</span
+                                >
                             </div>
                             <div
                                 v-for="s in item.setMealData?.selectedOptions"
                                 :key="'s-' + s.dishId"
                                 class="setmeal-subitem-row"
                             >
-                                <span class="font-label setmeal-subitem-name">{{ s.dishName }}</span>
+                                <span class="font-label setmeal-subitem-name">{{
+                                    s.dishName
+                                }}</span>
                                 <span class="font-label setmeal-subitem-qty">× {{ s.qty }}</span>
                             </div>
                         </div>
@@ -995,13 +1007,8 @@
             </div>
         </Teleport>
 
-        <!-- Auth Modal -->
-        <AuthModal
-            v-if="authModalVisible"
-            :initial-step="authModalInitStep"
-            @guest="onGuestOrder"
-            @logged-in="onLoggedIn"
-        />
+        <!-- 選擇登入 or 訪客 Modal -->
+        <OrderAuthModal v-if="authModalVisible" @login="openAuthModal" @guest="onGuestOrder" />
 
         <!-- Detail Modal -->
         <DishDetailModal
@@ -1090,16 +1097,16 @@
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useOrderStore } from '@/stores/order'
+import { useAuthStore } from '@/stores/auth'
 import apiFetch from '@/utils/apiFetch'
-import DishDetailModal from '@/components/Order/DishDetailModal.vue'
-import SetMealSelectModal from '@/components/Order/SetMealSelectModal.vue'
-import OrderSuccessModal from '@/components/Order/OrderSuccessModal.vue'
-import AuthModal from '@/components/Order/OrderAuthModal.vue'
+import DishDetailModal from '@/components/order/DishDetailModal.vue'
+import SetMealSelectModal from '@/components/order/SetMealSelectModal.vue'
+import OrderSuccessModal from '@/components/order/OrderSuccessModal.vue'
 
 const route = useRoute()
 const store = useOrderStore()
+const authStore = useAuthStore()
 const tableId = ref('')
-const memberName = ref('訪客') // TODO: 串接登入資訊後替換
 
 const imgErrors = reactive(new Set()) // 圖片完全載入失敗的 productId
 const imgFallback = reactive(new Map()) // productId → fallback URL（jpg→png）
@@ -1132,27 +1139,19 @@ let paxErrorTimer = null
 const tableStatus = ref(route.query.table ? 'checking' : 'no-table')
 const tableNameFromUrl = route.query.table || '' // e.g. "B3"
 
-// ── 身份驗證
-const authModalVisible = ref(false)
-const authModalInitStep = ref('choice') // 'choice' | 'login'
-const memberDropdownOpen = ref(false) // Header 會員下拉選單
-const isLoggedIn = ref(false) // -----前台點餐頁用----- 是否已登入會員
-const currentMemberId = ref(null) // -----前台點餐頁用----- 當前會員 ID（訪客為 null）
+// ── 身份驗證（使用全域 authStore）
+const memberDropdownOpen = ref(false)
+const authModalVisible = ref(false) // OrderAuthModal（選擇登入 or 訪客）
+const isLoggedIn = computed(() => authStore.isLoggedIn)
+const memberName = computed(() => authStore.member?.name || '訪客')
+const currentMemberId = computed(() => authStore.member?.id ?? null)
 
 // ── 會員收藏
 const favoriteProducts = ref([])
 
-// async function loadFavorites() {
-//   try {
-//     const res = await apiFetch('/Orders/Favorites');
-//     if (res.ok) favoriteProducts.value = await res.json();
-//   } catch {}
-// }
-// 先這樣
-async function loadFavorites(memberId = null) {
+async function loadFavorites() {
     try {
-        const url = memberId ? `/Orders/Favorites?memberId=${memberId}` : '/Orders/Favorites'
-        const res = await apiFetch(url)
+        const res = await apiFetch('/Orders/Favorites')
         if (res.ok) favoriteProducts.value = await res.json()
     } catch {}
 }
@@ -1160,12 +1159,9 @@ async function loadFavorites(memberId = null) {
 // 歷史訂單
 const orderHistory = ref([])
 
-async function loadOrderHistory(memberId = null) {
+async function loadOrderHistory() {
     try {
-        const url = memberId
-            ? `/Orders/MemberOrderHistory?memberId=${memberId}`
-            : '/Orders/MemberOrderHistory'
-        const res = await apiFetch(url)
+        const res = await apiFetch('/Orders/MemberOrderHistory')
         if (res.ok) orderHistory.value = await res.json()
     } catch {}
 }
@@ -1217,56 +1213,43 @@ async function applyCoupon() {
     }
 }
 
-// ── 身份驗證：嘗試用現有 cookie token 驗證，失敗則顯示 Modal ──
-// TODO: 之後接組員的會員登入頁，改回真實 JWT 驗證
-async function checkAuth() {
-    try {
-        const res = await apiFetch('/Auth/Me')
-        if (res.ok) {
-            const data = await res.json()
-            memberName.value = data.name || '會員'
-            loadFavorites()
-            loadOrderHistory()
-        } else {
-            // 401 → token 無效，顯示選擇 Modal
-            authModalInitStep.value = 'choice'
-            authModalVisible.value = true
-        }
-    } catch {
-        // 網路異常也顯示 Modal（讓使用者選訪客）
-        authModalInitStep.value = 'choice'
-        authModalVisible.value = true
+// ── 開啟全域登入 Modal（Bootstrap #authModal）
+function openAuthModal() {
+    memberDropdownOpen.value = false
+    authModalVisible.value = false // 先關閉選擇 Modal
+    const modalEl = document.querySelector('#authModal')
+    if (modalEl) {
+        import('bootstrap').then(({ Modal }) => {
+            Modal.getOrCreateInstance(modalEl).show()
+        })
     }
 }
 
+// ── 以訪客繼續（關閉選擇 Modal 即可）
 function onGuestOrder() {
     authModalVisible.value = false
-    memberName.value = '訪客'
-    isLoggedIn.value = false
-    currentMemberId.value = null
 }
 
-function onLoggedIn(data) {
-    authModalVisible.value = false
-    memberName.value = data.name || data.memberName || data.email || '會員'
-    isLoggedIn.value = true
-    currentMemberId.value = data.memberId ?? null
-    loadFavorites(data.memberId)
-    loadOrderHistory(data.memberId)
-}
-
-function openSwitchAccount() {
-    memberDropdownOpen.value = false
-    authModalInitStep.value = 'login' // 直接跳登入表單
-    authModalVisible.value = true
-}
+// ── 登入狀態變化時，自動載入收藏 / 歷史訂單；登入後關閉選擇 Modal
+watch(
+    isLoggedIn,
+    (loggedIn) => {
+        if (loggedIn) {
+            authModalVisible.value = false
+            loadFavorites()
+            loadOrderHistory()
+        } else {
+            favoriteProducts.value = []
+            orderHistory.value = []
+            authModalVisible.value = true // 未登入就顯示選擇 Modal
+        }
+    },
+    { immediate: true }
+)
 
 // ── 此頁為全螢幕版面，移除全域 body padding（Navbar 已隱藏）──
 onMounted(async () => {
     document.body.style.paddingTop = '0'
-
-    // 先驗證身份（非同步，不阻塞菜單載入）
-    checkAuth()
 
     try {
         const [menuRes, tablesRes] = await Promise.all([
@@ -1769,24 +1752,28 @@ async function submitOrder() {
                             parentIndex: null,
                         })
                         for (const f of i.setMealData?.fixedItems ?? []) {
-                            result.push({
-                                productId: 0,
-                                productName: f.dishName,
-                                qty: f.quantity,
-                                unitPrice: 0,
-                                isSetMeal: true,
-                                parentIndex: parentIdx,
-                            })
+                            for (let q = 0; q < (f.quantity || 1); q++) {
+                                result.push({
+                                    productId: 0,
+                                    productName: f.dishName,
+                                    qty: 1,
+                                    unitPrice: 0,
+                                    isSetMeal: true,
+                                    parentIndex: parentIdx,
+                                })
+                            }
                         }
                         for (const s of i.setMealData?.selectedOptions ?? []) {
-                            result.push({
-                                productId: 0,
-                                productName: s.dishName,
-                                qty: s.qty,
-                                unitPrice: 0,
-                                isSetMeal: true,
-                                parentIndex: parentIdx,
-                            })
+                            for (let q = 0; q < (s.qty || 1); q++) {
+                                result.push({
+                                    productId: 0,
+                                    productName: s.dishName,
+                                    qty: 1,
+                                    unitPrice: 0,
+                                    isSetMeal: true,
+                                    parentIndex: parentIdx,
+                                })
+                            }
                         }
                     } else {
                         result.push({
@@ -3022,7 +3009,7 @@ html:has(.gate-wrap) footer {
     min-width: 0;
     cursor: pointer;
     border-radius: 0.25rem;
-    padding: 0.1rem 1rem;
+    padding: 0.1rem 0.1rem;
     margin: -0.1rem -0.2rem;
     transition: background 0.15s;
 }

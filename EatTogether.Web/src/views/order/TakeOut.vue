@@ -404,7 +404,7 @@
                         ]"
                         @change="pickupError = false"
                     >
-                        <option value="" disabled>選擇時段…</option>
+                        <option value="" disabled style="padding: 0">選擇時段…</option>
                         <option v-for="slot in pickupTimeOptions" :key="slot" :value="slot">
                             {{ slot }}
                         </option>
@@ -635,33 +635,6 @@
                                     可享 {{ bestAutoEvent.discountDescription }}）</span
                                 >
                             </div>
-                            <!-- 外帶折扣 -->
-                            <div
-                                style="
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
-                                "
-                            >
-                                <span
-                                    class="font-label"
-                                    style="
-                                        font-size: 0.8rem;
-                                        color: rgba(163, 217, 119, 0.8);
-                                        letter-spacing: 0.06em;
-                                    "
-                                    >外帶折扣</span
-                                >
-                                <span
-                                    class="font-label"
-                                    style="
-                                        font-size: 0.8rem;
-                                        color: #a3d977;
-                                        letter-spacing: 0.06em;
-                                    "
-                                    >－ NT$ {{ takeoutDiscount.toLocaleString() }} (5%)</span
-                                >
-                            </div>
                             <!-- 活動折扣 -->
                             <div
                                 v-if="isLoggedIn && autoEventDiscount > 0"
@@ -878,14 +851,6 @@
                             >NT$ {{ total.toLocaleString() }}</span
                         >
                     </div>
-                    <div style="display: flex; justify-content: space-between">
-                        <span class="font-label" style="color: #a3d977; font-size: 0.8rem"
-                            >外帶折扣 (5%)</span
-                        >
-                        <span class="font-label" style="color: #a3d977; font-size: 0.8rem"
-                            >－ NT$ {{ takeoutDiscount.toLocaleString() }}</span
-                        >
-                    </div>
                     <div
                         v-if="isLoggedIn && autoEventDiscount > 0"
                         style="display: flex; justify-content: space-between"
@@ -1047,12 +1012,6 @@
                     <div class="confirm-total-row">
                         <span class="font-label" style="color: rgba(208, 197, 181, 0.6)">小計</span>
                         <span class="font-label">NT$ {{ total.toLocaleString() }}</span>
-                    </div>
-                    <div class="confirm-total-row">
-                        <span class="font-label" style="color: #a3d977">外帶折扣 (5%)</span>
-                        <span class="font-label" style="color: #a3d977"
-                            >－ NT$ {{ takeoutDiscount.toLocaleString() }}</span
-                        >
                     </div>
                     <div v-if="isLoggedIn && bestAutoEvent" class="confirm-total-row">
                         <span
@@ -1274,7 +1233,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { useOrderStore } from '@/stores/order'
 import { useAuthStore } from '@/stores/auth'
 import apiFetch from '@/utils/apiFetch'
@@ -1395,7 +1354,6 @@ function pushToast(ev, opts = {}) {
 }
 
 // ── Computed ─────────────────────────────────────────
-const TAKEOUT_RATE = 0.05
 
 const cartItemsWithDetails = computed(() =>
     store.lines
@@ -1422,8 +1380,6 @@ const total = computed(() =>
     cartItemsWithDetails.value.reduce((s, i) => s + i.unitPrice * i.qty, 0)
 )
 
-const takeoutDiscount = computed(() => Math.round(total.value * TAKEOUT_RATE))
-
 const bestAutoEvent = computed(() => {
     if (!autoEvents.value.length) return null
     return [...autoEvents.value].sort((a, b) =>
@@ -1438,10 +1394,7 @@ const autoEventDiscount = computed(() =>
 )
 
 const finalTotal = computed(() =>
-    Math.max(
-        0,
-        total.value - takeoutDiscount.value - couponDiscount.value - autoEventDiscount.value
-    )
+    Math.max(0, total.value - couponDiscount.value - autoEventDiscount.value)
 )
 
 // ── 分類 Computed ─────────────────────────────────────
@@ -1688,6 +1641,7 @@ function toggleChip(c) {
 function scrollToSection(cat) {
     activeSidebarCat.value = cat
     searchQuery.value = ''
+    // menu 本身是捲動容器，捲回頂部
     document.getElementById('outMenuMain')?.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
@@ -1796,24 +1750,28 @@ async function submitOrder() {
                         parentIndex: null,
                     })
                     for (const f of i.setMealData?.fixedItems ?? []) {
-                        result.push({
-                            productId: 0,
-                            productName: f.dishName,
-                            qty: f.quantity,
-                            unitPrice: 0,
-                            isSetMeal: true,
-                            parentIndex: parentIdx,
-                        })
+                        for (let q = 0; q < (f.quantity || 1); q++) {
+                            result.push({
+                                productId: 0,
+                                productName: f.dishName,
+                                qty: 1,
+                                unitPrice: 0,
+                                isSetMeal: true,
+                                parentIndex: parentIdx,
+                            })
+                        }
                     }
                     for (const s of i.setMealData?.selectedOptions ?? []) {
-                        result.push({
-                            productId: 0,
-                            productName: s.dishName,
-                            qty: s.qty,
-                            unitPrice: 0,
-                            isSetMeal: true,
-                            parentIndex: parentIdx,
-                        })
+                        for (let q = 0; q < (s.qty || 1); q++) {
+                            result.push({
+                                productId: 0,
+                                productName: s.dishName,
+                                qty: 1,
+                                unitPrice: 0,
+                                isSetMeal: true,
+                                parentIndex: parentIdx,
+                            })
+                        }
                     }
                 } else {
                     result.push({
@@ -1852,10 +1810,7 @@ async function submitOrder() {
             customerName: customerName.value.trim(),
             customerPhone: customerPhone.value.trim(),
             couponId: couponId.value,
-            discountAmount:
-                (couponOk.value ? couponDiscount.value : 0) +
-                takeoutDiscount.value +
-                autoEventDiscount.value,
+            discountAmount: (couponOk.value ? couponDiscount.value : 0) + autoEventDiscount.value,
             items: itemsPayload,
         }
 
@@ -1915,6 +1870,18 @@ function resolveImage(url) {
 }
 
 onMounted(async () => {
+    // 量 navbar + step-banner 真實高度，設成 CSS 變數供各欄位定位用
+    const navbar = document.querySelector('nav.navbar-eat') ?? document.querySelector('.navbar')
+    const banner = document.querySelector('.step-banner')
+    if (navbar) {
+        const navH = Math.ceil(navbar.getBoundingClientRect().height)
+        document.documentElement.style.setProperty('--navbar-h', `${navH}px`)
+        // step-banner 在 navbar 正下方，量好後算出總固定高度
+        await nextTick()
+        const banH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 73
+        document.documentElement.style.setProperty('--top-fixed', `${navH + banH}px`)
+    }
+
     try {
         const res = await apiFetch('/Orders/MenuItems')
         if (!res.ok) throw new Error()
@@ -2066,37 +2033,43 @@ onMounted(async () => {
     color: #f9ddd3;
     font-family: 'Newsreader', serif;
     min-height: 100vh;
+    padding-top: calc(61px); /* navbar + step-banner */
 }
 
 /* ════ Step Banner ════ */
 .step-banner {
     background: #180b06;
     border-bottom: 1px solid rgba(77, 70, 58, 0.3);
-    padding: 0.85rem 2rem;
+    padding: 1rem 2.5rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 0.75rem;
-    position: sticky;
-    top: 0;
+    position: fixed;
+    top: var(--navbar-h, 80px);
+    left: 0;
+    right: 0;
     z-index: 60;
 }
 .step-items {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    flex: 1;
+    width: 100%;
 }
 .step-dot {
-    width: 28px;
-    height: 28px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-family: 'Work Sans', sans-serif;
-    font-size: 0.7rem;
-    border: 1px solid rgba(77, 70, 58, 0.6);
+    font-size: 0.95rem;
+    font-weight: 600;
+    border: 1.5px solid rgba(77, 70, 58, 0.6);
     color: rgba(208, 197, 181, 0.4);
     background: #2b1c16;
     transition: all 0.35s;
@@ -2113,15 +2086,14 @@ onMounted(async () => {
     color: #3b2f00;
 }
 .step-line {
-    width: 2rem;
+    flex: 1;
     height: 1px;
-    background: rgba(77, 70, 58, 0.5);
-    flex-shrink: 0;
+    background: rgba(77, 70, 58, 0.45);
 }
 .step-lbl {
     font-family: 'Work Sans', sans-serif;
-    font-size: 0.65rem;
-    letter-spacing: 0.16em;
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: rgba(208, 197, 181, 0.4);
     white-space: nowrap;
@@ -2149,7 +2121,7 @@ onMounted(async () => {
 .out-layout {
     display: grid;
     grid-template-columns: 200px 1fr 360px;
-    min-height: calc(100vh - 3.5rem);
+    min-height: calc(100vh - var(--top-fixed, 153px));
     align-items: start;
 }
 
@@ -2158,8 +2130,8 @@ onMounted(async () => {
     background: #180b06;
     border-right: 1px solid rgba(77, 70, 58, 0.2);
     position: sticky;
-    top: 3.5rem;
-    height: calc(100vh - 3.5rem);
+    top: var(--top-fixed, 153px);
+    height: calc(100vh - var(--top-fixed, 153px));
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -2182,7 +2154,7 @@ onMounted(async () => {
     gap: 0.75rem;
     padding: 0.6rem 1.25rem;
     font-family: 'Work Sans', sans-serif;
-    font-size: 0.9rem;
+    font-size: 1.2rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: rgba(208, 197, 181, 0.6);
@@ -2224,7 +2196,8 @@ onMounted(async () => {
 /* ── Centre: Menu ── */
 .out-menu {
     background: #1e100b;
-    min-height: calc(100vh - 3.5rem);
+    min-height: calc(100vh - var(--top-fixed, 153px));
+    overflow-x: hidden;
 }
 .menu-sections {
     padding: 0 1.5rem 4rem;
@@ -2233,7 +2206,7 @@ onMounted(async () => {
 /* Toolbar */
 .toolbar {
     position: sticky;
-    top: 3.5rem;
+    top: 0; /* sticky 在 .out-menu 捲動容器內 */
     z-index: 20;
     background: #1e100b;
     border-bottom: 1px solid rgba(77, 70, 58, 0.25);
@@ -2272,8 +2245,8 @@ onMounted(async () => {
     background: #180b06;
     border-left: 1px solid rgba(77, 70, 58, 0.2);
     position: sticky;
-    top: 3.5rem;
-    height: calc(100vh - 3.5rem);
+    top: var(--top-fixed, 153px);
+    height: calc(100vh - var(--top-fixed, 153px));
     display: flex;
     flex-direction: column;
     overflow: hidden;
