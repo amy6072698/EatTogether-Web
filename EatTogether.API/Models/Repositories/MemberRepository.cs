@@ -50,12 +50,21 @@ namespace EatTogether.API.Models.Repositories
 		Task ConfirmMemberAndMarkTokenUsedAsync(int memberId, int tokenId);
 		Task UpdateEmailAndMarkTokenUsedAsync(int memberId, string newEmail, int tokenId);
 		Task MarkOldConfirmTokensUsedAsync(int memberId);
+		Task MarkOldEmailChangeTokensUsedAsync(int memberId);
 		Task<Member?> GetMemberByIdAsync(int id);
 
 		// -----前台 Google OAuth 用------------------------------
 		Task<MemberExternalLogin?> GetExternalLoginAsync(string provider, string providerUserId);
 		Task CreateExternalLoginAsync(MemberExternalLogin login);
 		Task<MemberExternalLogin?> GetExternalLoginByMemberIdAsync(int memberId, string provider);
+
+		// -----前台個人資料用------------------------------
+		Task UpdateProfileAsync(int memberId, string name, string? phone, DateOnly? birthDate);
+		Task UpdateAvatarAsync(int memberId, string avatarFileName);
+		Task UpdateAccountAsync(int memberId, string account, string hashedPassword);
+		Task DeleteExternalLoginAsync(int memberId);
+		Task SoftDeleteMemberAsync(int memberId);
+		Task<bool> IsEmailExistsForOtherAsync(int memberId, string email);
 	}
 
 	public class MemberRepository : IMemberRepository
@@ -227,6 +236,19 @@ namespace EatTogether.API.Models.Repositories
 			await _context.SaveChangesAsync();
 		}
 
+		// 申請 Email 變更前呼叫，將同一會員舊的未使用 Email 變更 token 標為已使用，
+		// 確保同一時間只有最新的連結有效
+		public async Task MarkOldEmailChangeTokensUsedAsync(int memberId)
+		{
+			var tokens = await _context.MemberConfirmTokens
+				.Where(t => t.MemberId == memberId && !t.IsUsed && t.NewEmail != null)
+				.ToListAsync();
+			if (tokens.Count == 0) return;
+			foreach (var t in tokens)
+				t.IsUsed = true;
+			await _context.SaveChangesAsync();
+		}
+
 		public async Task<Member?> GetMemberByIdAsync(int id)
 		{
 			return await _context.Members.FindAsync(id);
@@ -365,6 +387,61 @@ namespace EatTogether.API.Models.Repositories
 		{
 			return await _context.MemberExternalLogins
 				.FirstOrDefaultAsync(e => e.MemberId == memberId && e.Provider == provider);
+		}
+
+		// -----前台個人資料用------------------------------
+
+		public async Task UpdateProfileAsync(int memberId, string name, string? phone, DateOnly? birthDate)
+		{
+			var member = await _context.Members.FindAsync(memberId);
+			if (member == null) return;
+			member.Name = name;
+			member.Phone = phone;
+			member.BirthDate = birthDate;
+			await _context.SaveChangesAsync();
+		}
+
+		public async Task UpdateAvatarAsync(int memberId, string avatarFileName)
+		{
+			var member = await _context.Members.FindAsync(memberId);
+			if (member == null) return;
+			member.AvatarFileName = avatarFileName;
+			await _context.SaveChangesAsync();
+		}
+
+		public async Task UpdateAccountAsync(int memberId, string account, string hashedPassword)
+		{
+			var member = await _context.Members.FindAsync(memberId);
+			if (member == null) return;
+			member.Account = account;
+			member.HashedPassword = hashedPassword;
+			await _context.SaveChangesAsync();
+		}
+
+		// 硬刪除該會員所有外部登入紀錄（目前僅 Google，未來擴充其他 Provider 時簽名改為傳入 provider）
+		public async Task DeleteExternalLoginAsync(int memberId)
+		{
+			var logins = await _context.MemberExternalLogins
+				.Where(e => e.MemberId == memberId)
+				.ToListAsync();
+			if (logins.Count == 0) return;
+			_context.MemberExternalLogins.RemoveRange(logins);
+			await _context.SaveChangesAsync();
+		}
+
+		public async Task SoftDeleteMemberAsync(int memberId)
+		{
+			var member = await _context.Members.FindAsync(memberId);
+			if (member == null) return;
+			member.IsDeleted = true;
+			member.DeletedAt = DateTime.Now;
+			await _context.SaveChangesAsync();
+		}
+
+		public async Task<bool> IsEmailExistsForOtherAsync(int memberId, string email)
+		{
+			return await _context.Members
+				.AnyAsync(m => m.Email == email && m.Id != memberId);
 		}
 	}
 }

@@ -3,10 +3,10 @@
     <nav class="sidebar d-none d-lg-block">
         <RouterLink
             v-for="item in navItems"
-            :key="item.to"
-            :to="item.to"
+            :key="item.name"
+            :to="{ name: item.name }"
             class="sidebar-item"
-            :class="{ active: route.path === item.to }"
+            exact-active-class="active"
         >
             {{ item.label }}
         </RouterLink>
@@ -16,10 +16,10 @@
     <nav class="tab-bar d-flex d-lg-none">
         <RouterLink
             v-for="item in navItems"
-            :key="item.to"
-            :to="item.to"
+            :key="item.name"
+            :to="{ name: item.name }"
             class="tab-item"
-            :class="{ active: route.path === item.to }"
+            exact-active-class="active"
         >
             {{ item.label }}
         </RouterLink>
@@ -37,19 +37,17 @@
   建議版型結構:
     <div class="d-lg-flex gap-4">
       <MemberSidebar />
-      <div class="flex-grow-1"><!-- 頁面主內容 --></div>
+      <div class="flex-grow-1">頁面主內容</div>
     </div>
 -->
 <script setup>
-import { useRoute } from 'vue-router'
 import { RouterLink } from 'vue-router'
 
-const route = useRoute()
-
 const navItems = [
-    { label: '個人資料', to: '/member' },
-    { label: '收藏餐點', to: '/member/favorites' },
-    { label: '訂單紀錄', to: '/member/orders' },
+    { label: '個人資料', name: 'MemberProfile' },
+    { label: '收藏餐點', name: 'MemberFavorites' },
+    { label: '訂單紀錄', name: 'MemberOrders' },
+    // { label: '我的優惠券', name: 'MyCoupons' }, -> router/index.js 要移到 member 的巢狀路由下才能正常運作
 ]
 </script>
 
@@ -86,11 +84,19 @@ const navItems = [
 
 /* ── 行動版 Tab 列 ── */
 .tab-bar {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox 隱藏滾軸 */
     border-radius: var(--eat-radius-lg);
-    overflow: hidden;
     background: var(--eat-surface-container);
     gap: 0.25rem;
     padding: 0.35rem;
+}
+
+.tab-bar::-webkit-scrollbar {
+    display: none; /* Chrome/Safari 隱藏滾軸 */
 }
 
 .tab-item {
@@ -105,6 +111,7 @@ const navItems = [
     transition:
         background 0.2s ease,
         color 0.2s ease;
+    white-space: nowrap;
 }
 
 .tab-item:hover {

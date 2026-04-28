@@ -23,24 +23,28 @@ const routes = [
         component: () => import('@/views/auth/GoogleCallback.vue'),
     },
 
-    // ── 會員專區（需登入）────────────────────────────────
+    // ── 會員中心（需登入）────────────────────────────────
     {
         path: '/member',
-        name: 'Member',
-        component: () => import('@/views/member/Profile.vue'),
+        component: () => import('@/views/member/MemberLayout.vue'),
         meta: { requiresAuth: true },
-    },
-    {
-        path: '/member/favorites',
-        name: 'MemberFavorites',
-        component: () => import('@/views/member/Favorites.vue'),
-        meta: { requiresAuth: true },
-    },
-    {
-        path: '/member/orders',
-        name: 'MemberOrders',
-        component: () => import('@/views/member/OrderHistory.vue'),
-        meta: { requiresAuth: true },
+        children: [
+            {
+                path: '',
+                name: 'MemberProfile',
+                component: () => import('@/views/member/Profile.vue'),
+            },
+            {
+                path: 'favorites',
+                name: 'MemberFavorites',
+                component: () => import('@/views/member/Favorites.vue'),
+            },
+            {
+                path: 'orders',
+                name: 'MemberOrders',
+                component: () => import('@/views/member/OrderHistory.vue'),
+            },
+        ],
     },
 
     {

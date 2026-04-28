@@ -6,20 +6,21 @@ namespace EatTogether.API.Models.Infra
 	public interface IEmailService
 	{
 		Task SendVerifyEmailAsync(string toEmail, string verifyUrl);
+		Task SendEmailChangeVerifyAsync(string toEmail, string verifyUrl);
 		Task SendPasswordResetEmailAsync(string toEmail, string resetUrl);
 		Task SendSecurityNoticeAsync(string toEmail, string action);
 
 		// ── 訂位相關 ──
 		Task SendReservationConfirmAsync(string toEmail, string name, string bookingNumber,
-		    DateTime reservationDate, int adults, int children);
+			DateTime reservationDate, int adults, int children);
 		Task SendReservationCancelAsync(string toEmail, string name,
-		    string bookingNumber, DateTime reservationDate);
+			string bookingNumber, DateTime reservationDate);
 		Task SendReservationReminderAsync(string toEmail, string name,
-		    string bookingNumber, DateTime reservationDate);
+			string bookingNumber, DateTime reservationDate);
 
 		// ── 優惠券相關 ──
 		Task SendCouponExpiryNotifyAsync(string toEmail, string name,
-		    string couponName, string code, DateTime endDate);
+			string couponName, string code, DateTime endDate);
 	}
 
 	public class EmailService : IEmailService
@@ -91,6 +92,27 @@ namespace EatTogether.API.Models.Infra
 			await smtp.SendMailAsync(message);
 		}
 
+		// 寄出 Email 變更驗證信
+		public async Task SendEmailChangeVerifyAsync(string toEmail, string verifyUrl)
+		{
+			const string subject = "義起吃 - Email 變更驗證";
+			var body = $@"
+<div style=""font-family:sans-serif;max-width:600px;margin:auto;"">
+    <h2 style=""color:#c0392b;"">義起吃 | 義式料理</h2>
+    <p>您好，您申請變更 Email，請點擊下方連結完成驗證，連結有效期限為 15 分鐘。</p>
+    <a href=""{verifyUrl}""
+       style=""display:inline-block;padding:12px 24px;background:#c0392b;color:#fff;
+              text-decoration:none;border-radius:4px;margin:16px 0;"">
+        驗證新 Email
+    </a>
+    <p style=""color:#888;font-size:13px;"">若您未申請此操作，請忽略此信件，您的帳號不會有任何變更。</p>
+</div>";
+
+			using var smtp = BuildSmtpClient();
+			using var message = BuildMailMessage(toEmail, subject, body);
+			await smtp.SendMailAsync(message);
+		}
+
 		// 寄出重設密碼通知信
 		public async Task SendPasswordResetEmailAsync(string toEmail, string resetUrl)
 		{
@@ -137,7 +159,7 @@ namespace EatTogether.API.Models.Infra
 
 		// 寄出訂位確認信
 		public async Task SendReservationConfirmAsync(string toEmail, string name,
-		    string bookingNumber, DateTime reservationDate, int adults, int children)
+			string bookingNumber, DateTime reservationDate, int adults, int children)
 		{
 			const string subject = "義起吃 - 訂位確認通知";
 			var body = $@"
@@ -169,7 +191,7 @@ namespace EatTogether.API.Models.Infra
 
 		// 寄出訂位取消確認信
 		public async Task SendReservationCancelAsync(string toEmail, string name,
-		    string bookingNumber, DateTime reservationDate)
+			string bookingNumber, DateTime reservationDate)
 		{
 			const string subject = "義起吃 - 訂位取消通知";
 			var body = $@"
@@ -197,7 +219,7 @@ namespace EatTogether.API.Models.Infra
 
 		// 寄出訂位 24hr 提醒信
 		public async Task SendReservationReminderAsync(string toEmail, string name,
-		    string bookingNumber, DateTime reservationDate)
+			string bookingNumber, DateTime reservationDate)
 		{
 			const string subject = "義起吃 - 訂位提醒";
 			var body = $@"
@@ -225,7 +247,7 @@ namespace EatTogether.API.Models.Infra
 
 		// 寄出優惠券到期提醒信
 		public async Task SendCouponExpiryNotifyAsync(string toEmail, string name,
-		    string couponName, string code, DateTime endDate)
+			string couponName, string code, DateTime endDate)
 		{
 			const string subject = "義起吃 - 優惠券即將到期提醒";
 			var body = $@"

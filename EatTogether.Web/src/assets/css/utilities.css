@@ -77,6 +77,14 @@
     pointer-events: none;
 }
 
+/* ── Card（通用資訊卡片）─────────────────────────────── */
+/* 用法：<div class="card-eat p-4">...</div>             */
+.card-eat {
+    background: var(--eat-surface-container);
+    border: 1px solid var(--eat-outline-variant);
+    border-radius: var(--eat-radius-lg);
+}
+
 /* ── Border 輔助 ─────────────────────────────────────── */
 .border-eat {
     border-color: var(--eat-outline-variant) !important;

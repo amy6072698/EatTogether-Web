@@ -13,54 +13,54 @@ using System.Threading.RateLimiting;
 
 namespace EatTogether.API
 {
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
-            var builder = WebApplication.CreateBuilder(args);
+	public class Program
+	{
+		public static void Main(string[] args)
+		{
+			var builder = WebApplication.CreateBuilder(args);
 
 			// 設定 CORS
 			builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("FrontendPolicy", policy =>
-                {
-                    var origins = builder.Configuration["AllowedOrigins"]!.Split(",");
-                    policy.WithOrigins(origins)
-                          .AllowAnyMethod()
-                          .AllowAnyHeader()
-                          .AllowCredentials();
-                });
-            });
+			{
+				options.AddPolicy("FrontendPolicy", policy =>
+				{
+					var origins = builder.Configuration["AllowedOrigins"]!.Split(",");
+					policy.WithOrigins(origins)
+						  .AllowAnyMethod()
+						  .AllowAnyHeader()
+						  .AllowCredentials();
+				});
+			});
 
-            // 設定 JWT 認證
-            var jwtKey = builder.Configuration["Jwt:SecretKey"]!;
-            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
-                {
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
-                        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                        ValidAudience = builder.Configuration["Jwt:Audience"],
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-                        ClockSkew = TimeSpan.Zero  // Token 到期時間不容許誤差
+			// 設定 JWT 認證
+			var jwtKey = builder.Configuration["Jwt:SecretKey"]!;
+			builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+				.AddJwtBearer(options =>
+				{
+					options.TokenValidationParameters = new TokenValidationParameters
+					{
+						ValidateIssuer = true,
+						ValidateAudience = true,
+						ValidateLifetime = true,
+						ValidateIssuerSigningKey = true,
+						ValidIssuer = builder.Configuration["Jwt:Issuer"],
+						ValidAudience = builder.Configuration["Jwt:Audience"],
+						IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+						ClockSkew = TimeSpan.Zero  // Token 到期時間不容許誤差
 					};
 
-                    // 從 HttpOnly Cookie 取得 Token
-                    options.Events = new JwtBearerEvents
-                    {
-                        OnMessageReceived = context =>
-                        {
-                            context.Token = context.Request.Cookies["access_token"];
-                            return Task.CompletedTask;
+					// 從 HttpOnly Cookie 取得 Token
+					options.Events = new JwtBearerEvents
+					{
+						OnMessageReceived = context =>
+						{
+							context.Token = context.Request.Cookies["access_token"];
+							return Task.CompletedTask;
 						}
-                    };
+					};
 				});
 
-            builder.Services.AddAuthorization();
+			builder.Services.AddAuthorization();
 
 			// 設定 Rate Limiting
 			builder.Services.AddRateLimiter(options =>
@@ -94,61 +94,62 @@ namespace EatTogether.API
 				options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 			});
 
-            // 註冊 DbContext
-            builder.Services.AddDbContext<EatTogetherDBContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+			// 註冊 DbContext
+			builder.Services.AddDbContext<EatTogetherDBContext>(options =>
+				options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 			// 註冊 IHttpContextAccessor
 			builder.Services.AddHttpContextAccessor();
 
-            // 註冊 Repository
-            builder.Services.AddScoped<ICouponRepository, CouponRepository>();
-            builder.Services.AddScoped<IEventRepository, EventRepository>();
-            builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
-            builder.Services.AddScoped<IDishRepository, DishRepository>();
-            builder.Services.AddScoped<IProductRepository, ProductRepository>();
-            builder.Services.AddScoped<ISetMealRepository, SetMealRepository>();
-            builder.Services.AddScoped<ITableRepository, TableRepository>();
-            builder.Services.AddScoped<IMemberCouponRepository, MemberCouponRepository>();
-            builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-            builder.Services.AddScoped<IPreOrderRepository, PreOrderRepository>();
-            builder.Services.AddScoped<IProductRepository, ProductRepository>();
+			// 註冊 Repository
+			builder.Services.AddScoped<ICouponRepository, CouponRepository>();
+			builder.Services.AddScoped<IEventRepository, EventRepository>();
+			builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+			builder.Services.AddScoped<IDishRepository, DishRepository>();
+			builder.Services.AddScoped<IProductRepository, ProductRepository>();
+			builder.Services.AddScoped<ISetMealRepository, SetMealRepository>();
+			builder.Services.AddScoped<ITableRepository, TableRepository>();
+			builder.Services.AddScoped<IMemberCouponRepository, MemberCouponRepository>();
+			builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+			builder.Services.AddScoped<IPreOrderRepository, PreOrderRepository>();
+			builder.Services.AddScoped<IProductRepository, ProductRepository>();
 			builder.Services.AddScoped<IUserRepository, UserRepository>();
 			builder.Services.AddScoped<IMemberRepository, MemberRepository>();
-            builder.Services.AddScoped<IMemberFavoriteRepository, MemberFavoriteRepository>();
+			builder.Services.AddScoped<IMemberFavoriteRepository, MemberFavoriteRepository>();
 
-            // 註冊 Service
-            builder.Services.AddScoped<IAuthService, AuthService>();
-            builder.Services.AddScoped<IOrderService, OrderService>();
+			// 註冊 Service
+			builder.Services.AddScoped<IAuthService, AuthService>();
+			builder.Services.AddScoped<IOrderService, OrderService>();
+			builder.Services.AddScoped<IMemberService, MemberService>();
 
 			// 註冊 JWT Helper：生成 JWT Token 的 infra 工具
 			builder.Services.AddSingleton<JwtHelper>();
-            
-
-            // 註冊菜單
-            builder.Services.AddScoped<CategoryService>();
-            builder.Services.AddScoped<DishService>();
-            builder.Services.AddScoped<SetMealService>();
 
 
-            // 結帳相關
-            builder.Services.AddMemoryCache();
+			// 註冊菜單
+			builder.Services.AddScoped<CategoryService>();
+			builder.Services.AddScoped<DishService>();
+			builder.Services.AddScoped<SetMealService>();
+
+
+			// 結帳相關
+			builder.Services.AddMemoryCache();
 			builder.Services.AddHttpClient();
 
-            // 前台寄信服務
-            builder.Services.AddScoped<IEmailService, EmailService>();
+			// 前台寄信服務
+			builder.Services.AddScoped<IEmailService, EmailService>();
 
-            // ── 訂位模組 ──
-            builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
-            builder.Services.AddScoped<ReservationService>();
+			// ── 訂位模組 ──
+			builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
+			builder.Services.AddScoped<ReservationService>();
 
-            // ── 優惠券前台 Service ──
-            builder.Services.AddScoped<CouponService>();
+			// ── 優惠券前台 Service ──
+			builder.Services.AddScoped<CouponService>();
 
-            // ── BackgroundServices ──
-            builder.Services.AddHostedService<ReservationReminderBackgroundService>();
-            builder.Services.AddHostedService<NoShowMarkingBackgroundService>();
-            builder.Services.AddHostedService<CouponExpiryNotifyBackgroundService>();
+			// ── BackgroundServices ──
+			builder.Services.AddHostedService<ReservationReminderBackgroundService>();
+			builder.Services.AddHostedService<NoShowMarkingBackgroundService>();
+			builder.Services.AddHostedService<CouponExpiryNotifyBackgroundService>();
 
 
 			// Add services to the container.
@@ -163,32 +164,32 @@ namespace EatTogether.API
 					foreach (var part in libParts)
 						apm.ApplicationParts.Remove(part);
 				});
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen(options =>
-            {
-                // Swashbuckle 預設不支援 DateOnly / TimeOnly，需手動映射
-                options.MapType<DateOnly>(() => new Microsoft.OpenApi.Models.OpenApiSchema
-                    { Type = "string", Format = "date" });
-                options.MapType<DateOnly?>(() => new Microsoft.OpenApi.Models.OpenApiSchema
-                    { Type = "string", Format = "date", Nullable = true });
-                options.MapType<TimeOnly>(() => new Microsoft.OpenApi.Models.OpenApiSchema
-                    { Type = "string", Format = "time" });
-                options.MapType<TimeOnly?>(() => new Microsoft.OpenApi.Models.OpenApiSchema
-                    { Type = "string", Format = "time", Nullable = true });
+			// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+			builder.Services.AddEndpointsApiExplorer();
+			builder.Services.AddSwaggerGen(options =>
+			{
+				// Swashbuckle 預設不支援 DateOnly / TimeOnly，需手動映射
+				options.MapType<DateOnly>(() => new Microsoft.OpenApi.Models.OpenApiSchema
+				{ Type = "string", Format = "date" });
+				options.MapType<DateOnly?>(() => new Microsoft.OpenApi.Models.OpenApiSchema
+				{ Type = "string", Format = "date", Nullable = true });
+				options.MapType<TimeOnly>(() => new Microsoft.OpenApi.Models.OpenApiSchema
+				{ Type = "string", Format = "time" });
+				options.MapType<TimeOnly?>(() => new Microsoft.OpenApi.Models.OpenApiSchema
+				{ Type = "string", Format = "time", Nullable = true });
 
-                // class library 內有多個 action 共用同一 method/path，取第一筆避免 Swagger 500
-                options.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
-            });
+				// class library 內有多個 action 共用同一 method/path，取第一筆避免 Swagger 500
+				options.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
+			});
 
-            var app = builder.Build();
+			var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
+			// Configure the HTTP request pipeline.
+			if (app.Environment.IsDevelopment())
+			{
+				app.UseSwagger();
+				app.UseSwaggerUI();
+			}
 
 			// 強制瀏覽器未來一律使用 HTTPS，防止降級攻擊（開發環境不啟用）
 			if (!app.Environment.IsDevelopment())
@@ -196,22 +197,22 @@ namespace EatTogether.API
 				app.UseHsts();
 			}
 
-            app.UseHttpsRedirection();
+			app.UseHttpsRedirection();
 
 
 			// 靜態檔案：優先用設定的外部 wwwroot（MVC 專案），找不到再用預設
 			var staticRoot = builder.Configuration["StaticFilesRoot"];
-            if (!string.IsNullOrEmpty(staticRoot) && Directory.Exists(staticRoot))
-            {
-                app.UseStaticFiles(new StaticFileOptions
-                {
-                    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(staticRoot)
-                });
-            }
-            else
-            {
+			if (!string.IsNullOrEmpty(staticRoot) && Directory.Exists(staticRoot))
+			{
+				app.UseStaticFiles(new StaticFileOptions
+				{
+					FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(staticRoot)
+				});
+			}
+			else
+			{
 				app.UseStaticFiles();
-            }
+			}
 			// CSP Header：縱深防禦，限制瀏覽器可載入的資源來源
 			app.Use(async (ctx, next) =>
 			{
@@ -265,13 +266,13 @@ namespace EatTogether.API
 			});
 			app.UseCors("FrontendPolicy");   // 順序：CORS → RateLimit → Auth
 			app.UseRateLimiter();
-            app.UseAuthentication();
+			app.UseAuthentication();
 			app.UseAuthorization();
 
 
-            app.MapControllers();
+			app.MapControllers();
 
-            app.Run(); 
-        }
-    }
+			app.Run();
+		}
+	}
 }
