@@ -584,6 +584,9 @@
                         :key="item.lineId"
                         :class="['order-item', { 'setmeal-order-item': item.isSetMeal }]"
                     >
+                        <!-- 套餐 badge 獨占一行 -->
+                        <div v-if="item.isSetMeal" class="setmeal-badge font-label">🍱 套餐</div>
+
                         <div class="order-item-top">
                             <!-- 左側名稱區：點擊開啟編輯 Modal -->
                             <div
@@ -591,27 +594,9 @@
                                 @click="openCartItemEdit(item)"
                                 title="點擊編輯"
                             >
-                                <div v-if="item.isSetMeal" class="setmeal-badge font-label">
-                                    🍱 套餐
-                                </div>
                                 <p class="font-headline order-item-name" style="color: #e3c76b">
                                     {{ item.productName }}
                                 </p>
-                                <!-- 套餐子項目 -->
-                                <div v-if="item.isSetMeal" class="setmeal-subitems">
-                                    <span
-                                        v-for="f in item.setMealData?.fixedItems"
-                                        :key="'f-' + f.dishId"
-                                        class="font-label setmeal-subitem"
-                                        >{{ f.dishName }} × {{ f.quantity }}</span
-                                    >
-                                    <span
-                                        v-for="s in item.setMealData?.selectedOptions"
-                                        :key="'s-' + s.dishId"
-                                        class="font-label setmeal-subitem"
-                                        >{{ s.dishName }} × {{ s.qty }}</span
-                                    >
-                                </div>
                                 <p v-if="item.note" class="font-body order-item-note">
                                     {{ item.note }}
                                 </p>
@@ -629,7 +614,6 @@
                                 <span class="font-label order-item-qty" style="color: #f9ddd3">{{
                                     item.qty
                                 }}</span>
-                                <!-- 套餐不支援直接 +（需重新選） -->
                                 <button
                                     v-if="!item.isSetMeal"
                                     class="qty-btn-order"
@@ -637,7 +621,33 @@
                                 >
                                     +
                                 </button>
-                                <span v-else style="width: 1.6rem"></span>
+                                <button
+                                    v-else
+                                    class="qty-btn-order"
+                                    @click.stop="store.addLineItem(item.lineId)"
+                                >
+                                    +
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 套餐子項目：每項獨立一行，名稱靠左 × qty 靠右 -->
+                        <div v-if="item.isSetMeal" class="setmeal-subitems">
+                            <div
+                                v-for="f in item.setMealData?.fixedItems"
+                                :key="'f-' + f.dishId"
+                                class="setmeal-subitem-row"
+                            >
+                                <span class="font-label setmeal-subitem-name">{{ f.dishName }}</span>
+                                <span class="font-label setmeal-subitem-qty">× {{ f.quantity }}</span>
+                            </div>
+                            <div
+                                v-for="s in item.setMealData?.selectedOptions"
+                                :key="'s-' + s.dishId"
+                                class="setmeal-subitem-row"
+                            >
+                                <span class="font-label setmeal-subitem-name">{{ s.dishName }}</span>
+                                <span class="font-label setmeal-subitem-qty">× {{ s.qty }}</span>
                             </div>
                         </div>
                     </div>
@@ -1026,7 +1036,7 @@
                     : ''
             "
             :initial-sel="editingMealLineId !== null ? buildInitialSel(editingMealLineId) : {}"
-            @close="activeMeal = null; editingMealLineId = null"
+            @close="(activeMeal = null)((editingMealLineId = null))"
             @confirm="onSetMealConfirm"
         />
 
@@ -2947,18 +2957,37 @@ html:has(.gate-wrap) footer {
     font-size: 0.65rem;
     letter-spacing: 0.1em;
     color: rgba(227, 199, 107, 0.7);
-    margin-bottom: 0.1rem;
+    margin-bottom: 0.2rem;
 }
 .setmeal-subitems {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem 0.5rem;
-    margin-top: 0.15rem;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 0.25rem;
+    padding: 0 0.2rem 0.1rem;
 }
-.setmeal-subitem {
-    font-size: 0.68rem;
-    color: rgba(208, 197, 181, 0.5);
+.setmeal-subitem-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.08rem 0;
+}
+.setmeal-subitem-name {
+    font-size: 0.72rem;
+    color: rgba(208, 197, 181, 0.55);
+    letter-spacing: 0.03em;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.setmeal-subitem-qty {
+    font-size: 0.72rem;
+    color: rgba(208, 197, 181, 0.4);
     letter-spacing: 0.04em;
+    flex-shrink: 0;
+    margin-left: 0.5rem;
 }
 
 /* 贈品列 */
@@ -2993,7 +3022,7 @@ html:has(.gate-wrap) footer {
     min-width: 0;
     cursor: pointer;
     border-radius: 0.25rem;
-    padding: 0.1rem 0.2rem;
+    padding: 0.1rem 1rem;
     margin: -0.1rem -0.2rem;
     transition: background 0.15s;
 }

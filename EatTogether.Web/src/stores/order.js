@@ -56,18 +56,21 @@ export const useOrderStore = defineStore('order', () => {
   }
 
   /**
-   * 購物車列表「−」鍵：依 lineId 精確移除。
+   * 購物車列表「−」鍵：依 lineId 精確減少數量（套餐 / 單點通用）。
    */
   function removeLineItem(lineId) {
     const idx = lines.findIndex(l => l.lineId === lineId);
     if (idx === -1) return;
-    if (lines[idx].isSetMeal) {
-      // 套餐直接整條移除
-      lines.splice(idx, 1);
-    } else {
-      lines[idx].qty--;
-      if (lines[idx].qty <= 0) lines.splice(idx, 1);
-    }
+    lines[idx].qty--;
+    if (lines[idx].qty <= 0) lines.splice(idx, 1);
+  }
+
+  /**
+   * 購物車列表「+」鍵：依 lineId 精確增加數量（套餐 / 單點通用）。
+   */
+  function addLineItem(lineId) {
+    const line = lines.find(l => l.lineId === lineId);
+    if (line) line.qty++;
   }
 
   /**
@@ -109,7 +112,7 @@ export const useOrderStore = defineStore('order', () => {
   return {
     lines, pax, specialRequest,
     cart, cartItems, totalItems,
-    addItem, removeItem, removeLineItem,
+    addItem, removeItem, removeLineItem, addLineItem,
     addSetMeal, updateSetMealLine,
     clearOrder,
   };
