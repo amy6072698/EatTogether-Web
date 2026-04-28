@@ -1,7 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { Modal } from 'bootstrap'
+import { ref, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
 import { useAuthStore } from '@/stores/auth.js'
 import { useToast } from '@/composables/useToast.js'
 import apiFetch from '@/utils/apiFetch.js'
@@ -10,15 +8,18 @@ import { generateState, buildGoogleOAuthUrl } from '@/utils/googleOAuth.js'
 import AvatarInitial from '@/components/member/AvatarInitial.vue'
 import FormErrorMessage from '@/components/common/FormErrorMessage.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import ChangeEmailModal from '@/components/member/modals/ChangeEmailModal.vue'
+import ChangePasswordModal from '@/components/member/modals/ChangePasswordModal.vue'
+import CreateAccountModal from '@/components/member/modals/CreateAccountModal.vue'
+import DeleteAccountModal from '@/components/member/modals/DeleteAccountModal.vue'
 
-const router = useRouter()
 const authStore = useAuthStore()
 const { show: showToast } = useToast()
 
 // ── 基本資料表單（phone/birthDate 不放 authStore）─────────
 const profileName = ref('')
 const profilePhone = ref('')
-const profileBirthDate = ref(null) // Date | null，供 VueDatePicker 使用
+const profileBirthDate = ref(null) // null 初始值，VueDatePicker onMounted 不觸發 format
 const nameError = ref('')
 const phoneError = ref('')
 const isSavingProfile = ref(false)
@@ -28,41 +29,11 @@ const previewUrl = ref(null)
 const isUploading = ref(false)
 const fileInput = ref(null)
 
-// ── 修改 Email Modal ──────────────────────────────────────
-const newEmail = ref('')
-const newEmailError = ref('')
-const isEmailSubmitting = ref(false)
-
-// ── 修改密碼 Modal ────────────────────────────────────────
-const currentPassword = ref('')
-const newPassword = ref('')
-const confirmNewPassword = ref('')
-const showCurrentPassword = ref(false)
-const showNewPassword = ref(false)
-const showConfirmNewPassword = ref(false)
-const currentPasswordError = ref('')
-const newPasswordError = ref('')
-const confirmNewPasswordError = ref('')
-const isPasswordSubmitting = ref(false)
-
-// ── 建立帳號 Modal ────────────────────────────────────────
-const newAccount = ref('')
-const newAccountPassword = ref('')
-const confirmAccountPassword = ref('')
-const showAccountPassword = ref(false)
-const showConfirmAccountPassword = ref(false)
-const accountError = ref('')
-const accountPasswordError = ref('')
-const confirmAccountPasswordError = ref('')
-const isCreateAccountSubmitting = ref(false)
-
-// ── 刪除帳號 Modal ────────────────────────────────────────
-const deletePassword = ref('')
-const showDeletePassword = ref(false)
-const deletePasswordError = ref('')
-const isDeleting = ref(false)
+// ── Email 變更提示 ────────────────────────────────────────
+const emailChangeSent = ref(false)
 
 let isMounted = true
+let birthDateTimer = null
 
 // ── 工具：Date → YYYY-MM-DD（避免 toISOString 時區偏移）──
 function toDateString(date) {
@@ -77,10 +48,16 @@ async function loadProfile() {
         const res = await apiFetch('/members/me')
         if (!res.ok) return
         const data = await res.json()
-        if (!isMounted) return // 元件已卸載，不再更新狀態
+        if (!isMounted) return
         profileName.value = data.name
         profilePhone.value = data.phone ?? ''
-        profileBirthDate.value = data.birthDate ? new Date(data.birthDate + 'T00:00:00') : null
+        // setTimeout (macrotask) 保證在 VueDatePicker onMounted 之後才設值
+        if (data.birthDate) {
+            birthDateTimer = setTimeout(() => {
+                if (!isMounted) return
+                profileBirthDate.value = new Date(data.birthDate + 'T00:00:00')
+            }, 0)
+        }
     } catch (err) {
         if (import.meta.env.DEV) console.error('[loadProfile]', err)
     }
@@ -191,193 +168,6 @@ async function saveProfile() {
     }
 }
 
-// ── 申請 Email 變更 ───────────────────────────────────────
-async function submitEmailChange() {
-    newEmailError.value = ''
-
-    const trimmed = newEmail.value.trim()
-    if (!trimmed) {
-        newEmailError.value = '請輸入新 Email'
-        return
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-        newEmailError.value = 'Email 格式不正確'
-        return
-    }
-    if (trimmed.length > 100) {
-        newEmailError.value = 'Email 最長 100 字元'
-        return
-    }
-
-    isEmailSubmitting.value = true
-    try {
-        const res = await apiFetch('/members/me/email', {
-            method: 'POST',
-            body: JSON.stringify({ newEmail: trimmed }),
-        })
-
-        if (res.ok) {
-            Modal.getInstance(document.querySelector('#changeEmailModal'))?.hide()
-            newEmail.value = ''
-            showToast('驗證信已寄出，請至新信箱確認', 'success')
-            return
-        }
-
-        if (res.status < 500) {
-            const data = await res.json()
-            if (data?.errorCode === 'email_taken') {
-                newEmailError.value = '此 Email 已被使用'
-            } else if (data?.errorCode === 'same_email') {
-                newEmailError.value = '新 Email 與目前相同'
-            } else {
-                showToast(data?.message || '申請失敗，請稍後再試', 'error')
-            }
-        }
-    } catch (err) {
-        if (import.meta.env.DEV) console.error('[submitEmailChange]', err)
-    } finally {
-        isEmailSubmitting.value = false
-    }
-}
-
-// ── 修改密碼 ──────────────────────────────────────────────
-function resetPasswordForm() {
-    currentPassword.value = ''
-    newPassword.value = ''
-    confirmNewPassword.value = ''
-    showCurrentPassword.value = false
-    showNewPassword.value = false
-    showConfirmNewPassword.value = false
-    currentPasswordError.value = ''
-    newPasswordError.value = ''
-    confirmNewPasswordError.value = ''
-}
-
-async function submitPasswordChange() {
-    currentPasswordError.value = ''
-    newPasswordError.value = ''
-    confirmNewPasswordError.value = ''
-
-    let hasError = false
-    if (!currentPassword.value) {
-        currentPasswordError.value = '請輸入目前密碼'
-        hasError = true
-    }
-    if (!newPassword.value) {
-        newPasswordError.value = '請輸入新密碼'
-        hasError = true
-    } else if (newPassword.value.length < 8) {
-        newPasswordError.value = '新密碼至少 8 個字元'
-        hasError = true
-    } else if (newPassword.value.length > 128) {
-        newPasswordError.value = '新密碼最多 128 個字元'
-        hasError = true
-    }
-    if (!confirmNewPassword.value) {
-        confirmNewPasswordError.value = '請確認新密碼'
-        hasError = true
-    } else if (confirmNewPassword.value !== newPassword.value) {
-        confirmNewPasswordError.value = '兩次密碼輸入不一致'
-        hasError = true
-    }
-    if (hasError) return
-
-    isPasswordSubmitting.value = true
-    try {
-        const res = await apiFetch('/members/me/password', {
-            method: 'PUT',
-            body: JSON.stringify({
-                currentPassword: currentPassword.value,
-                newPassword: newPassword.value,
-            }),
-        })
-
-        if (res.ok) {
-            Modal.getInstance(document.querySelector('#changePasswordModal'))?.hide()
-            showToast('密碼已更新', 'success')
-            return
-        }
-
-        if (res.status < 500) {
-            const data = await res.json()
-            if (data?.errorCode === 'wrong_password') {
-                currentPasswordError.value = '舊密碼不正確'
-            } else {
-                showToast(data?.message || '修改失敗，請稍後再試', 'error')
-            }
-        }
-    } catch (err) {
-        if (import.meta.env.DEV) console.error('[submitPasswordChange]', err)
-    } finally {
-        isPasswordSubmitting.value = false
-    }
-}
-
-// ── 建立一般帳號 ──────────────────────────────────────────
-async function submitCreateAccount() {
-    accountError.value = ''
-    accountPasswordError.value = ''
-    confirmAccountPasswordError.value = ''
-
-    let hasError = false
-    if (!newAccount.value.trim()) {
-        accountError.value = '帳號為必填'
-        hasError = true
-    } else if (!/^[a-zA-Z0-9_]{3,50}$/.test(newAccount.value)) {
-        accountError.value = '帳號限英數字及底線，3–50 字元'
-        hasError = true
-    }
-    if (!newAccountPassword.value) {
-        accountPasswordError.value = '密碼為必填'
-        hasError = true
-    } else if (newAccountPassword.value.length < 8) {
-        accountPasswordError.value = '密碼至少 8 個字元'
-        hasError = true
-    } else if (newAccountPassword.value.length > 128) {
-        accountPasswordError.value = '密碼最多 128 個字元'
-        hasError = true
-    }
-    if (!confirmAccountPassword.value) {
-        confirmAccountPasswordError.value = '請確認密碼'
-        hasError = true
-    } else if (confirmAccountPassword.value !== newAccountPassword.value) {
-        confirmAccountPasswordError.value = '兩次密碼輸入不一致'
-        hasError = true
-    }
-    if (hasError) return
-
-    isCreateAccountSubmitting.value = true
-    try {
-        const res = await apiFetch('/members/me/create-account', {
-            method: 'POST',
-            body: JSON.stringify({
-                account: newAccount.value,
-                password: newAccountPassword.value,
-            }),
-        })
-
-        if (res.ok) {
-            Modal.getInstance(document.querySelector('#createAccountModal'))?.hide()
-            authStore.member.hashedPasswordStatus = 'HAS_PASSWORD'
-            showToast('帳號建立成功', 'success')
-            return
-        }
-
-        if (res.status < 500) {
-            const data = await res.json()
-            if (data?.errorCode === 'account_taken') {
-                accountError.value = '帳號已被使用，請換一個'
-            } else {
-                showToast(data?.message || '建立失敗，請稍後再試', 'error')
-            }
-        }
-    } catch (err) {
-        if (import.meta.env.DEV) console.error('[submitCreateAccount]', err)
-    } finally {
-        isCreateAccountSubmitting.value = false
-    }
-}
-
 // ── Google 連結 ───────────────────────────────────────────
 async function unlinkGoogle() {
     try {
@@ -404,100 +194,36 @@ function linkGoogle() {
     window.location.href = url
 }
 
-// ── 刪除帳號 ──────────────────────────────────────────────
-async function deleteAccount() {
-    deletePasswordError.value = ''
+// ── Modal success handlers ────────────────────────────────
+function onEmailChangeSuccess() {
+    emailChangeSent.value = true
+}
 
-    if (authStore.member.hashedPasswordStatus === 'HAS_PASSWORD' && !deletePassword.value) {
-        deletePasswordError.value = '請輸入密碼以確認刪除'
-        return
-    }
+function onPasswordChangeSuccess() {
+    // Toast 由 ChangePasswordModal 處理，此處無需額外動作
+}
 
-    isDeleting.value = true
-    try {
-        const fetchOptions = { method: 'DELETE' }
-        if (authStore.member.hashedPasswordStatus === 'HAS_PASSWORD') {
-            fetchOptions.body = JSON.stringify({ password: deletePassword.value })
-        }
-
-        const res = await apiFetch('/members/me', fetchOptions)
-
-        if (res.ok) {
-            authStore.clearAuth()
-            showToast('帳號已刪除', 'success')
-            router.push('/')
-            return
-        }
-
-        if (res.status < 500) {
-            const data = await res.json()
-            if (data?.errorCode === 'wrong_password') {
-                deletePasswordError.value = '密碼不正確'
-            } else {
-                showToast(data?.message || '刪除失敗，請稍後再試', 'error')
-            }
-        }
-    } catch (err) {
-        if (import.meta.env.DEV) console.error('[deleteAccount]', err)
-    } finally {
-        isDeleting.value = false
-    }
+function onCreateAccountSuccess() {
+    authStore.member.hashedPasswordStatus = 'HAS_PASSWORD'
 }
 
 // ── Lifecycle ─────────────────────────────────────────────
-const handlePasswordModalHidden = resetPasswordForm
-const handleDeleteModalHidden = () => {
-    deletePassword.value = ''
-    showDeletePassword.value = false
-    deletePasswordError.value = ''
-}
-
 onMounted(async () => {
     isMounted = true
-    await loadProfile()
-
-    // 修改密碼 Modal：關閉時重置欄位與錯誤狀態
-    const pwModalEl = document.querySelector('#changePasswordModal')
-    pwModalEl?.addEventListener('hidden.bs.modal', handlePasswordModalHidden)
-
-    // 刪除帳號 Modal：關閉時清空密碼欄位
-    const deleteModalEl = document.querySelector('#deleteAccountModal')
-    deleteModalEl?.addEventListener('hidden.bs.modal', handleDeleteModalHidden)
+    loadProfile()
 })
 
-onUnmounted(() => {
+onBeforeUnmount(() => {
     isMounted = false
-    // 先清空 VueDatePicker 的值，避免元件卸載時內部 watcher 報錯
-    profileBirthDate.value = null
+    clearTimeout(birthDateTimer)
+})
 
+// 原本的 onUnmounted 移除掉 profileBirthDate 那行
+onUnmounted(() => {
     // 釋放頭像預覽 Object URL，避免記憶體洩漏
     if (previewUrl.value) {
         URL.revokeObjectURL(previewUrl.value)
     }
-
-    // 強制關閉所有可能開著的 Modal，避免 Bootstrap 操作已卸載的 DOM
-    ;[
-        '#changeEmailModal',
-        '#changePasswordModal',
-        '#createAccountModal',
-        '#deleteAccountModal',
-    ].forEach((id) => {
-        const el = document.querySelector(id)
-        if (el) {
-            const instance = Modal.getInstance(el)
-            instance?.hide()
-        }
-    })
-
-    if (previewUrl.value) {
-        URL.revokeObjectURL(previewUrl.value)
-    }
-
-    const pwModalEl = document.querySelector('#changePasswordModal')
-    pwModalEl?.removeEventListener('hidden.bs.modal', handlePasswordModalHidden)
-
-    const deleteModalEl = document.querySelector('#deleteAccountModal')
-    deleteModalEl?.removeEventListener('hidden.bs.modal', handleDeleteModalHidden)
 })
 </script>
 
@@ -578,7 +304,7 @@ onUnmounted(() => {
                             v-model="profileBirthDate"
                             :max-date="new Date()"
                             :enable-time-picker="false"
-                            locale="zh-TW"
+                            :formats="{ input: 'yyyy/MM/dd' }"
                             auto-apply
                         />
                     </div>
@@ -602,6 +328,9 @@ onUnmounted(() => {
                 <label class="form-label">目前 Email</label>
                 <input class="form-control" :value="authStore.member.email" disabled />
             </div>
+            <p v-if="emailChangeSent" class="eat-body-muted mt-2 mb-0">
+                驗證信已寄出，請至新信箱點擊連結完成變更
+            </p>
             <button
                 type="button"
                 class="btn-eat-secondary btn-eat-sm mt-3"
@@ -686,349 +415,10 @@ onUnmounted(() => {
     </div>
 
     <!-- ════════════════ Modals ════════════════ -->
-
-    <!-- 修改 Email Modal -->
-    <div id="changeEmailModal" class="modal fade" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-eat-dialog">
-            <div class="modal-content modal-eat-content">
-                <button
-                    type="button"
-                    class="btn-close btn-close-white btn-sm ms-auto me-2 mt-2"
-                    data-bs-dismiss="modal"
-                    aria-label="關閉"
-                ></button>
-                <div class="modal-header border-0 px-4 py-3">
-                    <h5 class="eat-h3 fst-normal fw-bold fs-5 mb-0">修改 Email</h5>
-                </div>
-                <div class="modal-body px-4 pb-4">
-                    <div class="form-eat d-flex flex-column gap-3">
-                        <div>
-                            <label class="form-label">新 Email</label>
-                            <input
-                                v-model="newEmail"
-                                type="email"
-                                class="form-control"
-                                placeholder="example@email.com"
-                                autocomplete="email"
-                            />
-                            <FormErrorMessage :message="newEmailError" :show="!!newEmailError" />
-                        </div>
-                        <button
-                            type="button"
-                            class="btn-eat-primary"
-                            :disabled="isEmailSubmitting"
-                            @click="submitEmailChange"
-                        >
-                            <span
-                                v-if="isEmailSubmitting"
-                                class="spinner-border-eat spinner-sm"
-                            ></span>
-                            {{ isEmailSubmitting ? '送出中...' : '送出申請' }}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 修改密碼 Modal -->
-    <div id="changePasswordModal" class="modal fade" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-eat-dialog">
-            <div class="modal-content modal-eat-content">
-                <button
-                    type="button"
-                    class="btn-close btn-close-white btn-sm ms-auto me-2 mt-2"
-                    data-bs-dismiss="modal"
-                    aria-label="關閉"
-                ></button>
-                <div class="modal-header border-0 px-4 py-3">
-                    <h5 class="eat-h3 fst-normal fw-bold fs-5 mb-0">修改密碼</h5>
-                </div>
-                <div class="modal-body px-4 pb-4">
-                    <div class="form-eat d-flex flex-column gap-3">
-                        <!-- 目前密碼 -->
-                        <div>
-                            <label class="form-label">目前密碼</label>
-                            <div class="position-relative">
-                                <input
-                                    v-model="currentPassword"
-                                    :type="showCurrentPassword ? 'text' : 'password'"
-                                    class="form-control"
-                                    placeholder="請輸入目前密碼"
-                                    autocomplete="current-password"
-                                />
-                                <button
-                                    type="button"
-                                    class="btn-eat-password-toggle"
-                                    @mousedown.prevent
-                                    @click="showCurrentPassword = !showCurrentPassword"
-                                    :aria-label="showCurrentPassword ? '隱藏密碼' : '顯示密碼'"
-                                >
-                                    <i
-                                        :class="
-                                            showCurrentPassword ? 'bi bi-eye-slash' : 'bi bi-eye'
-                                        "
-                                    ></i>
-                                </button>
-                            </div>
-                            <FormErrorMessage
-                                :message="currentPasswordError"
-                                :show="!!currentPasswordError"
-                            />
-                        </div>
-                        <!-- 新密碼 -->
-                        <div>
-                            <label class="form-label">新密碼</label>
-                            <div class="position-relative">
-                                <input
-                                    v-model="newPassword"
-                                    :type="showNewPassword ? 'text' : 'password'"
-                                    class="form-control"
-                                    placeholder="至少 8 個字元"
-                                    autocomplete="new-password"
-                                />
-                                <button
-                                    type="button"
-                                    class="btn-eat-password-toggle"
-                                    @mousedown.prevent
-                                    @click="showNewPassword = !showNewPassword"
-                                    :aria-label="showNewPassword ? '隱藏密碼' : '顯示密碼'"
-                                >
-                                    <i
-                                        :class="showNewPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"
-                                    ></i>
-                                </button>
-                            </div>
-                            <FormErrorMessage
-                                :message="newPasswordError"
-                                :show="!!newPasswordError"
-                            />
-                        </div>
-                        <!-- 確認新密碼 -->
-                        <div>
-                            <label class="form-label">確認新密碼</label>
-                            <div class="position-relative">
-                                <input
-                                    v-model="confirmNewPassword"
-                                    :type="showConfirmNewPassword ? 'text' : 'password'"
-                                    class="form-control"
-                                    placeholder="再次輸入新密碼"
-                                    autocomplete="new-password"
-                                />
-                                <button
-                                    type="button"
-                                    class="btn-eat-password-toggle"
-                                    @mousedown.prevent
-                                    @click="showConfirmNewPassword = !showConfirmNewPassword"
-                                    :aria-label="showConfirmNewPassword ? '隱藏密碼' : '顯示密碼'"
-                                >
-                                    <i
-                                        :class="
-                                            showConfirmNewPassword ? 'bi bi-eye-slash' : 'bi bi-eye'
-                                        "
-                                    ></i>
-                                </button>
-                            </div>
-                            <FormErrorMessage
-                                :message="confirmNewPasswordError"
-                                :show="!!confirmNewPasswordError"
-                            />
-                        </div>
-                        <button
-                            type="button"
-                            class="btn-eat-primary mt-2"
-                            :disabled="isPasswordSubmitting"
-                            @click="submitPasswordChange"
-                        >
-                            <span
-                                v-if="isPasswordSubmitting"
-                                class="spinner-border-eat spinner-sm"
-                            ></span>
-                            {{ isPasswordSubmitting ? '修改中...' : '確認修改' }}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 建立一般帳號 Modal -->
-    <div id="createAccountModal" class="modal fade" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-eat-dialog">
-            <div class="modal-content modal-eat-content">
-                <button
-                    type="button"
-                    class="btn-close btn-close-white btn-sm ms-auto me-2 mt-2"
-                    data-bs-dismiss="modal"
-                    aria-label="關閉"
-                ></button>
-                <div class="modal-header border-0 px-4 py-3">
-                    <h5 class="eat-h3 fst-normal fw-bold fs-5 mb-0">建立一般帳號</h5>
-                </div>
-                <div class="modal-body px-4 pb-4">
-                    <div class="form-eat d-flex flex-column gap-3">
-                        <!-- 帳號 -->
-                        <div>
-                            <label class="form-label">帳號</label>
-                            <input
-                                v-model="newAccount"
-                                type="text"
-                                class="form-control"
-                                placeholder="限英數字及底線，3–50 字元"
-                                autocomplete="username"
-                            />
-                            <FormErrorMessage :message="accountError" :show="!!accountError" />
-                        </div>
-                        <!-- 密碼 -->
-                        <div>
-                            <label class="form-label">密碼</label>
-                            <div class="position-relative">
-                                <input
-                                    v-model="newAccountPassword"
-                                    :type="showAccountPassword ? 'text' : 'password'"
-                                    class="form-control"
-                                    placeholder="至少 8 個字元"
-                                    autocomplete="new-password"
-                                />
-                                <button
-                                    type="button"
-                                    class="btn-eat-password-toggle"
-                                    @mousedown.prevent
-                                    @click="showAccountPassword = !showAccountPassword"
-                                    :aria-label="showAccountPassword ? '隱藏密碼' : '顯示密碼'"
-                                >
-                                    <i
-                                        :class="
-                                            showAccountPassword ? 'bi bi-eye-slash' : 'bi bi-eye'
-                                        "
-                                    ></i>
-                                </button>
-                            </div>
-                            <FormErrorMessage
-                                :message="accountPasswordError"
-                                :show="!!accountPasswordError"
-                            />
-                        </div>
-                        <!-- 確認密碼 -->
-                        <div>
-                            <label class="form-label">確認密碼</label>
-                            <div class="position-relative">
-                                <input
-                                    v-model="confirmAccountPassword"
-                                    :type="showConfirmAccountPassword ? 'text' : 'password'"
-                                    class="form-control"
-                                    placeholder="再次輸入密碼"
-                                    autocomplete="new-password"
-                                />
-                                <button
-                                    type="button"
-                                    class="btn-eat-password-toggle"
-                                    @mousedown.prevent
-                                    @click="
-                                        showConfirmAccountPassword = !showConfirmAccountPassword
-                                    "
-                                    :aria-label="
-                                        showConfirmAccountPassword ? '隱藏密碼' : '顯示密碼'
-                                    "
-                                >
-                                    <i
-                                        :class="
-                                            showConfirmAccountPassword
-                                                ? 'bi bi-eye-slash'
-                                                : 'bi bi-eye'
-                                        "
-                                    ></i>
-                                </button>
-                            </div>
-                            <FormErrorMessage
-                                :message="confirmAccountPasswordError"
-                                :show="!!confirmAccountPasswordError"
-                            />
-                        </div>
-                        <button
-                            type="button"
-                            class="btn-eat-primary mt-2"
-                            :disabled="isCreateAccountSubmitting"
-                            @click="submitCreateAccount"
-                        >
-                            <span
-                                v-if="isCreateAccountSubmitting"
-                                class="spinner-border-eat spinner-sm"
-                            ></span>
-                            {{ isCreateAccountSubmitting ? '建立中...' : '建立帳號' }}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 刪除帳號 Modal（data-bs-backdrop="static" 防止點外部關閉）-->
-    <div
-        id="deleteAccountModal"
-        class="modal fade"
-        tabindex="-1"
-        data-bs-backdrop="static"
-        data-bs-keyboard="false"
-    >
-        <div class="modal-dialog modal-dialog-centered modal-eat-dialog">
-            <div class="modal-content modal-eat-content">
-                <button
-                    type="button"
-                    class="btn-close btn-close-white btn-sm ms-auto me-2 mt-2"
-                    data-bs-dismiss="modal"
-                    aria-label="關閉"
-                ></button>
-                <div class="modal-header border-0 px-4 py-3">
-                    <h5 class="eat-h3 fst-normal fw-bold fs-5 mb-0">刪除帳號</h5>
-                </div>
-                <div class="modal-body px-4 pb-4">
-                    <div class="form-eat d-flex flex-column gap-3">
-                        <p class="eat-body-muted mb-0">此操作無法復原，所有資料將永久刪除。</p>
-                        <!-- HAS_PASSWORD：需密碼確認 -->
-                        <div v-if="authStore.member.hashedPasswordStatus === 'HAS_PASSWORD'">
-                            <label class="form-label">請輸入密碼確認</label>
-                            <div class="position-relative">
-                                <input
-                                    v-model="deletePassword"
-                                    :type="showDeletePassword ? 'text' : 'password'"
-                                    class="form-control"
-                                    placeholder="請輸入目前密碼"
-                                    autocomplete="current-password"
-                                />
-                                <button
-                                    type="button"
-                                    class="btn-eat-password-toggle"
-                                    @mousedown.prevent
-                                    @click="showDeletePassword = !showDeletePassword"
-                                    :aria-label="showDeletePassword ? '隱藏密碼' : '顯示密碼'"
-                                >
-                                    <i
-                                        :class="
-                                            showDeletePassword ? 'bi bi-eye-slash' : 'bi bi-eye'
-                                        "
-                                    ></i>
-                                </button>
-                            </div>
-                            <FormErrorMessage
-                                :message="deletePasswordError"
-                                :show="!!deletePasswordError"
-                            />
-                        </div>
-                        <button
-                            type="button"
-                            class="btn-eat-danger"
-                            :disabled="isDeleting"
-                            @click="deleteAccount"
-                        >
-                            <span v-if="isDeleting" class="spinner-border-eat spinner-sm"></span>
-                            {{ isDeleting ? '刪除中...' : '確認刪除' }}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <ChangeEmailModal :currentEmail="authStore.member.email" @success="onEmailChangeSuccess" />
+    <ChangePasswordModal @success="onPasswordChangeSuccess" />
+    <CreateAccountModal @success="onCreateAccountSuccess" />
+    <DeleteAccountModal :hasPassword="authStore.member.hashedPasswordStatus === 'HAS_PASSWORD'" />
 </template>
 
 <style scoped>
