@@ -90,9 +90,10 @@
 
 （此模組暫緩，待最新消息完成後再開始）
 
-[]規劃通知資料來源
-  **來源1：已發布文章（對應 UserNotification 關聯表）
-  **來源2：進行中活動
+[working]規劃通知資料來源
+  來源自已發布「活動介紹」文章（對應 UserNotification 關聯表）
+  [working]新增Notification repo、dto、service
+
 
 []add 通知列表 API
   url: GET api/Notifications（或掛在會員身上）
