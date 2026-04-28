@@ -74,15 +74,15 @@
 
 ====================點閱數功能====================
 
-[working]add 點閱數 API
-  [working]modify Article entity
+[V]add 點閱數 API
+  [V]modify Article entity
 
-  [working]add Post api/News/{id}/view（累加點閱數）
+  [V]add Post api/News/{id}/view（累加點閱數）
     找到文章 → ViewCount++  → SaveChanges
     找不到回傳 404
     回傳：{ viewCount: newCount }
 
-[working]Vue 前台串接點閱數
+[V]Vue 前台串接點閱數
   已記錄於 NewsDetailView.vue 的 onMounted 內
   呼叫 POST api/News/{id}/view，取回新數字後更新畫面顯示
 

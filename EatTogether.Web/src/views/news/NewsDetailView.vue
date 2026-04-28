@@ -10,34 +10,13 @@
 
         <template v-else>
             <!-- Intro：圖左文右 -->
-            <header class="detail-intro">
-                <div class="detail-intro-img">
-                    <img
-                        v-if="article.coverImageUrl"
-                        :src="article.coverImageUrl"
-                        :alt="article.title"
-                    />
-                    <div v-else class="detail-intro-img-placeholder"></div>
-                </div>
-                <div class="detail-intro-text">
-                    <div class="detail-title-row">
-                        <i v-if="article.isPinned" class="bi bi-pin-fill detail-pin-icon"></i>
-                        <h1 class="detail-title">{{ article.title }}</h1>
-                    </div>
-                    <span class="detail-eyebrow">{{ article.categoryName }}</span>
-                    <div class="detail-meta-row">
-                        <span>{{ formatDate(article.publishDate) }}</span>
-                        <span class="detail-sep">·</span>
-                        <span>{{ article.viewCount }} 次閱覽</span>
-                    </div>
-                </div>
-            </header>
+            <NewsIntroHeader :article="article" />
 
             <!-- 麵包屑 -->
             <nav class="detail-breadcrumb">
-                <RouterLink to="/" class="detail-bc-link">Home</RouterLink>
+                <RouterLink :to="{ name: 'Home' }" class="detail-bc-link">Home</RouterLink>
                 <span class="detail-bc-sep">/</span>
-                <RouterLink to="/news" class="detail-bc-link">News</RouterLink>
+                <RouterLink :to="{ name: 'NewsList' }" class="detail-bc-link">News</RouterLink>
                 <span class="detail-bc-sep">/</span>
                 <span class="detail-bc-current">{{ article.title }}</span>
             </nav>
@@ -63,36 +42,12 @@
                     <span class="detail-tag"># {{ article.categoryName }}</span>
                 </div>
 
-                <nav class="detail-nav">
-                    <RouterLink
-                        v-if="prevArticle"
-                        :to="{ name: 'NewsDetail', params: { id: prevArticle.id } }"
-                        class="detail-nav-link"
-                    >
-                        <span class="detail-nav-arrow">←</span>
-                        <div class="detail-nav-info">
-                            <span class="detail-nav-label">上一篇</span>
-                            <span class="detail-nav-ttl">{{ prevArticle.title }}</span>
-                        </div>
-                    </RouterLink>
-                    <div v-else></div>
-
-                    <RouterLink
-                        v-if="nextArticle"
-                        :to="{ name: 'NewsDetail', params: { id: nextArticle.id } }"
-                        class="detail-nav-link detail-nav-link--right"
-                    >
-                        <div class="detail-nav-info detail-nav-info--right">
-                            <span class="detail-nav-label">下一篇</span>
-                            <span class="detail-nav-ttl">{{ nextArticle.title }}</span>
-                        </div>
-                        <span class="detail-nav-arrow">→</span>
-                    </RouterLink>
-                    <div v-else></div>
-                </nav>
+                <NewsArticleNav :prevArticle="prevArticle" :nextArticle="nextArticle" />
 
                 <div class="detail-back-wrap">
-                    <RouterLink to="/news" class="detail-back-btn">回列表頁</RouterLink>
+                    <RouterLink :to="{ name: 'NewsList' }" class="detail-back-btn"
+                        >回列表頁</RouterLink
+                    >
                 </div>
             </main>
         </template>
@@ -103,6 +58,8 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import apiFetch from '@/utils/apiFetch.js'
+import NewsIntroHeader from '@/components/news/NewsIntroHeader.vue'
+import NewsArticleNav from '@/components/news/NewsArticleNav.vue'
 
 const route = useRoute()
 
@@ -172,12 +129,6 @@ async function fetchDetail(id) {
     }
 }
 
-function formatDate(dateStr) {
-    if (!dateStr) return ''
-    const d = new Date(dateStr)
-    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
-}
-
 watch(
     () => route.params.id,
     (id) => {
@@ -195,117 +146,6 @@ onMounted(() => {
     background-color: var(--eat-surface-lowest);
     min-height: 100vh;
     padding-bottom: 6rem;
-}
-
-/* ── Intro 滿版橫列 ───────────────────────────────── */
-.detail-intro {
-    display: flex;
-    flex-direction: row;
-    width: 100%;
-    height: 320px;
-    margin: 0;
-    padding: 0;
-    gap: 0;
-}
-
-.detail-intro-img {
-    width: 30%;
-    height: 100%;
-    overflow: hidden;
-    flex-shrink: 0;
-    border-radius: 0;
-    aspect-ratio: unset;
-}
-
-.detail-intro-img img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-    display: block;
-    transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.detail-intro:hover .detail-intro-img img {
-    transform: scale(1.04);
-}
-
-.detail-intro-img-placeholder {
-    width: 100%;
-    height: 100%;
-    background: var(--eat-surface-high);
-}
-
-.detail-intro-text {
-    flex: 1;
-    background: var(--eat-surface-high);
-    padding: 2.5rem 3rem 2rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 0.75rem;
-    position: relative;
-    border-radius: 0;
-}
-
-/* RWD：手機才改直排 */
-@media (max-width: 767px) {
-    .detail-intro {
-        flex-direction: column;
-        height: auto;
-    }
-    .detail-intro-img {
-        width: 100%;
-        height: 260px;
-    }
-}
-
-/* ── 共用文字元件 ──────────────────────────────────── */
-.detail-eyebrow {
-    display: block;
-    font-family: var(--font-label);
-    font-size: 0.68rem;
-    letter-spacing: 0.4em;
-    text-transform: uppercase;
-    color: var(--eat-secondary);
-    margin-left: 0.5rem;
-}
-
-.detail-title {
-    font-family: var(--font-headline);
-    font-size: clamp(1.6rem, 3.5vw, 2.6rem);
-    color: var(--eat-on-surface);
-    line-height: 3.5;
-    font-style: italic;
-    margin: 0;
-}
-
-.detail-title-row {
-    position: relative;
-    padding-left: 0;
-}
-
-.detail-pin-icon {
-    position: absolute;
-    top: -1rem; /* 在標題上方 */
-    left: 0.5rem;
-    font-size: 1rem;
-    color: var(--eat-secondary);
-    opacity: 0.8;
-    rotate: 45deg;
-}
-
-.detail-meta-row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-family: var(--font-label);
-    font-size: 0.75rem;
-    color: var(--eat-on-surface-variant);
-    opacity: 0.5;
-    margin-left: 0.5rem;
-}
-.detail-sep {
-    opacity: 0.4;
 }
 
 /* ── 麵包屑 ───────────────────────────────────────── */
@@ -436,66 +276,6 @@ onMounted(() => {
     color: var(--eat-secondary);
 }
 
-/* ── 上下篇 ───────────────────────────────────────── */
-.detail-nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1.5rem;
-    border-top: 1px solid rgba(201, 169, 110, 0.12);
-    padding-top: 2rem;
-    margin-bottom: 3rem;
-}
-.detail-nav-link {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    text-decoration: none;
-    color: var(--eat-on-surface-variant);
-    opacity: 0.5;
-    transition: all 0.25s ease;
-    max-width: 45%;
-}
-.detail-nav-link:hover {
-    opacity: 1;
-    color: var(--eat-primary);
-}
-.detail-nav-link--right {
-    flex-direction: row;
-    justify-content: flex-end;
-}
-.detail-nav-arrow {
-    font-size: 1.1rem;
-    flex-shrink: 0;
-    color: var(--eat-secondary);
-}
-.detail-nav-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-}
-.detail-nav-info--right {
-    text-align: right;
-}
-.detail-nav-label {
-    font-family: var(--font-label);
-    font-size: 0.62rem;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    opacity: 0.6;
-}
-.detail-nav-ttl {
-    font-family: var(--font-headline);
-    font-style: italic;
-    font-size: 0.9rem;
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
 /* ── 回列表 ───────────────────────────────────────── */
 .detail-back-wrap {
     display: flex;
@@ -543,19 +323,7 @@ onMounted(() => {
     .detail-body {
         font-size: 1rem;
     }
-    .detail-nav {
-        flex-direction: column;
-        gap: 1.5rem;
-    }
-    .detail-nav-link {
-        max-width: 100%;
-    }
-    .detail-nav-link--right {
-        justify-content: flex-start;
-    }
-    .detail-nav-info--right {
-        text-align: left;
-    }
+
     .detail-bc-current {
         max-width: 160px;
     }
