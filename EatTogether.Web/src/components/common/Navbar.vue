@@ -44,7 +44,7 @@
                                 <button
                                     class="nav-link nav-dropdown-trigger"
                                     :class="{ active: link.children.some((c) => isActive(c.to)) }"
-                                    @click="toggleDropdown(link.label)"
+                                    @click.stop="toggleDropdown(link.label)"
                                 >
                                     {{ link.label }}
                                     <i class="bi bi-chevron-down dropdown-chevron"></i>
@@ -81,7 +81,7 @@
                     </ul>
 
                     <!-- CTA / 使用者區塊 -->
-                    <div class="d-flex align-items-center my-3 my-lg-0">
+                    <div class="d-flex align-items-center justify-content-center my-3 my-lg-0">
                         <!-- 未登入 -->
                         <Button
                             v-if="!authStore.isLoggedIn"
@@ -96,35 +96,38 @@
                         <!-- 已登入：頭像 + Dropdown -->
                         <div
                             v-else
-                            class="user-dropdown"
-                            @mouseenter="isHoverDevice && (userDropdownOpen = true)"
-                            @mouseleave="isHoverDevice && (userDropdownOpen = false)"
+                            class="w-100 w-lg-auto nav-item dropdown-wrap d-flex flex-column align-items-center justify-content-center"
+                            :class="{ 'is-open': openDropdown === 'user' }"
+                            @mouseenter="isHoverDevice && (openDropdown = 'user')"
+                            @mouseleave="isHoverDevice && (openDropdown = null)"
                         >
                             <button
-                                class="avatar-wrapper"
+                                class="nav-link nav-dropdown-trigger d-flex justify-content-center mb-2 mb-lg-0 py-0"
                                 type="button"
-                                @click="!isHoverDevice && (userDropdownOpen = !userDropdownOpen)"
+                                @click.stop="toggleDropdown('user')"
                                 aria-label="開啟使用者選單"
                             >
                                 <AvatarInitial
+                                    class="avatar-wrapper"
                                     :avatarFileName="authStore.member.avatarFileName"
                                     :name="authStore.member.name"
                                     size="36px"
                                     interactive
                                 />
                             </button>
-
-                            <Transition name="user-dropdown">
-                                <div v-if="userDropdownOpen" class="user-dropdown-menu">
+                            <Transition name="dropdown">
+                                <div
+                                    v-if="openDropdown === 'user'"
+                                    class="dropdown-menu-eat dropdown-menu-eat--right"
+                                >
                                     <RouterLink
                                         to="/member"
-                                        class="user-dropdown-item"
+                                        class="dropdown-item-eat"
                                         @click="handleLinkClick"
+                                        >會員中心</RouterLink
                                     >
-                                        會員中心
-                                    </RouterLink>
                                     <button
-                                        class="user-dropdown-item user-dropdown-item--btn"
+                                        class="dropdown-item-eat dropdown-item-eat--btn"
                                         type="button"
                                         @click="authStore.logout()"
                                     >
@@ -153,7 +156,6 @@ const authStore = useAuthStore()
 
 const route = useRoute()
 const openDropdown = ref(null)
-const userDropdownOpen = ref(false)
 const navbarCollapse = ref(null)
 const isHoverDevice = typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches
 
@@ -194,7 +196,6 @@ function openAuthModal() {
 function handleLinkClick() {
     // 1. 關閉 Vue 控制的子選單
     openDropdown.value = null
-    userDropdownOpen.value = false
 
     // 2. 關閉 Bootstrap 控制的手機版選單
     if (navbarCollapse.value) {
@@ -210,7 +211,6 @@ function handleLinkClick() {
 if (typeof window !== 'undefined') {
     window.addEventListener('click', (e) => {
         if (!e.target.closest('.dropdown-wrap')) openDropdown.value = null
-        if (!e.target.closest('.user-dropdown')) userDropdownOpen.value = false
     })
 }
 
@@ -358,7 +358,7 @@ onMounted(() => {
         box-shadow: none;
         border-radius: 0.125rem;
         border: none;
-        background: rgba(255, 255, 255, 0.05); /* 給個微弱背影深淺色差，區隔感會更好 */
+        background: rgba(255, 255, 255, 0.1); /* 給個微弱背影深淺色差，區隔感會更好 */
     }
 }
 
@@ -438,72 +438,32 @@ onMounted(() => {
 }
 
 /* Avatar（border/hover/cursor 已移交 AvatarInitial interactive prop 控制）*/
-.avatar-wrapper {
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    background: none;
-    border: none;
+@media (max-width: 992px) {
+    .nav-link .avatar-wrapper {
+        width: 48px !important;
+        height: 48px !important;
+    }
 }
 
-/* 使用者 Dropdown */
-.user-dropdown {
-    position: relative;
-}
-
-.user-dropdown-menu {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 0.5rem);
-    background: rgba(30, 16, 10, 0.96);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(180, 120, 30, 0.2);
-    border-radius: var(--eat-radius);
-    min-width: 140px;
-    padding: 0.4rem;
-    z-index: 100;
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-}
-
-.user-dropdown-item {
-    display: block;
-    font-family: var(--font-body);
-    font-size: 0.9rem;
-    color: rgba(226, 210, 185, 0.85);
-    padding: 0.75rem 1.25rem;
-    text-decoration: none;
-    border-radius: 4px;
-    transition:
-        background 0.15s,
-        color 0.15s;
-}
-
-.user-dropdown-item--btn {
+/* dropdown-item-eat button 重設（無背景、無邊框的 <button> 版本）*/
+.dropdown-item-eat--btn {
     width: 100%;
     background: none;
     border: none;
-    text-align: left;
+    text-align: center;
     cursor: pointer;
 }
 
-.user-dropdown-item:hover {
-    background: rgba(227, 199, 107, 0.08);
-    color: rgba(254, 225, 130, 0.9);
+/* 頭像選單：靠右對齊，不使用水平置中 */
+.dropdown-menu-eat--right {
+    left: auto;
+    right: 0;
+    transform: none;
 }
 
-/* User Dropdown 動畫 */
-.user-dropdown-enter-active,
-.user-dropdown-leave-active {
-    transition:
-        opacity 0.15s ease,
-        transform 0.15s ease;
-}
-.user-dropdown-enter-from,
-.user-dropdown-leave-to {
-    opacity: 0;
+/* 頭像選單動畫：覆寫 translateX(-50%) 避免跑版 */
+.dropdown-menu-eat--right.dropdown-enter-from,
+.dropdown-menu-eat--right.dropdown-leave-to {
     transform: translateY(-6px);
 }
 </style>
