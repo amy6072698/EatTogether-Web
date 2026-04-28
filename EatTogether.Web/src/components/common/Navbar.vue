@@ -44,7 +44,7 @@
                                 <button
                                     class="nav-link nav-dropdown-trigger"
                                     :class="{ active: link.children.some((c) => isActive(c.to)) }"
-                                    @click="toggleDropdown(link.label)"
+                                    @click.stop="toggleDropdown(link.label)"
                                 >
                                     {{ link.label }}
                                     <i class="bi bi-chevron-down dropdown-chevron"></i>
@@ -80,21 +80,11 @@
                         </template>
                     </ul>
 
-                    <!-- CTA Button -->
-                    <div class="d-flex align-items-center my-3 my-lg-0">
-                        <RouterLink
-                            to="/member"
-                            class="avatar-wrapper"
-                            @click="handleLinkClick"
-                            aria-label="前往會員中心"
-                        >
-                            <img
-                                :src="member.avatarUrl || defaultAvatar"
-                                alt="Member Avatar"
-                                class="avatar-img"
-                            />
-                        </RouterLink>
+                    <!-- CTA / 使用者區塊 -->
+                    <div class="d-flex align-items-center justify-content-center my-3 my-lg-0">
+                        <!-- 未登入 -->
                         <Button
+                            v-if="!authStore.isLoggedIn"
                             class="btn-eat-sm w-100 w-lg-auto"
                             variant="primary"
                             @click="openAuthModal"
@@ -102,15 +92,50 @@
                         >
                             登入｜註冊
                         </Button>
-                        <!-- 暫時登出按鈕，供 1-4 測試用；2-1 Navbar 重構時整合至頭像 Dropdown -->
-                        <Button
-                            class="btn-eat-sm w-100 w-lg-auto ms-2"
-                            variant="secondary"
-                            @click="authStore.logout()"
-                            aria-label="登出"
+
+                        <!-- 已登入：頭像 + Dropdown -->
+                        <div
+                            v-else
+                            class="w-100 w-lg-auto nav-item dropdown-wrap d-flex flex-column align-items-center justify-content-center"
+                            :class="{ 'is-open': openDropdown === 'user' }"
+                            @mouseenter="isHoverDevice && (openDropdown = 'user')"
+                            @mouseleave="isHoverDevice && (openDropdown = null)"
                         >
-                            登出
-                        </Button>
+                            <button
+                                class="nav-link nav-dropdown-trigger d-flex justify-content-center mb-2 mb-lg-0 py-0"
+                                type="button"
+                                @click.stop="toggleDropdown('user')"
+                                aria-label="開啟使用者選單"
+                            >
+                                <AvatarInitial
+                                    class="avatar-wrapper"
+                                    :avatarFileName="authStore.member.avatarFileName"
+                                    :name="authStore.member.name"
+                                    size="36px"
+                                    interactive
+                                />
+                            </button>
+                            <Transition name="dropdown">
+                                <div
+                                    v-if="openDropdown === 'user'"
+                                    class="dropdown-menu-eat dropdown-menu-eat--right"
+                                >
+                                    <RouterLink
+                                        to="/member"
+                                        class="dropdown-item-eat"
+                                        @click="handleLinkClick"
+                                        >會員中心</RouterLink
+                                    >
+                                    <button
+                                        class="dropdown-item-eat dropdown-item-eat--btn"
+                                        type="button"
+                                        @click="authStore.logout()"
+                                    >
+                                        登出
+                                    </button>
+                                </div>
+                            </Transition>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -123,16 +148,12 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import Button from '@/components/common/Button.vue'
+import AvatarInitial from '@/components/member/AvatarInitial.vue'
 import { Modal, Collapse } from 'bootstrap'
-import defaultAvatar from '@/assets/images/default-avatar.svg'
 import { useAuthStore } from '@/stores/auth.js'
 
 const authStore = useAuthStore()
 
-// 從 API 或 Store 取得的用戶資料
-const member = {
-    avatarUrl: null, // null 會顯示 defaultAvatar
-}
 const route = useRoute()
 const openDropdown = ref(null)
 const navbarCollapse = ref(null)
@@ -194,7 +215,7 @@ if (typeof window !== 'undefined') {
 }
 
 onMounted(() => {
-    const navbarEl = document.getElementById('navbarMain')
+    const navbarEl = document.querySelector('#navbarMain')
 
     // 當選單「開始展開」時
     navbarEl.addEventListener('show.bs.collapse', () => {
@@ -337,7 +358,7 @@ onMounted(() => {
         box-shadow: none;
         border-radius: 0.125rem;
         border: none;
-        background: rgba(255, 255, 255, 0.05); /* 給個微弱背影深淺色差，區隔感會更好 */
+        background: rgba(255, 255, 255, 0.1); /* 給個微弱背影深淺色差，區隔感會更好 */
     }
 }
 
@@ -416,38 +437,33 @@ onMounted(() => {
     }
 }
 
-/* Avatar */
-.avatar-wrapper {
-    flex-shrink: 0;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+/* Avatar（border/hover/cursor 已移交 AvatarInitial interactive prop 控制）*/
+@media (max-width: 992px) {
+    .nav-link .avatar-wrapper {
+        width: 48px !important;
+        height: 48px !important;
+    }
+}
 
-    /* 設定柔和的底色與邊框，呼應你的 Logo 金色 */
-    background-color: rgba(226, 210, 185, 0.15);
-    border: 1px solid rgba(245, 216, 122, 0.3);
-
-    transition: all 0.3s ease;
+/* dropdown-item-eat button 重設（無背景、無邊框的 <button> 版本）*/
+.dropdown-item-eat--btn {
+    width: 100%;
+    background: none;
+    border: none;
+    text-align: center;
     cursor: pointer;
 }
 
-.avatar-wrapper:hover {
-    border-color: var(--eat-primary);
-    background: rgba(226, 210, 185, 0.2);
+/* 頭像選單：靠右對齊，不使用水平置中 */
+.dropdown-menu-eat--right {
+    left: auto;
+    right: 0;
+    transform: none;
 }
 
-/* 內部的 SVG 圖示 */
-.avatar-wrapper .avatar-img {
-    width: 36px;
-    height: 36px;
-    filter: brightness(0) invert(0.6);
-    transition: filter 0.3s ease;
-}
-
-.avatar-wrapper:hover .avatar-img {
-    filter: brightness(0) invert(0.85); /* hover 變亮一點 */
+/* 頭像選單動畫：覆寫 translateX(-50%) 避免跑版 */
+.dropdown-menu-eat--right.dropdown-enter-from,
+.dropdown-menu-eat--right.dropdown-leave-to {
+    transform: translateY(-6px);
 }
 </style>
