@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
 import apiFetch from '@/utils/apiFetch.js'
 import Button from '@/components/common/Button.vue'
+import FormErrorMessage from '@/components/common/FormErrorMessage.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -162,7 +163,7 @@ onUnmounted(() => {
                         </div>
 
                         <!-- 重設表單 -->
-                        <div v-else-if="status === 'form'">
+                        <div v-else-if="status === 'form'" class="form-eat">
                             <div class="text-center mb-3">
                                 <div class="icon-eat mb-2">
                                     <i class="bi bi-lock"></i>
@@ -180,7 +181,7 @@ onUnmounted(() => {
                                         id="rp-new-password"
                                         v-model="newPassword"
                                         :type="showRpNewPassword ? 'text' : 'password'"
-                                        class="form-control rp-input"
+                                        class="form-control"
                                         placeholder="至少 8 個字元"
                                         :disabled="isLoading"
                                         @blur="validateNewPassword"
@@ -203,13 +204,10 @@ onUnmounted(() => {
                                         ></i>
                                     </button>
                                 </div>
-                                <p
-                                    v-if="newPasswordError"
-                                    id="rp-new-password-error"
-                                    class="rp-field-error mt-1 mb-0"
-                                >
-                                    {{ newPasswordError }}
-                                </p>
+                                <FormErrorMessage
+                                    :show="!!newPasswordError"
+                                    :message="newPasswordError"
+                                />
                             </div>
 
                             <div class="mb-3">
@@ -221,7 +219,7 @@ onUnmounted(() => {
                                         id="rp-confirm-password"
                                         v-model="confirmPassword"
                                         :type="showRpConfirmPassword ? 'text' : 'password'"
-                                        class="form-control rp-input"
+                                        class="form-control"
                                         placeholder="再次輸入新密碼"
                                         :disabled="isLoading"
                                         @blur="validateConfirmPassword"
@@ -251,13 +249,10 @@ onUnmounted(() => {
                                         ></i>
                                     </button>
                                 </div>
-                                <p
-                                    v-if="confirmPasswordError"
-                                    id="rp-confirm-password-error"
-                                    class="rp-field-error mt-1 mb-0"
-                                >
-                                    {{ confirmPasswordError }}
-                                </p>
+                                <FormErrorMessage
+                                    :show="!!confirmPasswordError"
+                                    :message="confirmPasswordError"
+                                />
                             </div>
 
                             <Button
@@ -303,29 +298,6 @@ onUnmounted(() => {
     color: var(--eat-primary);
     width: 3rem;
     height: 3rem;
-}
-
-.rp-input {
-    background: var(--eat-surface-high);
-    border-color: var(--eat-outline-variant);
-    color: var(--eat-on-surface);
-}
-
-.rp-input:focus {
-    background: var(--eat-surface-high);
-    border-color: var(--eat-primary);
-    box-shadow: 0 0 0 0.2rem rgba(227, 199, 107, 0.2);
-    color: var(--eat-on-surface);
-}
-
-.rp-input:disabled {
-    opacity: 0.6;
-}
-
-.rp-field-error {
-    font-size: 0.8rem;
-    color: var(--eat-error);
-    font-family: var(--font-label);
 }
 
 .rp-back-link {

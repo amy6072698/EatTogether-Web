@@ -6,6 +6,7 @@ import apiFetch from '@/utils/apiFetch.js'
 import Button from '@/components/common/Button.vue'
 import { useAuthStore } from '@/stores/auth.js'
 import { generateState, buildGoogleOAuthUrl } from '@/utils/googleOAuth.js'
+import FormErrorMessage from '@/components/common/FormErrorMessage.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -387,7 +388,7 @@ onMounted(() => {
         aria-labelledby="authModalLabel"
         aria-hidden="true"
     >
-        <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down auth-modal-dialog">
+        <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down modal-eat-dialog">
             <div class="modal-content auth-modal-content">
                 <button
                     type="button"
@@ -430,7 +431,7 @@ onMounted(() => {
                 <!-- Modal Body -->
                 <div class="modal-body px-4 pt-2 pb-4" style="overflow-y: auto; max-height: 70vh">
                     <!-- ── 登入 Tab ── -->
-                    <div v-show="activeTab === 'login'">
+                    <div v-show="activeTab === 'login'" class="form-eat">
                         <!-- 登入成功狀態 -->
                         <div v-if="loginSuccess" class="auth-success-box text-center py-3">
                             <div class="icon-eat icon-eat--success mb-2">
@@ -492,7 +493,7 @@ onMounted(() => {
                                         <input
                                             v-model="loginResendEmail"
                                             type="email"
-                                            class="form-eat flex-grow-1"
+                                            class="form-control flex-grow-1"
                                             placeholder="請輸入您的 Email"
                                             autocomplete="email"
                                         />
@@ -516,7 +517,7 @@ onMounted(() => {
                                         id="login-account"
                                         v-model="loginAccount"
                                         type="text"
-                                        class="form-eat w-100"
+                                        class="form-control w-100"
                                         placeholder="請輸入帳號"
                                         autocomplete="username"
                                     />
@@ -532,7 +533,7 @@ onMounted(() => {
                                             id="login-password"
                                             v-model="loginPassword"
                                             :type="showLoginPassword ? 'text' : 'password'"
-                                            class="form-eat w-100"
+                                            class="form-control w-100"
                                             placeholder="請輸入密碼"
                                             autocomplete="current-password"
                                         />
@@ -585,7 +586,7 @@ onMounted(() => {
                     </div>
 
                     <!-- ── 註冊 Tab ── -->
-                    <div v-show="activeTab === 'register'">
+                    <div v-show="activeTab === 'register'" class="form-eat">
                         <div class="d-flex flex-column gap-2">
                             <!-- 成功狀態 -->
                             <div v-if="registerSuccess" class="auth-success-box text-center py-3">
@@ -625,8 +626,8 @@ onMounted(() => {
                                         v-model="regAccount"
                                         @blur="validateAccount"
                                         type="text"
-                                        class="form-eat w-100"
-                                        :class="{ 'form-eat--error': regAccountError }"
+                                        class="form-control w-100"
+                                        :class="{ 'is-invalid': regAccountError }"
                                         placeholder="限英數字及底線，3–50 字元"
                                         autocomplete="username"
                                         :aria-describedby="
@@ -634,13 +635,10 @@ onMounted(() => {
                                         "
                                         :aria-invalid="regAccountError ? 'true' : undefined"
                                     />
-                                    <p
-                                        v-if="regAccountError"
-                                        id="reg-account-error"
-                                        class="auth-field-error mt-1 mb-0"
-                                    >
-                                        {{ regAccountError }}
-                                    </p>
+                                    <FormErrorMessage
+                                        :show="!!regAccountError"
+                                        :message="regAccountError"
+                                    />
                                 </div>
 
                                 <!-- 姓名 -->
@@ -653,8 +651,8 @@ onMounted(() => {
                                         v-model="regName"
                                         @blur="validateName"
                                         type="text"
-                                        class="form-eat w-100"
-                                        :class="{ 'form-eat--error': regNameError }"
+                                        class="form-control w-100"
+                                        :class="{ 'is-invalid': regNameError }"
                                         placeholder="請輸入您的姓名"
                                         autocomplete="name"
                                         :aria-describedby="
@@ -662,13 +660,10 @@ onMounted(() => {
                                         "
                                         :aria-invalid="regNameError ? 'true' : undefined"
                                     />
-                                    <p
-                                        v-if="regNameError"
-                                        id="reg-name-error"
-                                        class="auth-field-error mt-1 mb-0"
-                                    >
-                                        {{ regNameError }}
-                                    </p>
+                                    <FormErrorMessage
+                                        :show="!!regNameError"
+                                        :message="regNameError"
+                                    />
                                 </div>
 
                                 <!-- Email -->
@@ -681,8 +676,8 @@ onMounted(() => {
                                         v-model="regEmail"
                                         @blur="validateEmail"
                                         type="email"
-                                        class="form-eat w-100"
-                                        :class="{ 'form-eat--error': regEmailError }"
+                                        class="form-control w-100"
+                                        :class="{ 'is-invalid': regEmailError }"
                                         placeholder="example@email.com"
                                         autocomplete="email"
                                         :aria-describedby="
@@ -690,13 +685,10 @@ onMounted(() => {
                                         "
                                         :aria-invalid="regEmailError ? 'true' : undefined"
                                     />
-                                    <p
-                                        v-if="regEmailError"
-                                        id="reg-email-error"
-                                        class="auth-field-error mt-1 mb-0"
-                                    >
-                                        {{ regEmailError }}
-                                    </p>
+                                    <FormErrorMessage
+                                        :show="!!regEmailError"
+                                        :message="regEmailError"
+                                    />
                                 </div>
 
                                 <!-- 密碼 -->
@@ -710,8 +702,8 @@ onMounted(() => {
                                             v-model="regPassword"
                                             @blur="validatePassword"
                                             :type="showPassword ? 'text' : 'password'"
-                                            class="form-eat w-100"
-                                            :class="{ 'form-eat--error': regPasswordError }"
+                                            class="form-control w-100"
+                                            :class="{ 'is-invalid': regPasswordError }"
                                             placeholder="至少 8 個字元"
                                             autocomplete="new-password"
                                             :aria-describedby="
@@ -734,13 +726,10 @@ onMounted(() => {
                                         </button>
                                     </div>
 
-                                    <p
-                                        v-if="regPasswordError"
-                                        id="reg-password-error"
-                                        class="auth-field-error mt-1 mb-0"
-                                    >
-                                        {{ regPasswordError }}
-                                    </p>
+                                    <FormErrorMessage
+                                        :show="!!regPasswordError"
+                                        :message="regPasswordError"
+                                    />
                                 </div>
 
                                 <!-- 確認密碼 -->
@@ -754,8 +743,10 @@ onMounted(() => {
                                             v-model="regConfirmPassword"
                                             @input="validateConfirmPassword"
                                             :type="showConfirmPassword ? 'text' : 'password'"
-                                            class="form-eat w-100"
-                                            :class="{ 'form-eat--error': regConfirmPasswordError }"
+                                            class="form-control w-100"
+                                            :class="{
+                                                'is-invalid': regConfirmPasswordError,
+                                            }"
                                             placeholder="再次輸入密碼"
                                             autocomplete="new-password"
                                             :aria-describedby="
@@ -784,13 +775,10 @@ onMounted(() => {
                                             ></i>
                                         </button>
                                     </div>
-                                    <p
-                                        v-if="regConfirmPasswordError"
-                                        id="reg-confirm-password-error"
-                                        class="auth-field-error mt-1 mb-0"
-                                    >
-                                        {{ regConfirmPasswordError }}
-                                    </p>
+                                    <FormErrorMessage
+                                        :show="!!regConfirmPasswordError"
+                                        :message="regConfirmPasswordError"
+                                    />
                                 </div>
 
                                 <Button
@@ -811,43 +799,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.auth-modal-dialog {
-    max-width: 480px;
-}
-
-.auth-modal-content {
-    background: var(--eat-surface-container);
-    border: 1px solid var(--eat-outline-variant);
-    border-radius: var(--eat-radius-lg);
-}
-
-/* ── Input ── */
-.form-eat {
-    background: var(--eat-surface-high);
-    border: 1px solid var(--eat-outline-variant);
-    border-radius: var(--eat-radius-sm);
-    color: var(--eat-on-surface);
-    font-family: var(--font-body);
-    font-size: 1rem;
-    padding: 0.375rem 0.75rem;
-    outline: none;
-    transition: border-color 0.25s;
-    line-height: 1.5;
-}
-
-.form-eat:focus {
-    border-color: var(--eat-primary);
-}
-
-.form-eat--error {
-    border-color: var(--eat-error);
-}
-
-.form-eat::placeholder {
-    font-size: 1rem;
-    color: color-mix(in srgb, var(--eat-on-surface) 35%, transparent);
-}
-
 /* ── Error ── */
 .auth-error-banner {
     background: var(--eat-error-container);
@@ -857,13 +808,6 @@ onMounted(() => {
     font-family: var(--font-label);
     font-size: 0.78rem;
     letter-spacing: 0.1em;
-}
-
-.auth-field-error {
-    color: var(--eat-error);
-    font-family: var(--font-label);
-    font-size: 0.75rem;
-    letter-spacing: 0.08em;
 }
 
 /* ── Divider ── */
