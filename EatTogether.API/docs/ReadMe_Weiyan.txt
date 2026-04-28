@@ -51,8 +51,8 @@
     /news/:id          → NewsDetailView.vue
 
 
-[working]add 最新消息列表頁
-  [working]NewsListView.vue
+[V]add 最新消息列表頁
+  [V]NewsListView.vue
     [V]onMounted 呼叫 GET api/News
     [V]ref() 存 articles 陣列、分頁資訊
     [V]v-for 渲染文章卡片
@@ -61,43 +61,39 @@
     [V]分頁切換（點擊頁碼重新 fetch）
     [V]置頂文章（IsPinned）可加視覺標記
     [V]套入 Stitch 切版樣式
-    [working]icon套用
 
-[]add 單篇文章詳細頁
-  []NewsDetailView.vue
-    []onMounted 呼叫 GET api/News/{id}
-    []找不到（404）導回列表頁或顯示錯誤訊息
-    []v-html 渲染 Description（Quill.js 產出的 HTML）
-    []顯示點閱數
-    []onMounted 同時呼叫 PATCH api/News/{id}/view 累加點閱數
+[V]add 單篇文章詳細頁
+  [V]NewsDetailView.vue
+    [V]onMounted 呼叫 GET api/News/{id}
+    [V]找不到（404）導回列表頁或顯示錯誤訊息
+    [V]v-html 渲染 Description（Quill.js 產出的 HTML）
+    [V]顯示點閱數
+    [working]onMounted 同時呼叫 PATCH api/News/{id}/view 累加點閱數
     []套入 Stitch 切版樣式
 
 
 ====================點閱數功能====================
 
-[]add 點閱數 API
-  []modify Article entity
-    ViewCount 欄位已存在，不需加欄位
+[V]add 點閱數 API
+  [V]modify Article entity
 
-  []add PATCH api/News/{id}/view（累加點閱數）
+  [V]add Post api/News/{id}/view（累加點閱數）
     找到文章 → ViewCount++  → SaveChanges
     找不到回傳 404
     回傳：{ viewCount: newCount }
 
-  **用 PATCH 不用 GET，避免 GET 有 side effect
-
-[]Vue 前台串接點閱數
+[V]Vue 前台串接點閱數
   已記錄於 NewsDetailView.vue 的 onMounted 內
-  呼叫 PATCH api/News/{id}/view，取回新數字後更新畫面顯示
-
+  呼叫 POST api/News/{id}/view，取回新數字後更新畫面顯示
 
 ====================小鈴鐺通知模組====================
 
 （此模組暫緩，待最新消息完成後再開始）
 
-[]規劃通知資料來源
-  **來源1：已發布文章（對應 UserNotification 關聯表）
-  **來源2：進行中活動
+[working]規劃通知資料來源
+  來源自已發布「活動介紹」文章（對應 UserNotification 關聯表）
+  [working]新增Notification repo、dto、service
+
 
 []add 通知列表 API
   url: GET api/Notifications（或掛在會員身上）
