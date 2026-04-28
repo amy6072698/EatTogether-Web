@@ -457,6 +457,7 @@ import { useRoute, useRouter } from 'vue-router'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 import { useToast } from '@/composables/useToast.js'
 import apiFetch from '@/utils/apiFetch.js'
+import { useAuthStore } from '@/stores/auth.js'
 
 // ── 安全解析食材 JSON ────────────────────────────────
 const parseIngredients = (jsonString) => {
@@ -470,6 +471,7 @@ const parseIngredients = (jsonString) => {
 }
 
 const { show } = useToast()
+const authStore = useAuthStore()
 
 // ── Route / Router ────────────────────────────────────
 const route = useRoute()
@@ -663,19 +665,67 @@ const submitRating = async (dishId, star) => {
 }
 
 // ── 收藏 ──────────────────────────────────────────────
-const favorites = ref(JSON.parse(localStorage.getItem('menu-favorites') || '[]'))
+const favorites = ref([])
 
-const toggleFavorite = (dishId) => {
-    const idx = favorites.value.indexOf(dishId)
-    if (idx === -1) {
-        favorites.value.push(dishId)
-        show('❤️ 已加入收藏', 'success')
-    } else {
-        favorites.value.splice(idx, 1)
-        show('🤍 已取消收藏', 'info')
+const loadFavorites = async () => {
+    if (authStore.isLoggedIn) {
+        try {
+            const res = await apiFetch('/Favorites')
+            if (res.ok) {
+                favorites.value = await res.json()
+                return
+            }
+        } catch { /* fall through */ }
     }
-    localStorage.setItem('menu-favorites', JSON.stringify(favorites.value))
+    favorites.value = JSON.parse(localStorage.getItem('menu-favorites') || '[]')
 }
+
+const toggleFavorite = async (dishId) => {
+    const isFav = favorites.value.includes(dishId)
+
+    if (authStore.isLoggedIn) {
+        try {
+            const res = await apiFetch(`/Favorites/${dishId}`, { method: isFav ? 'DELETE' : 'POST' })
+            if (!res.ok) throw new Error()
+            if (isFav) {
+                favorites.value = favorites.value.filter(id => id !== dishId)
+                show('🤍 已取消收藏', 'info')
+            } else {
+                favorites.value.push(dishId)
+                show('❤️ 已加入收藏', 'success')
+            }
+        } catch {
+            show('操作失敗，請稍後再試', 'error')
+        }
+    } else {
+        const idx = favorites.value.indexOf(dishId)
+        if (idx === -1) {
+            favorites.value.push(dishId)
+            show('❤️ 已加入收藏', 'success')
+        } else {
+            favorites.value.splice(idx, 1)
+            show('🤍 已取消收藏', 'info')
+        }
+        localStorage.setItem('menu-favorites', JSON.stringify(favorites.value))
+    }
+}
+
+// 登入後把 localStorage 收藏同步到伺服器
+watch(() => authStore.isLoggedIn, async (loggedIn) => {
+    if (loggedIn) {
+        const local = JSON.parse(localStorage.getItem('menu-favorites') || '[]')
+        if (local.length > 0) {
+            await apiFetch('/Favorites/Sync', {
+                method: 'POST',
+                body: JSON.stringify(local),
+            })
+            localStorage.removeItem('menu-favorites')
+        }
+        await loadFavorites()
+    } else {
+        favorites.value = JSON.parse(localStorage.getItem('menu-favorites') || '[]')
+    }
+})
 
 // ── Filter chip ripple ────────────────────────────────
 const ripple = (e) => {
@@ -895,7 +945,7 @@ const filteredDishes = computed(() => {
 })
 
 onMounted(async () => {
-    await fetchMenu()
+    await Promise.all([fetchMenu(), loadFavorites()])
     _dishFingerprint = getDishFingerprint(dishes.value)
     _pollTimer = setInterval(pollMenu, 3000)
     window.addEventListener('scroll', handleParallax, { passive: true })
