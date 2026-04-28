@@ -119,6 +119,29 @@ const nextArticle = ref(null)
 const loading = ref(false)
 const error = ref(false)
 
+// 取得或產生訪客 ID
+function getVisitorId() {
+    let id = localStorage.getItem('visitor_id')
+    if (!id) {
+        id = crypto.randomUUID()
+        localStorage.setItem('visitor_id', id)
+    }
+    return id
+}
+
+// 5 分鐘內同一篇不重複發請求
+function shouldIncrementView(id) {
+    const key = `viewed_article_${id}`
+    const last = localStorage.getItem(key)
+    const now = Date.now()
+    const cooldown = 5 * 60 * 1000
+
+    if (last && now - parseInt(last) < cooldown) return false
+
+    localStorage.setItem(key, now.toString())
+    return true
+}
+
 async function fetchDetail(id) {
     loading.value = true
     error.value = false
@@ -133,6 +156,14 @@ async function fetchDetail(id) {
         article.value = data.article
         prevArticle.value = data.prev ?? null
         nextArticle.value = data.next ?? null
+
+        // 前端先擋一次，通過才發點閱紀錄請求
+        if (shouldIncrementView(id)) {
+            apiFetch(`/News/${id}/view`, {
+                method: 'POST',
+                headers: { 'X-Visitor-Id': getVisitorId() },
+            }).catch(() => {})
+        }
     } catch (e) {
         console.error('載入文章失敗', e)
         error.value = true

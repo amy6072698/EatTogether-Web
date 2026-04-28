@@ -74,21 +74,17 @@
 
 ====================點閱數功能====================
 
-[]add 點閱數 API
-  []modify Article entity
-    ViewCount 欄位已存在，不需加欄位
+[working]add 點閱數 API
+  [working]modify Article entity
 
-  []add PATCH api/News/{id}/view（累加點閱數）
+  [working]add Post api/News/{id}/view（累加點閱數）
     找到文章 → ViewCount++  → SaveChanges
     找不到回傳 404
     回傳：{ viewCount: newCount }
 
-  **用 PATCH 不用 GET，避免 GET 有 side effect
-
-[]Vue 前台串接點閱數
+[working]Vue 前台串接點閱數
   已記錄於 NewsDetailView.vue 的 onMounted 內
-  呼叫 PATCH api/News/{id}/view，取回新數字後更新畫面顯示
-
+  呼叫 POST api/News/{id}/view，取回新數字後更新畫面顯示
 
 ====================小鈴鐺通知模組====================
 
