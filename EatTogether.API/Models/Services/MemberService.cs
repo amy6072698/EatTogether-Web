@@ -47,11 +47,18 @@ namespace EatTogether.API.Models.Services
 			if (member == null || member.IsDeleted)
 				return Result<MemberViewModel>.Fail("member_not_found");
 
-			var googleLogin = await _memberRepo.GetExternalLoginByMemberIdAsync(memberId, "google");
+			var externalLogins = await _memberRepo.GetAllExternalLoginsByMemberIdAsync(memberId);
+			var googleLogin = externalLogins.FirstOrDefault(e => e.Provider == "google");
+
+			//未來第三方登入擴充預留
+			//var lineLogin = externalLogins.FirstOrDefault(e => e.Provider == "line");
+			//var facebookLogin = externalLogins.FirstOrDefault(e => e.Provider == "facebook");
 
 			return Result<MemberViewModel>.Success(new MemberViewModel
 			{
 				Id = member.Id,
+				// 純 Google 帳號（EXTERNAL_LOGIN_NO_PASSWORD）不回傳 Account（前端顯示「建立一般帳號」）
+				Account = member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD ? null : member.Account,
 				Name = member.Name,
 				Email = member.Email,
 				Phone = member.Phone,
@@ -61,7 +68,12 @@ namespace EatTogether.API.Models.Services
 				HashedPasswordStatus = member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD
 					? "EXTERNAL_LOGIN_NO_PASSWORD"
 					: "HAS_PASSWORD",
+				// 第三方連結狀態
 				GoogleLinked = googleLogin != null,
+
+				//未來第三方登入擴充預留
+				//LineLinked = lineLogin != null,
+				//FacebookLinked = facebookLogin != null,
 			});
 		}
 
@@ -218,15 +230,20 @@ namespace EatTogether.API.Models.Services
 			if (member == null || member.IsDeleted)
 				return Result.Fail("member_not_found");
 
-			// 純 Google 帳號不得取消連結（需先建立一般帳號）
+			// 純第三方帳號無其他第三方綁定不得取消連結（需先建立一般帳號）
 			if (member.HashedPassword == HashUtility.EXTERNAL_LOGIN_NO_PASSWORD)
-				return Result.Fail("cannot_unlink_only_login");
+			{
+				// 檢查是否還有其他第三方登入(方便未來擴充)
+				var externalLogins = await _memberRepo.GetAllExternalLoginsByMemberIdAsync(memberId);
+				if (externalLogins.Count == 1) // 只剩一個
+					return Result.Fail("cannot_unlink_only_login");
+			}
 
-			var googleLogin = await _memberRepo.GetExternalLoginByMemberIdAsync(memberId, "google");
+			var googleLogin = await _memberRepo.GetExternalLoginByMemberAndProviderAsync(memberId, "google");
 			if (googleLogin == null)
 				return Result.Fail("google_not_linked");
 
-			await _memberRepo.DeleteExternalLoginAsync(memberId);
+			await _memberRepo.DeleteExternalLoginAsync(memberId, "google");
 			await _emailService.SendSecurityNoticeAsync(member.Email, "您已取消與 Google 帳號的連結");
 			return Result.Success();
 		}

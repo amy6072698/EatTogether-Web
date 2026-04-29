@@ -53,16 +53,17 @@ namespace EatTogether.API.Models.Repositories
 		Task MarkOldEmailChangeTokensUsedAsync(int memberId);
 		Task<Member?> GetMemberByIdAsync(int id);
 
-		// -----前台 Google OAuth 用------------------------------
-		Task<MemberExternalLogin?> GetExternalLoginAsync(string provider, string providerUserId);
+		// -----前台第三方登入用------------------------------
+		Task<MemberExternalLogin?> GetExternalLoginByProviderAsync(string provider, string providerUserId);
+		Task<MemberExternalLogin?> GetExternalLoginByMemberAndProviderAsync(int memberId, string provider);
+		Task<List<MemberExternalLogin>> GetAllExternalLoginsByMemberIdAsync(int memberId);
 		Task CreateExternalLoginAsync(MemberExternalLogin login);
-		Task<MemberExternalLogin?> GetExternalLoginByMemberIdAsync(int memberId, string provider);
 
 		// -----前台個人資料用------------------------------
 		Task UpdateProfileAsync(int memberId, string name, string? phone, DateOnly? birthDate);
 		Task UpdateAvatarAsync(int memberId, string avatarFileName);
 		Task UpdateAccountAsync(int memberId, string account, string hashedPassword);
-		Task DeleteExternalLoginAsync(int memberId);
+		Task DeleteExternalLoginAsync(int memberId, string provider);
 		Task SoftDeleteMemberAsync(int memberId);
 		Task<bool> IsEmailExistsForOtherAsync(int memberId, string email);
 	}
@@ -365,28 +366,47 @@ namespace EatTogether.API.Models.Repositories
 			await _context.SaveChangesAsync();
 		}
 
-		// -----前台 Google OAuth 用------------------------------
+		// -----前台第三方登入用------------------------------
 
-		// 以 Provider + ProviderUserId 查詢外部登入紀錄（含 Member 導覽屬性）
-		public async Task<MemberExternalLogin?> GetExternalLoginAsync(string provider, string providerUserId)
+		/// <summary>
+		/// 以 Provider + ProviderUserId 查詢外部登入紀錄（含 Member 導覽屬性）
+		/// 用於 OAuth 登入時檢查使用者是否已註冊
+		/// </summary>
+		public async Task<MemberExternalLogin?> GetExternalLoginByProviderAsync(string provider, string providerUserId)
 		{
 			return await _context.MemberExternalLogins
 				.Include(e => e.Member)
 				.FirstOrDefaultAsync(e => e.Provider == provider && e.ProviderUserId == providerUserId);
 		}
 
-		// 新增外部登入紀錄
+		/// <summary>
+		/// 查詢會員是否已綁定指定 Provider
+		/// 用於檢查單一第三方登入狀態（如：檢查是否已綁定 Google）
+		/// </summary>
+		public async Task<MemberExternalLogin?> GetExternalLoginByMemberAndProviderAsync(int memberId, string provider)
+		{
+			return await _context.MemberExternalLogins
+				.FirstOrDefaultAsync(e => e.MemberId == memberId && e.Provider == provider);
+		}
+
+		/// <summary>
+		/// 查詢會員的所有第三方登入紀錄
+		/// 用於個人資料頁一次取得所有連結狀態
+		/// </summary>
+		public async Task<List<MemberExternalLogin>> GetAllExternalLoginsByMemberIdAsync(int memberId)
+		{
+			return await _context.MemberExternalLogins
+				.Where(e => e.MemberId == memberId)
+				.ToListAsync();
+		}
+
+		/// <summary>
+		/// 新增外部登入紀錄
+		/// </summary>
 		public async Task CreateExternalLoginAsync(MemberExternalLogin login)
 		{
 			_context.MemberExternalLogins.Add(login);
 			await _context.SaveChangesAsync();
-		}
-
-		// 以 MemberId + Provider 查詢外部登入紀錄（用於確認該會員是否已綁定指定 Provider）
-		public async Task<MemberExternalLogin?> GetExternalLoginByMemberIdAsync(int memberId, string provider)
-		{
-			return await _context.MemberExternalLogins
-				.FirstOrDefaultAsync(e => e.MemberId == memberId && e.Provider == provider);
 		}
 
 		// -----前台個人資料用------------------------------
@@ -418,16 +438,17 @@ namespace EatTogether.API.Models.Repositories
 			await _context.SaveChangesAsync();
 		}
 
-		// 硬刪除該會員所有外部登入紀錄（目前僅 Google，未來擴充其他 Provider 時簽名改為傳入 provider）
-		public async Task DeleteExternalLoginAsync(int memberId)
+		/// <summary>
+		/// 刪除指定會員的指定 Provider 外部登入紀錄（硬刪除）
+		/// 用於取消連結單一第三方登入（如：取消連結 Google）
+		/// </summary>
+		public async Task DeleteExternalLoginAsync(int memberId, string provider)
 		{
-			var logins = await _context.MemberExternalLogins
-				.Where(e => e.MemberId == memberId)
-				.ToListAsync();
-			if (logins.Count == 0) return;
-			_context.MemberExternalLogins.RemoveRange(logins);
-			await _context.SaveChangesAsync();
+			int deletedCount = await _context.MemberExternalLogins
+				.Where(e => e.MemberId == memberId && e.Provider == provider)
+				.ExecuteDeleteAsync();
 		}
+
 
 		public async Task SoftDeleteMemberAsync(int memberId)
 		{

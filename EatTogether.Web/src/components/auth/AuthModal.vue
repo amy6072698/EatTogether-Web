@@ -452,9 +452,7 @@ onMounted(() => {
                                     使用 Google 登入
                                 </Button>
 
-                                <div
-                                    class="auth-divider-content feather-divider on-container my-3"
-                                ></div>
+                                <div class="auth-divider-content feather-divider my-3"></div>
 
                                 <!-- 通用錯誤橫幅 -->
                                 <div v-if="loginFormError" class="auth-error-banner" role="alert">
@@ -510,7 +508,7 @@ onMounted(() => {
 
                                 <!-- 帳號 -->
                                 <div>
-                                    <label for="login-account" class="eat-label d-block mb-1"
+                                    <label for="login-account" class="form-label d-block mb-1"
                                         >帳號</label
                                     >
                                     <input
@@ -525,7 +523,7 @@ onMounted(() => {
 
                                 <!-- 密碼 -->
                                 <div>
-                                    <label for="login-password" class="eat-label d-block mb-1"
+                                    <label for="login-password" class="form-label d-block mb-1"
                                         >密碼</label
                                     >
                                     <div class="position-relative">
@@ -618,7 +616,7 @@ onMounted(() => {
 
                                 <!-- 帳號 -->
                                 <div>
-                                    <label for="reg-account" class="eat-label d-block mb-1"
+                                    <label for="reg-account" class="form-label d-block mb-1"
                                         >帳號</label
                                     >
                                     <input
@@ -643,7 +641,7 @@ onMounted(() => {
 
                                 <!-- 姓名 -->
                                 <div>
-                                    <label for="reg-name" class="eat-label d-block mb-1"
+                                    <label for="reg-name" class="form-label d-block mb-1"
                                         >姓名</label
                                     >
                                     <input
@@ -668,7 +666,7 @@ onMounted(() => {
 
                                 <!-- Email -->
                                 <div>
-                                    <label for="reg-email" class="eat-label d-block mb-1"
+                                    <label for="reg-email" class="form-label d-block mb-1"
                                         >Email</label
                                     >
                                     <input
@@ -693,7 +691,7 @@ onMounted(() => {
 
                                 <!-- 密碼 -->
                                 <div>
-                                    <label for="reg-password" class="eat-label d-block mb-1"
+                                    <label for="reg-password" class="form-label d-block mb-1"
                                         >密碼</label
                                     >
                                     <div class="position-relative">
@@ -734,7 +732,9 @@ onMounted(() => {
 
                                 <!-- 確認密碼 -->
                                 <div>
-                                    <label for="reg-confirm-password" class="eat-label d-block mb-1"
+                                    <label
+                                        for="reg-confirm-password"
+                                        class="form-label d-block mb-1"
                                         >確認密碼</label
                                     >
                                     <div class="position-relative">

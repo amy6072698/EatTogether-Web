@@ -110,6 +110,7 @@
                                 <AvatarInitial
                                     class="avatar-wrapper"
                                     :avatarFileName="authStore.member.avatarFileName"
+                                    :googleAvatarUrl="authStore.member.googleAvatarUrl"
                                     :name="authStore.member.name"
                                     size="36px"
                                     interactive

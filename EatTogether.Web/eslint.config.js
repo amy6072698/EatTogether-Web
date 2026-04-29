@@ -14,6 +14,16 @@ export default defineConfig([
     // ── 排除不需要 lint 的目錄 ────────────────────────────────
     globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**']),
 
+    // ── Node.js 設定檔（vite.config.js 等執行於 Node 環境）──
+    {
+        files: ['vite.config.js', '*.config.js'],
+        languageOptions: {
+            globals: {
+                ...globals.node,
+            },
+        },
+    },
+
     // ── 瀏覽器全域變數（window、document、console 等）────────
     {
         languageOptions: {

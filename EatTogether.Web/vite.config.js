@@ -27,6 +27,11 @@ export default defineConfig(({ mode }) => {
                     changeOrigin: true,
                     secure: false,
                 },
+                '/uploads': {
+                    target: env.VITE_API_TARGET,
+                    changeOrigin: true,
+                    secure: false,
+                },
             },
         },
     }

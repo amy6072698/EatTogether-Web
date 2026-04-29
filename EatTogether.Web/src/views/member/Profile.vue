@@ -245,6 +245,7 @@ onUnmounted(() => {
                 <AvatarInitial
                     v-else
                     :avatarFileName="authStore.member.avatarFileName"
+                    :googleAvatarUrl="authStore.member.googleAvatarUrl"
                     :name="authStore.member.name"
                     size="100px"
                     interactive
@@ -270,7 +271,8 @@ onUnmounted(() => {
 
         <!-- ── 基本資料 ── -->
         <div class="card-eat p-4">
-            <h2 class="eat-h3 mb-4">基本資料</h2>
+            <h2 class="eat-h3">基本資料</h2>
+            <div class="feather-divider on-container mt-2 mb-4"></div>
             <div class="form-eat">
                 <div class="d-flex flex-column gap-3">
                     <!-- 姓名 -->
@@ -311,7 +313,7 @@ onUnmounted(() => {
                 </div>
                 <button
                     type="button"
-                    class="btn-eat-primary mt-4"
+                    class="btn-eat-primary btn-eat-sm mt-4"
                     :disabled="isSavingProfile"
                     @click="saveProfile"
                 >
@@ -405,7 +407,7 @@ onUnmounted(() => {
             <p class="eat-body-muted mb-0">刪除帳號後所有資料將永久移除，無法復原。</p>
             <button
                 type="button"
-                class="btn-eat-danger mt-3"
+                class="btn-eat-danger btn-eat-sm mt-3"
                 data-bs-toggle="modal"
                 data-bs-target="#deleteAccountModal"
             >
@@ -427,5 +429,22 @@ onUnmounted(() => {
     height: 100px;
     border-radius: 50%;
     object-fit: cover;
+}
+.card-eat {
+    border-radius: var(--eat-radius);
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(var(--eat-primary), 0.05);
+}
+.eat-h3 {
+    font-size: 1.25rem;
+    font-style: normal;
+}
+
+.feather-divider {
+    background: linear-gradient(90deg, var(--eat-secondary), transparent);
+}
+
+.feather-divider::after {
+    content: '';
 }
 </style>

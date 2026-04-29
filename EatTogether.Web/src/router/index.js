@@ -146,6 +146,13 @@ let authInitPromise = null
 router.beforeEach(async (to) => {
     const authStore = useAuthStore()
 
+    // Google OAuth callback 頁面自行負責登入流程
+    // 若在這裡執行 checkAuth()，會因 Cookie 尚未設定而觸發 auth:expired，
+    // 導致使用者被踢回首頁，OAuth callback 無法完成
+    if (to.name === 'GoogleCallback') {
+        return true
+    }
+
     if (!authInitPromise) {
         authInitPromise = authStore.checkAuth()
     }

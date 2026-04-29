@@ -4,9 +4,11 @@ import apiFetch from '@/utils/apiFetch.js'
 
 const INITIAL_MEMBER = () => ({
     id: null,
+    account: '',
     name: '',
     email: '',
     avatarFileName: null,
+    googleAvatarUrl: null,
     hashedPasswordStatus: '', // 'HAS_PASSWORD' | 'EXTERNAL_LOGIN_NO_PASSWORD'
     googleLinked: false,
 })
