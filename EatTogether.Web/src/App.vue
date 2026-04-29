@@ -39,8 +39,8 @@ onMounted(() => {
         await router.push('/')
         const modalEl = document.querySelector('#authModal')
         if (modalEl) {
-            const { default: bootstrap } = await import('bootstrap')
-            bootstrap.Modal.getOrCreateInstance(modalEl).show()
+            const { Modal } = await import('bootstrap')
+            Modal.getOrCreateInstance(modalEl).show()
         }
     })
 })

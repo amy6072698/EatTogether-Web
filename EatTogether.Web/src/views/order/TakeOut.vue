@@ -780,6 +780,9 @@
                 <div class="form-group">
                     <label class="form-label font-label" :class="{ 'form-label-error': nameError }">
                         姓名 <span class="required-mark">*</span>
+                        <span v-if="isLoggedIn" class="autofill-hint font-label"
+                            >已帶入會員資料</span
+                        >
                     </label>
                     <input
                         v-model="customerName"
@@ -837,6 +840,13 @@
                         rows="3"
                         placeholder="過敏食材、特殊需求…"
                     ></textarea>
+                </div>
+
+                <div class="form-group utensils-group">
+                    <label class="utensils-label font-label">
+                        <input v-model="needUtensils" type="checkbox" class="utensils-checkbox" />
+                        <span class="utensils-text">需要餐具</span>
+                    </label>
                 </div>
 
                 <!-- 小計摘要 -->
@@ -917,6 +927,12 @@
                         <span class="font-label confirm-info-label">備註</span>
                         <span class="font-body confirm-info-val">{{ store.specialRequest }}</span>
                     </div>
+                    <div class="confirm-info-row">
+                        <span class="font-label confirm-info-label">餐具</span>
+                        <span class="font-body confirm-info-val">{{
+                            needUtensils ? '需要' : '不需要'
+                        }}</span>
+                    </div>
                 </div>
 
                 <div class="feather-divider" style="margin: 1.25rem 0"></div>
@@ -926,7 +942,7 @@
                     class="font-label"
                     style="
                         color: rgba(208, 197, 181, 0.5);
-                        font-size: 0.75rem;
+                        font-size: 0.9rem;
                         letter-spacing: 0.18em;
                         text-transform: uppercase;
                         margin-bottom: 0.75rem;
@@ -1091,7 +1107,7 @@
                     : ''
             "
             :initial-sel="editingMealLineId !== null ? buildInitialSel(editingMealLineId) : {}"
-            @close="((activeDetail = null), (editingLineId = null))"
+            @close="((activeMeal = null), (editingMealLineId = null))"
             @confirm="onSetMealConfirm"
         />
 
@@ -1170,9 +1186,9 @@
             </div>
         </Teleport>
 
-        <!-- Notify Toasts -->
+        <!-- Notify Toasts：只在 Step 1 選餐時顯示 -->
         <Teleport to="body">
-            <div class="notify-toast-stack">
+            <div v-show="step === 1" class="notify-toast-stack">
                 <TransitionGroup name="notify-toast">
                     <div
                         v-for="toast in notifyToasts"
@@ -1285,8 +1301,18 @@ const pickupTimeOptions = computed(() => {
 // ── 顧客資料 ─────────────────────────────────────────
 const customerName = ref('')
 const customerPhone = ref('')
+const needUtensils = ref(false)
 const nameError = ref(false)
 const phoneError = ref(false)
+
+// 登入後自動帶入會員姓名
+watch(
+    () => authStore.member?.name,
+    (name) => {
+        if (name) customerName.value = name
+    },
+    { immediate: true }
+)
 
 // ── 訂單完成後儲存（Modal 顯示用）─────────────────
 const confirmedPickupTime = ref('')
@@ -2377,6 +2403,12 @@ onMounted(async () => {
 .required-mark {
     color: #ffb4ab;
 }
+.autofill-hint {
+    margin-left: 0.5rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    color: rgba(227, 199, 107, 0.55);
+}
 .form-input {
     width: 100%;
     background: #1e100b;
@@ -2423,6 +2455,53 @@ onMounted(async () => {
 .form-textarea::placeholder {
     color: rgba(208, 197, 181, 0.3);
 }
+
+/* ── 餐具勾選 ── */
+.utensils-group {
+    margin-top: 0.25rem;
+}
+.utensils-label {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    user-select: none;
+    color: rgba(208, 197, 181, 0.85);
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+}
+.utensils-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 1px solid rgba(77, 70, 58, 0.7);
+    border-radius: 3px;
+    background: rgba(24, 11, 6, 0.5);
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+    transition:
+        border-color 0.2s,
+        background 0.2s;
+}
+.utensils-checkbox:checked {
+    background: #e3c76b;
+    border-color: #e3c76b;
+}
+.utensils-checkbox:checked::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 6px;
+    height: 10px;
+    border: 2px solid #3b2f00;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
+}
+
 .pickup-display {
     display: flex;
     align-items: center;
