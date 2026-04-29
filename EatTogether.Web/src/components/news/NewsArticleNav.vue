@@ -44,13 +44,13 @@ defineProps({
 </script>
 
 <style scoped>
-/* ── 上下篇 ───────────────────────────────────────── */
+/* ── 上下篇導覽 ───────────────────────────────────── */
 .detail-nav {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: 1.5rem;
-    border-top: 1px solid rgba(201, 169, 110, 0.12);
+    border-top: 1px solid var(--eat-outline-variant);
     padding-top: 2rem;
     margin-bottom: 3rem;
 }
@@ -69,7 +69,6 @@ defineProps({
     color: var(--eat-primary);
 }
 .detail-nav-link--right {
-    flex-direction: row;
     justify-content: flex-end;
 }
 .detail-nav-arrow {
@@ -85,6 +84,7 @@ defineProps({
 .detail-nav-info--right {
     text-align: right;
 }
+
 .detail-nav-label {
     font-family: var(--font-label);
     font-size: 0.62rem;
@@ -103,6 +103,8 @@ defineProps({
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
+
+/* ── RWD ──────────────────────────────────────────── */
 @media (max-width: 767px) {
     .detail-nav {
         flex-direction: column;
