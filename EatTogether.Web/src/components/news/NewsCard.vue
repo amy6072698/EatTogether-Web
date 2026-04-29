@@ -94,7 +94,6 @@ function formatDateBg(dateStr) {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0rem;
 }
 @media (min-width: 768px) {
     .news-card--normal {
@@ -105,6 +104,7 @@ function formatDateBg(dateStr) {
     }
 }
 
+/* ── 圖片欄 ───────────────────────────────────────── */
 .news-card-img-wrap {
     width: 100%;
     overflow: hidden;
@@ -119,6 +119,7 @@ function formatDateBg(dateStr) {
         width: 45%;
     }
 }
+
 .news-card-img {
     width: 100%;
     height: 100%;
@@ -143,6 +144,7 @@ function formatDateBg(dateStr) {
     opacity: 0.25;
 }
 
+/* ── 文字欄 ───────────────────────────────────────── */
 .news-card-body {
     width: 100%;
     padding: 2rem;
@@ -154,6 +156,8 @@ function formatDateBg(dateStr) {
 .news-card-body--right {
     text-align: right;
 }
+
+/* ── 置頂角標 ─────────────────────────────────────── */
 .news-card-pin {
     position: absolute;
     top: 1rem;
@@ -161,17 +165,16 @@ function formatDateBg(dateStr) {
     font-size: 1.2rem;
     color: var(--eat-secondary);
 }
-
 .news-card-pin--right {
     right: 1rem;
     rotate: 45deg;
 }
-
 .news-card-pin--left {
     left: 1rem;
     rotate: -45deg;
 }
 
+/* ── 日期浮水印 ───────────────────────────────────── */
 .news-card-date-bg {
     position: absolute;
     top: 1rem;
@@ -189,6 +192,7 @@ function formatDateBg(dateStr) {
     right: 2rem;
 }
 
+/* ── 分類 / 標題 / 摘要 ───────────────────────────── */
 .news-card-category {
     display: block;
     font-family: var(--font-label);
@@ -211,7 +215,6 @@ a .news-card-title {
     text-decoration: none;
     transition: color 0.2s ease;
 }
-
 a:hover .news-card-title {
     color: var(--eat-primary);
     text-decoration: underline;
@@ -231,6 +234,8 @@ a:hover .news-card-title {
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
+
+/* ── Meta（瀏覽數）────────────────────────────────── */
 .news-card-meta {
     display: flex;
     align-items: center;
@@ -244,10 +249,8 @@ a:hover .news-card-title {
 .news-card-body--right .news-card-meta {
     justify-content: flex-end;
 }
-.news-card-meta-icon {
-    font-size: 1rem;
-}
 
+/* ── 閱讀全文連結 ─────────────────────────────────── */
 .news-card-link {
     display: inline-flex;
     align-items: center;
@@ -258,30 +261,28 @@ a:hover .news-card-title {
     text-transform: uppercase;
     color: var(--eat-primary);
     text-decoration: none;
-    transition: transform 0.3s ease;
+    transition:
+        transform 0.3s ease,
+        gap 0.3s ease;
 }
 .news-card-link:hover {
     gap: 0.85rem;
-    transform: translateX(6px); /* ← 正方向往右浮動 */
+    transform: translateX(6px);
 }
 .news-card-link--reverse {
     flex-direction: row-reverse;
 }
 .news-card-link--reverse:hover {
-    transform: translateX(-6px); /* ← reverse 往左浮動 */
+    transform: translateX(-6px);
 }
 
-/* 圖片容器：右側圓角拿掉 */
+/* ── 接縫圓角（normal / reverse）────────────────────── */
 .news-card--normal .news-card-img-wrap {
     border-radius: var(--eat-radius) 0 0 var(--eat-radius);
 }
-
-/* 文字容器：左側圓角拿掉 */
 .news-card--normal .news-card-body {
     border-radius: 0 var(--eat-radius) var(--eat-radius) 0;
 }
-
-/* reverse 版本相反 */
 .news-card--reverse .news-card-img-wrap {
     border-radius: 0 var(--eat-radius) var(--eat-radius) 0;
 }
