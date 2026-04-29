@@ -375,52 +375,8 @@
 
                         <!-- 評分 -->
                         <div class="modal-section rating-section">
-                            <template v-if="dishRatingMap[selectedDish.id]?.ratingCount > 0">
-                                <div class="modal-section-label rating-section-title">評分總覽</div>
-                                <p class="rating-avg">
-                                    平均 {{ dishRatingMap[selectedDish.id].averageScore.toFixed(1) }} 分（{{ dishRatingMap[selectedDish.id].ratingCount }} 人評分）
-                                </p>
-
-                                <!-- 唯讀平均分星星列 -->
-                                <div class="avg-star-row">
-                                    <span
-                                        v-for="star in 5"
-                                        :key="star"
-                                        class="avg-star"
-                                        :class="getAvgStarType(dishRatingMap[selectedDish.id].averageScore, star)"
-                                    >
-                                        <span class="avg-star-bg">★</span>
-                                        <span class="avg-star-fg">★</span>
-                                    </span>
-                                    <span class="avg-star-label">
-                                        {{ dishRatingMap[selectedDish.id].averageScore.toFixed(1) }} ★ ({{ dishRatingMap[selectedDish.id].ratingCount }} 人)
-                                    </span>
-                                </div>
-
-                                <!-- 星數分佈條 -->
-                                <div class="rating-bars">
-                                    <div
-                                        v-for="level in [5, 4, 3, 2, 1]"
-                                        :key="level"
-                                        class="rating-bar-row"
-                                    >
-                                        <span class="bar-label">{{ level }} ★</span>
-                                        <div class="bar-track">
-                                            <div
-                                                class="bar-fill"
-                                                :style="{ width: getBarWidth(dishRatingMap[selectedDish.id].averageScore, level) + '%' }"
-                                            ></div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="rating-divider"></div>
-                            </template>
-
-                            <p class="rating-avg rating-avg--empty" v-else>尚無評分，成為第一個！</p>
-
                             <!-- 互動評分 -->
-                            <div class="modal-section-label" style="margin-top:0.5rem;">為這道餐點評分</div>
+                            <div class="modal-section-label">為這道餐點評分</div>
                             <div class="star-row">
                                 <button
                                     v-for="star in 5"
@@ -443,6 +399,67 @@
                             <p v-if="hasRated(selectedDish.id)" class="star-voted">
                                 已評 {{ ratedScore(selectedDish.id) }} 顆星 ★
                             </p>
+                        </div>
+
+                        <!-- 留言區 -->
+                        <div class="modal-section review-section">
+                            <div class="modal-section-label">留言區</div>
+
+                            <!-- 留言列表 -->
+                            <div v-if="reviewsLoading" class="review-loading">
+                                <span class="ingredient-spinner"></span> 載入留言中...
+                            </div>
+                            <div v-else-if="reviews.length" class="review-list">
+                                <div
+                                    v-for="r in displayedReviews"
+                                    :key="r.id"
+                                    class="review-item"
+                                >
+                                    <div class="review-meta">
+                                        <span class="review-nickname">{{ r.nickname }}</span>
+                                        <span class="review-time">{{ formatRelativeTime(r.createdAt) }}</span>
+                                    </div>
+                                    <p class="review-content">{{ r.content }}</p>
+                                </div>
+                                <button
+                                    v-if="reviews.length > 5 && !reviewsShowAll"
+                                    class="review-more-btn"
+                                    @click="reviewsShowAll = true"
+                                >
+                                    查看更多（共 {{ reviews.length }} 則）
+                                </button>
+                            </div>
+                            <p v-else class="review-empty">尚無留言，成為第一個留言的人！</p>
+
+                            <div class="rating-divider" style="margin: 0.6rem 0 0.9rem;"></div>
+
+                            <!-- 留言表單 -->
+                            <div class="review-form">
+                                <input
+                                    v-model="reviewNickname"
+                                    type="text"
+                                    placeholder="暱稱（必填，最多 20 字）"
+                                    maxlength="20"
+                                    class="review-input"
+                                />
+                                <textarea
+                                    v-model="reviewContent"
+                                    placeholder="留下您的感想…（最多 200 字）"
+                                    maxlength="200"
+                                    class="review-textarea"
+                                    rows="3"
+                                ></textarea>
+                                <div class="review-form-footer">
+                                    <span class="review-char-count">{{ reviewContent.length }} / 200</span>
+                                    <button
+                                        class="review-submit-btn"
+                                        :disabled="!reviewNickname.trim() || !reviewContent.trim()"
+                                        @click="submitReview(selectedDish.id)"
+                                    >
+                                        送出留言
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -634,6 +651,58 @@ const filterPopular = ref(false)
 const sortOrder = ref('default')
 const viewMode = ref('grid')
 
+// ── 留言 ──────────────────────────────────────────────
+const reviews = ref([])
+const reviewsLoading = ref(false)
+const reviewNickname = ref('')
+const reviewContent = ref('')
+const reviewsShowAll = ref(false)
+
+const displayedReviews = computed(() =>
+    reviewsShowAll.value ? reviews.value : reviews.value.slice(0, 5)
+)
+
+const formatRelativeTime = (dateStr) => {
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const minutes = Math.floor(diff / 60000)
+    if (minutes < 1) return '剛剛'
+    if (minutes < 60) return `${minutes} 分鐘前`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours} 小時前`
+    return `${Math.floor(hours / 24)} 天前`
+}
+
+const loadReviews = async (dishId) => {
+    reviewsLoading.value = true
+    reviews.value = []
+    try {
+        const res = await apiFetch(`/reviews/${dishId}`)
+        if (res.ok) reviews.value = await res.json()
+    } catch { /* 忽略 */ }
+    finally { reviewsLoading.value = false }
+}
+
+const submitReview = async (dishId) => {
+    const nickname = reviewNickname.value.trim()
+    const content = reviewContent.value.trim()
+    if (!nickname || !content) return
+    try {
+        const res = await apiFetch(`/reviews/${dishId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nickname, content }),
+        })
+        if (!res.ok) throw new Error()
+        const newReview = await res.json()
+        reviews.value = [newReview, ...reviews.value]
+        reviewNickname.value = ''
+        reviewContent.value = ''
+        show('💬 留言成功！', 'success')
+    } catch {
+        show('留言失敗，請稍後再試', 'error')
+    }
+}
+
 // ── 評分 ──────────────────────────────────────────────
 const dishRatingMap = reactive({})
 const hoverStar = ref(0)
@@ -767,14 +836,14 @@ watch(isModalOpen, async (open) => {
     await nextTick()
     updateBtnPos()
 
-    // Ken Burns：圖片從放大縮回原比例
+    // 淡入
     const img = modalImgRef.value
     if (img) {
         img.style.transition = 'none'
-        img.style.transform = 'scale(1.18)'
+        img.style.opacity = '0'
         img.offsetHeight
-        img.style.transition = 'transform 7s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
-        img.style.transform = 'scale(1.0)'
+        img.style.transition = 'opacity 0.6s ease'
+        img.style.opacity = '1'
     }
 
     const body = modalBodyRef.value
@@ -834,6 +903,7 @@ const openModal = async (dish) => {
     isModalOpen.value = true
     document.body.style.overflow = 'hidden'
     selectedStar.value = ratedScore(dish.id)
+    reviewsShowAll.value = false
 
     try {
         const res = await apiFetch(`/Dishes/${dish.id}/Rating`)
@@ -842,6 +912,8 @@ const openModal = async (dish) => {
             dishRatingMap[dish.id] = data
         }
     } catch (_e) { /* 忽略評分載入錯誤 */ }
+
+    loadReviews(dish.id)
 }
 
 
@@ -851,6 +923,10 @@ const closeModal = () => {
     selectedDish.value = null
     shareMenuOpen.value = false
     activeIngredient.value = null
+    reviews.value = []
+    reviewNickname.value = ''
+    reviewContent.value = ''
+    reviewsShowAll.value = false
     document.body.style.overflow = ''
 }
 
@@ -2180,6 +2256,143 @@ onUnmounted(() => {
 .return-btn-leave-active { transition: opacity 0.2s, transform 0.2s ease; }
 .return-btn-enter-from  { opacity: 0; transform: translateX(-12px); }
 .return-btn-leave-to    { opacity: 0; transform: translateX(-8px); }
+
+/* ── 留言區 ── */
+.review-loading {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--font-label);
+    font-size: 0.8rem;
+    color: rgba(249, 221, 211, 0.45);
+    padding: 0.5rem 0;
+}
+.review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-bottom: 0.25rem;
+}
+.review-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(227, 199, 107, 0.1);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+}
+.review-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.35rem;
+    gap: 0.5rem;
+}
+.review-nickname {
+    font-family: var(--font-label);
+    font-size: 0.78rem;
+    color: var(--eat-primary);
+    letter-spacing: 0.04em;
+}
+.review-time {
+    font-family: var(--font-label);
+    font-size: 0.65rem;
+    color: rgba(249, 221, 211, 0.3);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.review-content {
+    font-family: var(--font-body);
+    font-size: 0.83rem;
+    line-height: 1.65;
+    color: rgba(249, 221, 211, 0.72);
+    margin: 0;
+    word-break: break-word;
+}
+.review-more-btn {
+    background: none;
+    border: 1px solid rgba(227, 199, 107, 0.2);
+    border-radius: 20px;
+    color: rgba(227, 199, 107, 0.6);
+    font-family: var(--font-label);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    padding: 0.35rem 1rem;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+    align-self: flex-start;
+}
+.review-more-btn:hover {
+    border-color: rgba(227, 199, 107, 0.5);
+    color: var(--eat-primary);
+}
+.review-empty {
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    font-style: italic;
+    color: rgba(249, 221, 211, 0.3);
+    margin: 0.25rem 0;
+}
+.review-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.review-input,
+.review-textarea {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(227, 199, 107, 0.15);
+    border-radius: 10px;
+    color: var(--eat-on-surface);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    padding: 0.6rem 0.9rem;
+    outline: none;
+    transition: border-color 0.25s;
+    resize: none;
+    box-sizing: border-box;
+}
+.review-input::placeholder,
+.review-textarea::placeholder {
+    color: rgba(249, 221, 211, 0.25);
+}
+.review-input:focus,
+.review-textarea:focus {
+    border-color: rgba(227, 199, 107, 0.4);
+}
+.review-form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+}
+.review-char-count {
+    font-family: var(--font-label);
+    font-size: 0.65rem;
+    color: rgba(249, 221, 211, 0.3);
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+.review-submit-btn {
+    background: rgba(227, 199, 107, 0.1);
+    border: 1px solid rgba(227, 199, 107, 0.35);
+    border-radius: 20px;
+    color: var(--eat-primary);
+    font-family: var(--font-label);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    padding: 0.45rem 1.25rem;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    white-space: nowrap;
+}
+.review-submit-btn:hover:not(:disabled) {
+    background: rgba(227, 199, 107, 0.2);
+    border-color: var(--eat-primary);
+}
+.review-submit-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
 
 @media (max-width: 768px) {
     .menu-header {

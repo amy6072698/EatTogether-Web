@@ -489,14 +489,14 @@ watch(isModalOpen, async (open) => {
   if (!open) return
   await nextTick()
 
-  // B: Ken Burns
+  // B: 淡入
   const img = modalImgRef.value
   if (img) {
     img.style.transition = 'none'
-    img.style.transform = 'scale(1.18)'
+    img.style.opacity = '0'
     img.offsetHeight
-    img.style.transition = 'transform 7s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
-    img.style.transform = 'scale(1.0)'
+    img.style.transition = 'opacity 0.6s ease'
+    img.style.opacity = '1'
   }
 
   const body = modalBodyRef.value
@@ -1415,6 +1415,7 @@ onUnmounted(() => {
   height: 230px;
   background: #251813;
   flex-shrink: 0;
+  overflow: hidden;
 }
 .modal-img { width: 100%; height: 100%; object-fit: cover; }
 .modal-img-placeholder {

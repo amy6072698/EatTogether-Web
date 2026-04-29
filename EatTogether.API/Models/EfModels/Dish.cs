@@ -7,53 +7,55 @@ namespace EatTogether.API.Models.EfModels;
 
 public partial class Dish
 {
-    public int Id { get; set; }
+	public int Id { get; set; }
 
-    public int CategoryId { get; set; }
+	public int CategoryId { get; set; }
 
-    public string DishName { get; set; }
+	public string DishName { get; set; }
 
-    public decimal Price { get; set; }
+	public decimal Price { get; set; }
 
-    public bool IsActive { get; set; }
+	public bool IsActive { get; set; }
 
-    public DateTime CreatedAt { get; set; }
+	public DateTime CreatedAt { get; set; }
 
-    public string Description { get; set; }
+	public string Description { get; set; }
 
-    public string ImageUrl { get; set; }
+	public string ImageUrl { get; set; }
 
-    public bool IsTakeOut { get; set; }
+	public bool IsTakeOut { get; set; }
 
-    public bool IsLimited { get; set; }
+	public bool IsLimited { get; set; }
 
-    public bool IsRecommended { get; set; }
+	public bool IsRecommended { get; set; }
 
-    public bool IsPopular { get; set; }
+	public bool IsPopular { get; set; }
 
-    public bool IsVegetarian { get; set; }
+	public bool IsVegetarian { get; set; }
 
-    public int SpicyLevel { get; set; }
+	public int SpicyLevel { get; set; }
 
-    public DateOnly? StartDate { get; set; }
+	public DateOnly? StartDate { get; set; }
 
-    public DateOnly? EndDate { get; set; }
+	public DateOnly? EndDate { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+	public DateTime? UpdatedAt { get; set; }
 
-    public string IngredientsJson { get; set; }
+	public string IngredientsJson { get; set; }
 
-    public double AverageScore { get; set; }
+	public double AverageScore { get; set; }
 
-    public int RatingCount { get; set; }
+	public int RatingCount { get; set; }
 
-    public int StockStatus { get; set; }
+	public int StockStatus { get; set; }
 
-    public virtual Category Category { get; set; }
+	public virtual Category Category { get; set; }
 
-    public virtual ICollection<Event> Events { get; set; } = new List<Event>();
+	public virtual ICollection<Event> Events { get; set; } = new List<Event>();
 
-    public virtual ICollection<Product> Products { get; set; } = new List<Product>();
+	public virtual ICollection<Product> Products { get; set; } = new List<Product>();
 
-    public virtual ICollection<SetMealItem> SetMealItems { get; set; } = new List<SetMealItem>();
+	public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
+
+	public virtual ICollection<SetMealItem> SetMealItems { get; set; } = new List<SetMealItem>();
 }
