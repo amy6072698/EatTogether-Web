@@ -118,6 +118,7 @@ namespace EatTogether.API
             builder.Services.AddScoped<IMemberFavoriteRepository, MemberFavoriteRepository>();
 			builder.Services.AddScoped<INewsRepository, NewsRepository>();
 			builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+            builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 
 			// 註冊 Service
 			builder.Services.AddScoped<IAuthService, AuthService>();
