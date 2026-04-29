@@ -329,6 +329,7 @@ namespace EatTogether.Models.Services
                     UnitPrice     = (int)(price ?? 0),
                     Qty           = 0,
                     IsSetMeal     = p.ProductType == "SetMeal",
+                    SetMealId     = p.SetMealId,
                     CategoryName  = p.ProductType == "Dish" ? p.DishCategoryName : "套餐",
                     ImageUrl      = imageUrl,
                     Description   = p.ProductType == "Dish" ? p.DishDescription : null,
