@@ -11,6 +11,15 @@
             alt="使用者頭像"
             class="avatar-photo"
         />
+
+        <!-- 模式 1.5：Google 頭像 -->
+        <img
+            v-else-if="displayMode === 'google'"
+            :src="googleAvatarUrl"
+            alt="Google 頭像"
+            class="avatar-photo"
+        />
+
         <!-- 模式 2：預設圖示 -->
         <img
             v-else-if="!avatarLoadError"
@@ -19,6 +28,7 @@
             class="avatar-default"
             @error="avatarLoadError = true"
         />
+
         <!-- 模式 3：名字首字 -->
         <div v-else class="avatar-initial" :style="fontStyle">
             {{ initial }}
@@ -57,6 +67,7 @@ const avatarLoadError = ref(false)
 
 const props = defineProps({
     avatarFileName: { type: String, default: null },
+    googleAvatarUrl: { type: String, default: null },
     name: { type: String, default: '' },
     size: { type: String, default: '36px' },
     interactive: { type: Boolean, default: false },
@@ -64,6 +75,7 @@ const props = defineProps({
 
 const displayMode = computed(() => {
     if (props.avatarFileName) return 'photo'
+    if (props.googleAvatarUrl) return 'google'
     return 'default'
 })
 
@@ -95,6 +107,8 @@ const fontStyle = computed(() => ({
     height: 100%;
     object-fit: cover;
     display: block;
+    border-radius: 50%;
+    border: 2px solid transparent;
 }
 
 /* 模式 2：預設圖示（背景色保留，border 移交 interactive 控制）*/

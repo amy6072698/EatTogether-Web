@@ -517,7 +517,7 @@ namespace EatTogether.API.Models.Services
 
 			// 3. 查詢 MemberExternalLogins WHERE Provider='google' AND ProviderUserId=sub
 			Member member;
-			var externalLogin = await _memberRepo.GetExternalLoginAsync("google", providerUserId);
+			var externalLogin = await _memberRepo.GetExternalLoginByProviderAsync("google", providerUserId);
 
 			if (externalLogin != null)
 			{
@@ -616,6 +616,7 @@ namespace EatTogether.API.Models.Services
 			return Result<MemberViewModel>.Success(new MemberViewModel
 			{
 				Id = member.Id,
+				Account = member.Account,
 				Name = member.Name,
 				Email = member.Email,
 				AvatarFileName = member.AvatarFileName,

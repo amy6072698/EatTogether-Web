@@ -107,7 +107,7 @@ onMounted(() => {
                         </p>
 
                         <div>
-                            <label for="fp-modal-email" class="eat-label d-block mb-1">
+                            <label for="fp-modal-email" class="form-label d-block mb-1">
                                 Email
                             </label>
                             <input

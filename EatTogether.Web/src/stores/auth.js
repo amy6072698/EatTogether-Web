@@ -4,9 +4,11 @@ import apiFetch from '@/utils/apiFetch.js'
 
 const INITIAL_MEMBER = () => ({
     id: null,
+    account: '',
     name: '',
     email: '',
     avatarFileName: null,
+    googleAvatarUrl: null,
     hashedPasswordStatus: '', // 'HAS_PASSWORD' | 'EXTERNAL_LOGIN_NO_PASSWORD'
     googleLinked: false,
 })
@@ -38,22 +40,6 @@ export const useAuthStore = defineStore('auth', () => {
      * apiFetch 若遇網路錯誤會 throw，此處 catch 後靜默清空，不讓錯誤繼續往上傳
      */
     async function fetchMe() {
-        // ── 開發 mock（後端 MembersController 完成後移除此 mock）──────
-        // TODO: MembersController 完成後移除此 mock
-        if (import.meta.env.DEV) {
-            member.value = {
-                id: 1,
-                name: '測試會員',
-                email: 'test@example.com',
-                avatarFileName: null,
-                hashedPasswordStatus: 'HAS_PASSWORD',
-                googleLinked: false,
-            }
-            isLoggedIn.value = true
-            return
-        }
-        // ────────────────────────────────────────────────────────────────
-
         isLoading.value = true
         try {
             const res = await apiFetch('/members/me')
