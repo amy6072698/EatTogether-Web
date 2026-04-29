@@ -45,7 +45,7 @@
                 <NewsArticleNav :prevArticle="prevArticle" :nextArticle="nextArticle" />
 
                 <div class="detail-back-wrap">
-                    <RouterLink :to="{ name: 'NewsList' }" class="detail-back-btn"
+                    <RouterLink :to="{ name: 'NewsList' }" class="btn-eat-secondary btn-eat-sm"
                         >回列表頁</RouterLink
                     >
                 </div>
@@ -56,12 +56,14 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { useRoute, RouterLink } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import apiFetch from '@/utils/apiFetch.js'
 import NewsIntroHeader from '@/components/news/NewsIntroHeader.vue'
 import NewsArticleNav from '@/components/news/NewsArticleNav.vue'
+import { useToast } from '@/composables/useToast.js'
 
 const route = useRoute()
+const router = useRouter()
 
 const article = ref({
     title: '',
@@ -69,12 +71,14 @@ const article = ref({
     description: '',
     coverImageUrl: null,
     publishDate: null,
+    status: '',
     viewCount: 0,
 })
 const prevArticle = ref(null)
 const nextArticle = ref(null)
 const loading = ref(false)
 const error = ref(false)
+const { show } = useToast()
 
 // 取得或產生訪客 ID
 function getVisitorId() {
@@ -105,11 +109,16 @@ async function fetchDetail(id) {
     try {
         const res = await apiFetch(`/News/${id}`)
         if (!res.ok) {
-            // 404、500 都會在這裡被攔截
+            if (res.status === 404) {
+                show('此文章已下架或不存在')
+                router.replace({ name: 'NewsList' })
+                return
+            }
             error.value = true
             return
         }
         const data = await res.json()
+
         article.value = data.article
         prevArticle.value = data.prev ?? null
         nextArticle.value = data.next ?? null
@@ -221,27 +230,19 @@ onMounted(() => {
 .detail-body :deep(a:hover) {
     opacity: 0.7;
 }
-.detail-body :deep(.ql-size-small) {
+
+/* Quill 字級 */
+.detail-body :deep(.ql-size-small),
+.ql-size-small {
     font-size: 0.85rem;
 }
-.detail-body :deep(.ql-size-large) {
+.detail-body :deep(.ql-size-large),
+.ql-size-large {
     font-size: 1.3rem;
 }
-.detail-body :deep(.ql-size-huge) {
-    font-size: 1.6rem;
-}
-
-/* ── Quill文字大小 ───────────────────────────────────────── */
-.ql-size-small {
-    font-size: 0.75em;
-}
-
-.ql-size-large {
-    font-size: 1.5em;
-}
-
+.detail-body :deep(.ql-size-huge),
 .ql-size-huge {
-    font-size: 2.5em;
+    font-size: 1.6rem;
 }
 
 /* ── 分隔線 ───────────────────────────────────────── */
@@ -276,30 +277,13 @@ onMounted(() => {
     color: var(--eat-secondary);
 }
 
-/* ── 回列表 ───────────────────────────────────────── */
+/* ── 回列表按鈕 ────────────────────────────────────── */
 .detail-back-wrap {
     display: flex;
     justify-content: center;
 }
-.detail-back-btn {
-    display: inline-block;
-    padding: 0.7rem 3rem;
-    border: 1px solid rgba(201, 169, 110, 0.25);
-    color: var(--eat-secondary);
-    font-family: var(--font-label);
-    font-size: 0.7rem;
-    letter-spacing: 0.25em;
-    text-transform: uppercase;
-    text-decoration: none;
-    transition: all 0.4s ease;
-    border-radius: var(--eat-radius);
-}
-.detail-back-btn:hover {
-    background: var(--eat-secondary);
-    color: var(--eat-on-primary);
-}
 
-/* ── 載入/錯誤 ────────────────────────────────────── */
+/* ── 載入 / 錯誤狀態 ──────────────────────────────── */
 .detail-state {
     padding: 6rem 0;
     text-align: center;
@@ -313,17 +297,12 @@ onMounted(() => {
 
 /* ── RWD ──────────────────────────────────────────── */
 @media (max-width: 767px) {
-    .detail-intro {
-        margin-top: 1.5rem;
-        padding: 0 1rem;
-    }
     .detail-main {
         padding: 1.5rem 1.25rem 4rem;
     }
     .detail-body {
         font-size: 1rem;
     }
-
     .detail-bc-current {
         max-width: 160px;
     }

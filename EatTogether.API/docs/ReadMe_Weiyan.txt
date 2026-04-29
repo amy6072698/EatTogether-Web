@@ -90,17 +90,17 @@
 
 （此模組暫緩，待最新消息完成後再開始）
 
-[working]規劃通知資料來源
+[V]規劃通知資料來源
   來源自已發布「活動介紹」文章（對應 UserNotification 關聯表）
-  [working]新增Notification repo、dto、service
+  [V]新增Notification repo、dto、service
 
 
-[]add 通知列表 API
+[working]add 通知列表 API
   url: GET api/Notifications（或掛在會員身上）
   **需確認是否需要登入才能看通知
 
-[]add Vue 鈴鐺元件
-  []BellIcon.vue
-  []點擊展開通知下拉清單
-  []未讀數量 badge
-  []點擊單筆通知標記已讀
+[working]add Vue 鈴鐺元件
+  [working]BellNotification.vue
+  [working]點擊展開通知下拉清單
+  [working]未讀數量 badge
+  [working]點擊單筆通知標記已讀

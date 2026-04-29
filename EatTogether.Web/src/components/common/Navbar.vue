@@ -12,17 +12,21 @@
             </RouterLink>
 
             <!-- Mobile Toggler -->
-            <button
-                class="navbar-toggler"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#navbarMain"
-                aria-controls="navbarMain"
-                aria-expanded="false"
-                aria-label="Toggle navigation"
-            >
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <div class="d-flex align-items-center gap-2 ms-auto d-lg-none">
+                <BellNotification v-if="authStore.isLoggedIn" />
+
+                <button
+                    class="navbar-toggler"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#navbarMain"
+                    aria-controls="navbarMain"
+                    aria-expanded="false"
+                    aria-label="Toggle navigation"
+                >
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
 
             <!-- Nav Links -->
             <div class="collapse navbar-collapse" id="navbarMain" ref="navbarCollapse">
@@ -93,9 +97,15 @@
                             登入｜註冊
                         </Button>
 
-                        <!-- 已登入：頭像 + Dropdown -->
+                        <!-- 已登入：小鈴鐺 -->
+                        <BellNotification
+                            v-if="authStore.isLoggedIn"
+                            class="d-none d-lg-inline-block"
+                        />
+
+                        <!-- 已登入：頭像 + Dropdown --><!-- v-else更改條件式 -->
                         <div
-                            v-else
+                            v-if="authStore.isLoggedIn"
                             class="w-100 w-lg-auto nav-item dropdown-wrap d-flex flex-column align-items-center justify-content-center"
                             :class="{ 'is-open': openDropdown === 'user' }"
                             @mouseenter="isHoverDevice && (openDropdown = 'user')"
@@ -151,6 +161,7 @@ import Button from '@/components/common/Button.vue'
 import AvatarInitial from '@/components/member/AvatarInitial.vue'
 import { Modal, Collapse } from 'bootstrap'
 import { useAuthStore } from '@/stores/auth.js'
+import BellNotification from '@/components/common/notification/BellNotification.vue'
 
 const authStore = useAuthStore()
 
