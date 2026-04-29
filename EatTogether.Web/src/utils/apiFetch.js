@@ -142,8 +142,15 @@ async function handleAuthExpired() {
         // 動態 import 避免循環依賴（apiFetch → auth store → apiFetch）
         const { useAuthStore } = await import('@/stores/auth.js')
         const authStore = useAuthStore()
+
+        // 若 isLoggedIn 本來就是 false（訪客初次載入頁面、從未登入），
+        // 代表這是 checkAuth() 的初始檢查失敗，不是「已登入後 session 過期」，
+        // 直接靜默清空即可，不發出 auth:expired 事件，避免不必要的跳頁。
+        const wasLoggedIn = authStore.isLoggedIn
         authStore.clearAuth()
-        window.dispatchEvent(new CustomEvent('auth:expired'))
+        if (wasLoggedIn) {
+            window.dispatchEvent(new CustomEvent('auth:expired'))
+        }
     } finally {
         authExpiredHandling = false
     }

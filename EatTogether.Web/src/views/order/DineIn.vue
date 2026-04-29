@@ -150,6 +150,123 @@
             ></div>
         </header>
 
+        <!-- ══ ----手機板---- 專用 Header（Grid：Logo 跨兩行） ══ -->
+        <header class="dine-header-mobile">
+            <!-- Grid 結構：
+                 [logo][  row1: 今日菜單  |  會員  ]
+                 [logo][  row2: 桌號 xx   |  人數  ]
+            -->
+
+            <!-- 左：Logo（grid-row: span 2） -->
+            <img src="@/assets/images/logo.svg" alt="義起吃" class="dhm-logo-img" />
+
+            <!-- 右上：今日菜單+ 會員（靠右） -->
+            <div class="dhm-row1">
+                <h1 class="dhm-title font-headline">今日菜單</h1>
+                <div
+                    class="dh-member dh-member-btn"
+                    @click.stop="
+                        isLoggedIn ? (memberDropdownOpen = !memberDropdownOpen) : openAuthModal()
+                    "
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="13"
+                        height="13"
+                        fill="currentColor"
+                        style="color: rgba(208, 197, 181, 0.45); flex-shrink: 0"
+                        viewBox="0 0 16 16"
+                    >
+                        <path
+                            d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.03 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"
+                        />
+                    </svg>
+                    <span class="dh-member-label font-label">{{ memberName }}</span>
+                    <svg
+                        class="dh-chevron"
+                        :class="{ open: memberDropdownOpen }"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="9"
+                        height="9"
+                        fill="currentColor"
+                        viewBox="0 0 16 16"
+                    >
+                        <path
+                            d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"
+                        />
+                    </svg>
+                    <div
+                        v-if="memberDropdownOpen && isLoggedIn"
+                        class="member-dropdown"
+                        @click.stop=""
+                    >
+                        <button class="member-dropdown-item font-label" @click="openAuthModal">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="13"
+                                height="13"
+                                fill="currentColor"
+                                viewBox="0 0 16 16"
+                            >
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-4.5-.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H11.5z"
+                                />
+                            </svg>
+                            切換帳號
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右下：桌號 + 用餐人數 -->
+            <div class="dhm-row2">
+                <span class="dhm-label font-label">桌號</span>
+                <span class="dhm-table-name font-headline">{{
+                    tables.find((t) => t.id === tableId)?.tableName || tableNameFromUrl || '—'
+                }}</span>
+                <div class="dh-sep"></div>
+                <span :class="['dhm-label', 'font-label', { 'pax-label-error': paxError }]"
+                    >用餐人數</span
+                >
+                <button
+                    :class="['dh-pax-btn', 'font-label', { 'pax-ctrl-error': paxError }]"
+                    :disabled="store.pax <= 1"
+                    @click="store.pax = Math.max(1, store.pax - 1)"
+                >
+                    −
+                </button>
+                <input
+                    type="number"
+                    min="1"
+                    max="99"
+                    :class="[
+                        'dh-pax-input',
+                        'font-label',
+                        { 'pax-empty': store.pax === 0, 'pax-input-error': paxError },
+                    ]"
+                    :value="store.pax || ''"
+                    placeholder="—"
+                    @change="
+                        store.pax = Math.max(0, Math.min(99, parseInt($event.target.value) || 0))
+                    "
+                />
+                <button
+                    :class="['dh-pax-btn', 'font-label', { 'pax-ctrl-error': paxError }]"
+                    @click="store.pax = (store.pax || 0) + 1"
+                >
+                    +
+                </button>
+            </div>
+
+            <!-- 點擊背景關閉下拉 -->
+            <div
+                v-if="memberDropdownOpen"
+                class="member-backdrop"
+                @click="memberDropdownOpen = false"
+            ></div>
+        </header>
+
         <!-- ══ 手機分類捲動列 ══ -->
         <header class="mobile-header">
             <nav class="mobile-cat-tabs">
@@ -541,387 +658,400 @@
                 </div>
             </main>
 
-            <!-- ── RIGHT: Order Panel ── -->
-            <aside class="order-panel" :class="{ 'panel-open': orderPanelOpen }">
-                <!-- 標題列 -->
-                <div class="panel-header candle-glow">
-                    <span class="font-headline" style="color: #e3c76b; font-size: 1.1rem"
-                        >我的訂單</span
-                    >
-                    <div style="display: flex; align-items: center; gap: 0.75rem">
-                        <span
-                            class="font-label"
-                            style="
-                                color: rgba(208, 197, 181, 0.5);
-                                font-size: 0.75rem;
-                                letter-spacing: 0.12em;
-                            "
-                            >共 {{ store.totalItems }} 項</span
+            <!-- ── RIGHT: Order Panel（Teleport 到 body，避免 root-wrap overflow:hidden 影響 z-index） -->
+            <Teleport to="body">
+                <aside class="order-panel" :class="{ 'panel-open': orderPanelOpen }">
+                    <!-- 標題列 -->
+                    <div class="panel-header candle-glow">
+                        <span class="font-headline" style="color: #e3c76b; font-size: 1.1rem"
+                            >我的訂單</span
                         >
-                        <button @click="orderPanelOpen = false" class="panel-close-btn">✕</button>
-                    </div>
-                </div>
-
-                <!-- 餐點清單（可捲動） -->
-                <div class="panel-items">
-                    <div
-                        v-if="store.totalItems === 0"
-                        style="text-align: center; padding: 3rem 1rem"
-                    >
-                        <p style="font-size: 2.5rem; opacity: 0.15; margin-bottom: 0.75rem">🍽️</p>
-                        <p class="font-body" style="color: rgba(249, 221, 211, 0.4)">
-                            尚未點選任何餐點
-                        </p>
-                        <p
-                            class="font-label"
-                            style="
-                                color: rgba(208, 197, 181, 0.35);
-                                font-size: 0.7rem;
-                                letter-spacing: 0.18em;
-                                text-transform: uppercase;
-                                margin-top: 0.5rem;
-                            "
-                        >
-                            點擊料理即可加入
-                        </p>
-                    </div>
-                    <div
-                        v-for="item in cartItemsWithDetails"
-                        :key="item.lineId"
-                        :class="['order-item', { 'setmeal-order-item': item.isSetMeal }]"
-                    >
-                        <!-- 套餐 badge 獨占一行 -->
-                        <div v-if="item.isSetMeal" class="setmeal-badge font-label">🍱 套餐</div>
-
-                        <div class="order-item-top">
-                            <!-- 左側名稱區：點擊開啟編輯 Modal -->
-                            <div
-                                class="order-item-name-wrap"
-                                @click="openCartItemEdit(item)"
-                                title="點擊編輯"
-                            >
-                                <p class="font-headline order-item-name" style="color: #e3c76b">
-                                    {{ item.productName }}
-                                </p>
-                                <p v-if="item.note" class="font-body order-item-note">
-                                    {{ item.note }}
-                                </p>
-                            </div>
-                            <div class="order-item-right">
-                                <span class="font-label order-item-price"
-                                    >NT$ {{ (item.unitPrice * item.qty).toLocaleString() }}</span
-                                >
-                                <button
-                                    class="qty-btn-order"
-                                    @click.stop="store.removeLineItem(item.lineId)"
-                                >
-                                    −
-                                </button>
-                                <span class="font-label order-item-qty" style="color: #f9ddd3">{{
-                                    item.qty
-                                }}</span>
-                                <button
-                                    v-if="!item.isSetMeal"
-                                    class="qty-btn-order"
-                                    @click.stop="store.addItem(item.productId, item.note)"
-                                >
-                                    +
-                                </button>
-                                <button
-                                    v-else
-                                    class="qty-btn-order"
-                                    @click.stop="store.addLineItem(item.lineId)"
-                                >
-                                    +
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- 套餐子項目：每項獨立一行，名稱靠左 × qty 靠右 -->
-                        <div v-if="item.isSetMeal" class="setmeal-subitems">
-                            <div
-                                v-for="f in item.setMealData?.fixedItems"
-                                :key="'f-' + f.dishId"
-                                class="setmeal-subitem-row"
-                            >
-                                <span class="font-label setmeal-subitem-name">{{
-                                    f.dishName
-                                }}</span>
-                                <span class="font-label setmeal-subitem-qty"
-                                    >× {{ f.quantity }}</span
-                                >
-                            </div>
-                            <div
-                                v-for="s in item.setMealData?.selectedOptions"
-                                :key="'s-' + s.dishId"
-                                class="setmeal-subitem-row"
-                            >
-                                <span class="font-label setmeal-subitem-name">{{
-                                    s.dishName
-                                }}</span>
-                                <span class="font-label setmeal-subitem-qty">× {{ s.qty }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 贈品列（Gift 型活動自動帶入，唯讀） -->
-                    <div v-if="isLoggedIn && giftCartItem" class="order-item gift-order-item">
-                        <div class="order-item-top">
-                            <div style="display: flex; flex-direction: column; gap: 0.1rem">
-                                <p class="font-headline order-item-name" style="color: #e3c76b">
-                                    {{ giftCartItem.productName }}
-                                </p>
-                            </div>
-                            <div class="order-item-right">
-                                <span class="gift-order-badge font-label">🎁 贈品</span>
-                                <span
-                                    class="font-label order-item-qty"
-                                    style="
-                                        color: rgba(208, 197, 181, 0.55);
-                                        font-size: 0.75rem;
-                                        min-width: 1.2rem;
-                                        text-align: center;
-                                    "
-                                    >× 1</span
-                                >
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 固定底部：備註 + 合計 + 按鈕 -->
-                <div class="panel-footer">
-                    <div
-                        style="
-                            padding: 0.75rem 1rem;
-                            border-bottom: 1px solid rgba(77, 70, 58, 0.2);
-                        "
-                    >
-                        <textarea
-                            v-model="store.specialRequest"
-                            class="note-textarea font-body resize-none"
-                            rows="2"
-                            placeholder="備註：過敏食材、特殊需求…"
-                        ></textarea>
-
-                        <!-- 訪客：已符合門檻的自動活動 → 登入即享提示 -->
-                        <div
-                            v-if="total > 0 && !isLoggedIn && autoEvents.length"
-                            class="notify-events"
-                        >
-                            <div
-                                v-for="ev in autoEvents"
-                                :key="'guest-auto-' + ev.id"
-                                class="notify-event-card eligible guest-login-hint"
-                            >
-                                <div class="notify-event-top">
-                                    <span class="notify-event-icon">⭐</span>
-                                    <span class="font-label notify-event-title">{{
-                                        ev.title
-                                    }}</span>
-                                    <span class="notify-event-badge font-label eligible-badge"
-                                        >已符合門檻</span
-                                    >
-                                </div>
-                                <p class="font-body notify-event-desc">
-                                    登入即享限時優惠：{{ ev.discountDescription }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- 快到門檻提示（差額 ≤ 100 的自動活動） -->
-                        <div v-if="total > 0 && nearAutoEvents.length" class="notify-events">
-                            <div
-                                v-for="ev in nearAutoEvents"
-                                :key="'near-' + ev.id"
-                                class="notify-event-card near-threshold"
-                            >
-                                <div class="notify-event-top">
-                                    <span class="notify-event-icon">🔥</span>
-                                    <span class="font-label notify-event-title">{{
-                                        ev.title
-                                    }}</span>
-                                    <span class="notify-event-badge font-label near-badge">
-                                        差 NT${{ ev.minSpend - total }}
-                                    </span>
-                                </div>
-                                <p class="font-body notify-event-desc">
-                                    再消費 NT${{ ev.minSpend - total }} 即可享{{
-                                        isLoggedIn ? '' : '（登入後）'
-                                    }}限時優惠：{{ ev.discountDescription }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- 通知型活動（IsAutoDiscount=0）→ 改用 Modal 通知，見下方 Teleport -->
-
-                        <!-- 優惠券輸入 -->
-                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem">
-                            <input
-                                v-model="couponCode"
-                                type="text"
-                                class="input-line font-body"
-                                style="flex: 1; font-size: 0.85rem"
-                                placeholder="輸入優惠券代碼"
-                            />
-                            <button
-                                @click="applyCoupon"
+                        <div style="display: flex; align-items: center; gap: 0.75rem">
+                            <span
                                 class="font-label"
                                 style="
-                                    padding: 0.4rem 0.75rem;
-                                    background: transparent;
-                                    border: 1px solid rgba(227, 199, 107, 0.5);
-                                    color: #e3c76b;
-                                    border-radius: 0.25rem;
+                                    color: rgba(208, 197, 181, 0.5);
                                     font-size: 0.75rem;
-                                    letter-spacing: 0.1em;
-                                    cursor: pointer;
-                                    white-space: nowrap;
+                                    letter-spacing: 0.12em;
                                 "
+                                >共 {{ store.totalItems }} 項</span
                             >
-                                套用
+                            <button @click="orderPanelOpen = false" class="panel-close-btn">
+                                ✕
                             </button>
                         </div>
-                        <p
-                            v-if="couponMsg"
-                            class="font-label mb-0"
-                            style="font-size: 0.7rem; margin-top: 0.25rem"
-                            :style="{ color: couponOk ? '#a3d977' : '#ffb4ab' }"
-                        >
-                            {{ couponMsg }}
-                        </p>
                     </div>
-                    <div
-                        style="
-                            padding: 0.75rem 1rem;
-                            display: flex;
-                            flex-direction: column;
-                            gap: 0.5rem;
-                        "
-                    >
-                        <div style="display: flex; flex-direction: column; gap: 0.3rem">
-                            <!-- 已套用活動標籤（已登入會員） -->
-                            <div v-if="isLoggedIn && bestAutoEvent" class="applied-event-tag">
-                                <span class="applied-event-icon">🎉</span>
-                                <span class="font-label applied-event-text">
-                                    已參加「{{ bestAutoEvent.title }}」活動 （滿 NT${{
-                                        bestAutoEvent.minSpend
-                                    }}
-                                    可享 {{ bestAutoEvent.discountDescription }}）
-                                </span>
-                            </div>
-                            <!-- 活動折扣列（FixedAmount / Percent 才顯示，Gift 不扣金額） -->
-                            <div
-                                v-if="isLoggedIn && autoEventDiscount > 0"
+
+                    <!-- 餐點清單（可捲動） -->
+                    <div class="panel-items">
+                        <div
+                            v-if="store.totalItems === 0"
+                            style="text-align: center; padding: 3rem 1rem"
+                        >
+                            <p style="font-size: 2.5rem; opacity: 0.15; margin-bottom: 0.75rem">
+                                🍽️
+                            </p>
+                            <p class="font-body" style="color: rgba(249, 221, 211, 0.4)">
+                                尚未點選任何餐點
+                            </p>
+                            <p
+                                class="font-label"
                                 style="
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
+                                    color: rgba(208, 197, 181, 0.35);
+                                    font-size: 0.7rem;
+                                    letter-spacing: 0.18em;
+                                    text-transform: uppercase;
+                                    margin-top: 0.5rem;
                                 "
                             >
-                                <span
-                                    class="font-label"
-                                    style="
-                                        font-size: 0.8rem;
-                                        color: rgba(163, 217, 119, 0.8);
-                                        letter-spacing: 0.06em;
-                                    "
-                                    >活動折扣</span
-                                >
-                                <span
-                                    class="font-label"
-                                    style="
-                                        font-size: 0.8rem;
-                                        color: #a3d977;
-                                        letter-spacing: 0.06em;
-                                    "
-                                    >－ NT$ {{ autoEventDiscount.toLocaleString() }}</span
-                                >
+                                點擊料理即可加入
+                            </p>
+                        </div>
+                        <div
+                            v-for="item in cartItemsWithDetails"
+                            :key="item.lineId"
+                            :class="['order-item', { 'setmeal-order-item': item.isSetMeal }]"
+                        >
+                            <!-- 套餐 badge 獨占一行 -->
+                            <div v-if="item.isSetMeal" class="setmeal-badge font-label">
+                                🍱 套餐
                             </div>
-                            <!-- 優惠券折扣列 -->
-                            <div
-                                v-if="couponOk && couponDiscount > 0"
-                                style="
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
-                                "
-                            >
-                                <span
-                                    class="font-label"
-                                    style="
-                                        font-size: 0.8rem;
-                                        color: rgba(163, 217, 119, 0.8);
-                                        letter-spacing: 0.06em;
-                                    "
-                                    >優惠券折扣</span
+
+                            <div class="order-item-top">
+                                <!-- 左側名稱區：點擊開啟編輯 Modal -->
+                                <div
+                                    class="order-item-name-wrap"
+                                    @click="openCartItemEdit(item)"
+                                    title="點擊編輯"
                                 >
-                                <span
-                                    class="font-label"
-                                    style="
-                                        font-size: 0.8rem;
-                                        color: #a3d977;
-                                        letter-spacing: 0.06em;
-                                    "
-                                    >－ NT$ {{ couponDiscount.toLocaleString() }}</span
-                                >
+                                    <p class="font-headline order-item-name" style="color: #e3c76b">
+                                        {{ item.productName }}
+                                    </p>
+                                    <p v-if="item.note" class="font-body order-item-note">
+                                        {{ item.note }}
+                                    </p>
+                                </div>
+                                <div class="order-item-right">
+                                    <span class="font-label order-item-price"
+                                        >NT$
+                                        {{ (item.unitPrice * item.qty).toLocaleString() }}</span
+                                    >
+                                    <button
+                                        class="qty-btn-order"
+                                        @click.stop="store.removeLineItem(item.lineId)"
+                                    >
+                                        −
+                                    </button>
+                                    <span
+                                        class="font-label order-item-qty"
+                                        style="color: #f9ddd3"
+                                        >{{ item.qty }}</span
+                                    >
+                                    <button
+                                        v-if="!item.isSetMeal"
+                                        class="qty-btn-order"
+                                        @click.stop="store.addItem(item.productId, item.note)"
+                                    >
+                                        +
+                                    </button>
+                                    <button
+                                        v-else
+                                        class="qty-btn-order"
+                                        @click.stop="store.addLineItem(item.lineId)"
+                                    >
+                                        +
+                                    </button>
+                                </div>
                             </div>
-                            <!-- 合計列 -->
-                            <div
-                                style="
-                                    display: flex;
-                                    justify-content: space-between;
-                                    align-items: center;
-                                "
-                            >
-                                <span
-                                    class="font-headline"
-                                    style="color: #e3c76b; font-size: 1.1rem"
-                                    >合計</span
+
+                            <!-- 套餐子項目：每項獨立一行，名稱靠左 × qty 靠右 -->
+                            <div v-if="item.isSetMeal" class="setmeal-subitems">
+                                <div
+                                    v-for="f in item.setMealData?.fixedItems"
+                                    :key="'f-' + f.dishId"
+                                    class="setmeal-subitem-row"
                                 >
-                                <span
-                                    class="font-label"
-                                    style="
-                                        color: #e3c76b;
-                                        font-size: 1.1rem;
-                                        letter-spacing: 0.08em;
-                                    "
-                                    >NT$ {{ finalTotal.toLocaleString() }}</span
+                                    <span class="font-label setmeal-subitem-name">{{
+                                        f.dishName
+                                    }}</span>
+                                    <span class="font-label setmeal-subitem-qty"
+                                        >× {{ f.quantity }}</span
+                                    >
+                                </div>
+                                <div
+                                    v-for="s in item.setMealData?.selectedOptions"
+                                    :key="'s-' + s.dishId"
+                                    class="setmeal-subitem-row"
                                 >
+                                    <span class="font-label setmeal-subitem-name">{{
+                                        s.dishName
+                                    }}</span>
+                                    <span class="font-label setmeal-subitem-qty"
+                                        >× {{ s.qty }}</span
+                                    >
+                                </div>
                             </div>
                         </div>
-                        <button
-                            @click="submitOrder"
-                            :disabled="store.totalItems === 0 || submitting"
-                            class="submit-btn font-label"
-                            style="
-                                display: block;
-                                width: 100%;
-                                padding: 0.875rem 0;
-                                font-size: 1rem;
-                                letter-spacing: 0.28em;
-                                text-transform: uppercase;
-                            "
-                        >
-                            {{ submitting ? '送出中…' : '送出點餐' }}
-                        </button>
-                        <button
-                            @click="clearAll"
-                            class="clear-btn font-label"
-                            style="
-                                display: block;
-                                width: 100%;
-                                padding: 0.625rem 0;
-                                font-size: 1rem;
-                                letter-spacing: 0.1em;
-                                text-transform: uppercase;
-                            "
-                        >
-                            清空訂單
-                        </button>
+
+                        <!-- 贈品列（Gift 型活動自動帶入，唯讀） -->
+                        <div v-if="isLoggedIn && giftCartItem" class="order-item gift-order-item">
+                            <div class="order-item-top">
+                                <div style="display: flex; flex-direction: column; gap: 0.1rem">
+                                    <p class="font-headline order-item-name" style="color: #e3c76b">
+                                        {{ giftCartItem.productName }}
+                                    </p>
+                                </div>
+                                <div class="order-item-right">
+                                    <span class="gift-order-badge font-label">🎁 贈品</span>
+                                    <span
+                                        class="font-label order-item-qty"
+                                        style="
+                                            color: rgba(208, 197, 181, 0.55);
+                                            font-size: 0.75rem;
+                                            min-width: 1.2rem;
+                                            text-align: center;
+                                        "
+                                        >× 1</span
+                                    >
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </aside>
+
+                    <!-- 固定底部：備註 + 合計 + 按鈕 -->
+                    <div class="panel-footer">
+                        <div
+                            style="
+                                padding: 0.75rem 1rem;
+                                border-bottom: 1px solid rgba(77, 70, 58, 0.2);
+                            "
+                        >
+                            <textarea
+                                v-model="store.specialRequest"
+                                class="note-textarea font-body resize-none"
+                                rows="2"
+                                placeholder="備註：過敏食材、特殊需求…"
+                            ></textarea>
+
+                            <!-- 訪客：已符合門檻的自動活動 → 登入即享提示 -->
+                            <div
+                                v-if="total > 0 && !isLoggedIn && autoEvents.length"
+                                class="notify-events"
+                            >
+                                <div
+                                    v-for="ev in autoEvents"
+                                    :key="'guest-auto-' + ev.id"
+                                    class="notify-event-card eligible guest-login-hint"
+                                >
+                                    <div class="notify-event-top">
+                                        <span class="notify-event-icon">⭐</span>
+                                        <span class="font-label notify-event-title">{{
+                                            ev.title
+                                        }}</span>
+                                        <span class="notify-event-badge font-label eligible-badge"
+                                            >已符合門檻</span
+                                        >
+                                    </div>
+                                    <p class="font-body notify-event-desc">
+                                        登入即享限時優惠：{{ ev.discountDescription }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- 快到門檻提示（差額 ≤ 100 的自動活動） -->
+                            <div v-if="total > 0 && nearAutoEvents.length" class="notify-events">
+                                <div
+                                    v-for="ev in nearAutoEvents"
+                                    :key="'near-' + ev.id"
+                                    class="notify-event-card near-threshold"
+                                >
+                                    <div class="notify-event-top">
+                                        <span class="notify-event-icon">🔥</span>
+                                        <span class="font-label notify-event-title">{{
+                                            ev.title
+                                        }}</span>
+                                        <span class="notify-event-badge font-label near-badge">
+                                            差 NT${{ ev.minSpend - total }}
+                                        </span>
+                                    </div>
+                                    <p class="font-body notify-event-desc">
+                                        再消費 NT${{ ev.minSpend - total }} 即可享{{
+                                            isLoggedIn ? '' : '（登入後）'
+                                        }}限時優惠：{{ ev.discountDescription }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- 通知型活動（IsAutoDiscount=0）→ 改用 Modal 通知，見下方 Teleport -->
+
+                            <!-- 優惠券輸入 -->
+                            <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem">
+                                <input
+                                    v-model="couponCode"
+                                    type="text"
+                                    class="input-line font-body"
+                                    style="flex: 1; font-size: 0.85rem"
+                                    placeholder="輸入優惠券代碼"
+                                />
+                                <button
+                                    @click="applyCoupon"
+                                    class="font-label"
+                                    style="
+                                        padding: 0.4rem 0.75rem;
+                                        background: transparent;
+                                        border: 1px solid rgba(227, 199, 107, 0.5);
+                                        color: #e3c76b;
+                                        border-radius: 0.25rem;
+                                        font-size: 0.75rem;
+                                        letter-spacing: 0.1em;
+                                        cursor: pointer;
+                                        white-space: nowrap;
+                                    "
+                                >
+                                    套用
+                                </button>
+                            </div>
+                            <p
+                                v-if="couponMsg"
+                                class="font-label mb-0"
+                                style="font-size: 0.7rem; margin-top: 0.25rem"
+                                :style="{ color: couponOk ? '#a3d977' : '#ffb4ab' }"
+                            >
+                                {{ couponMsg }}
+                            </p>
+                        </div>
+                        <div
+                            style="
+                                padding: 0.75rem 1rem;
+                                display: flex;
+                                flex-direction: column;
+                                gap: 0.5rem;
+                            "
+                        >
+                            <div style="display: flex; flex-direction: column; gap: 0.3rem">
+                                <!-- 已套用活動標籤（已登入會員） -->
+                                <div v-if="isLoggedIn && bestAutoEvent" class="applied-event-tag">
+                                    <span class="applied-event-icon">🎉</span>
+                                    <span class="font-label applied-event-text">
+                                        已參加「{{ bestAutoEvent.title }}」活動 （滿 NT${{
+                                            bestAutoEvent.minSpend
+                                        }}
+                                        可享 {{ bestAutoEvent.discountDescription }}）
+                                    </span>
+                                </div>
+                                <!-- 活動折扣列（FixedAmount / Percent 才顯示，Gift 不扣金額） -->
+                                <div
+                                    v-if="isLoggedIn && autoEventDiscount > 0"
+                                    style="
+                                        display: flex;
+                                        justify-content: space-between;
+                                        align-items: center;
+                                    "
+                                >
+                                    <span
+                                        class="font-label"
+                                        style="
+                                            font-size: 0.8rem;
+                                            color: rgba(163, 217, 119, 0.8);
+                                            letter-spacing: 0.06em;
+                                        "
+                                        >活動折扣</span
+                                    >
+                                    <span
+                                        class="font-label"
+                                        style="
+                                            font-size: 0.8rem;
+                                            color: #a3d977;
+                                            letter-spacing: 0.06em;
+                                        "
+                                        >－ NT$ {{ autoEventDiscount.toLocaleString() }}</span
+                                    >
+                                </div>
+                                <!-- 優惠券折扣列 -->
+                                <div
+                                    v-if="couponOk && couponDiscount > 0"
+                                    style="
+                                        display: flex;
+                                        justify-content: space-between;
+                                        align-items: center;
+                                    "
+                                >
+                                    <span
+                                        class="font-label"
+                                        style="
+                                            font-size: 0.8rem;
+                                            color: rgba(163, 217, 119, 0.8);
+                                            letter-spacing: 0.06em;
+                                        "
+                                        >優惠券折扣</span
+                                    >
+                                    <span
+                                        class="font-label"
+                                        style="
+                                            font-size: 0.8rem;
+                                            color: #a3d977;
+                                            letter-spacing: 0.06em;
+                                        "
+                                        >－ NT$ {{ couponDiscount.toLocaleString() }}</span
+                                    >
+                                </div>
+                                <!-- 合計列 -->
+                                <div
+                                    style="
+                                        display: flex;
+                                        justify-content: space-between;
+                                        align-items: center;
+                                    "
+                                >
+                                    <span
+                                        class="font-headline"
+                                        style="color: #e3c76b; font-size: 1.1rem"
+                                        >合計</span
+                                    >
+                                    <span
+                                        class="font-label"
+                                        style="
+                                            color: #e3c76b;
+                                            font-size: 1.1rem;
+                                            letter-spacing: 0.08em;
+                                        "
+                                        >NT$ {{ finalTotal.toLocaleString() }}</span
+                                    >
+                                </div>
+                            </div>
+                            <button
+                                @click="submitOrder"
+                                :disabled="store.totalItems === 0 || submitting"
+                                class="submit-btn font-label"
+                                style="
+                                    display: block;
+                                    width: 100%;
+                                    padding: 0.875rem 0;
+                                    font-size: 1rem;
+                                    letter-spacing: 0.28em;
+                                    text-transform: uppercase;
+                                "
+                            >
+                                {{ submitting ? '送出中…' : '送出點餐' }}
+                            </button>
+                            <button
+                                @click="clearAll"
+                                class="clear-btn font-label"
+                                style="
+                                    display: block;
+                                    width: 100%;
+                                    padding: 0.625rem 0;
+                                    font-size: 1rem;
+                                    letter-spacing: 0.1em;
+                                    text-transform: uppercase;
+                                "
+                            >
+                                清空訂單
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+            </Teleport>
         </div>
 
         <!-- ── 手機底部列 ── -->
@@ -935,7 +1065,9 @@
                 >
             </div>
             <div class="flex items-center gap-3">
-                <span class="font-label text-sm tracking-wide" style="color: #e3c76b"
+                <span
+                    class="font-label text-sm tracking-wide"
+                    style="color: #e3c76b; padding-right: 1rem"
                     >NT$ {{ finalTotal.toLocaleString() }}</span
                 >
                 <span class="bottom-cta font-label text-xs tracking-[0.2em] uppercase"
@@ -944,8 +1076,10 @@
             </div>
         </div>
 
-        <!-- 手機 overlay -->
-        <div v-if="orderPanelOpen" @click="orderPanelOpen = false" class="mobile-overlay"></div>
+        <!-- 手機 overlay（Teleport 到 body，避免 root-wrap overflow:hidden 影響 z-index） -->
+        <Teleport to="body">
+            <div v-if="orderPanelOpen" @click="orderPanelOpen = false" class="mobile-overlay"></div>
+        </Teleport>
 
         <!-- Notify Events Toast（IsAutoDiscount=0 活動，右下角通知） -->
         <Teleport to="body">
@@ -1102,6 +1236,7 @@ import apiFetch from '@/utils/apiFetch'
 import DishDetailModal from '@/components/order/DishDetailModal.vue'
 import SetMealSelectModal from '@/components/order/SetMealSelectModal.vue'
 import OrderSuccessModal from '@/components/order/OrderSuccessModal.vue'
+import OrderAuthModal from '@/components/order/OrderAuthModal.vue'
 
 const route = useRoute()
 const store = useOrderStore()
@@ -1141,7 +1276,7 @@ const tableNameFromUrl = route.query.table || '' // e.g. "B3"
 
 // ── 身份驗證（使用全域 authStore）
 const memberDropdownOpen = ref(false)
-const authModalVisible = ref(false) // OrderAuthModal（選擇登入 or 訪客）
+const authModalVisible = ref(true) // 進入頁面一律先顯示（選擇登入 or 訪客）
 const isLoggedIn = computed(() => authStore.isLoggedIn)
 const memberName = computed(() => authStore.member?.name || '訪客')
 const currentMemberId = computed(() => authStore.member?.id ?? null)
@@ -1230,22 +1365,19 @@ function onGuestOrder() {
     authModalVisible.value = false
 }
 
-// ── 登入狀態變化時，自動載入收藏 / 歷史訂單；登入後關閉選擇 Modal
-watch(
-    isLoggedIn,
-    (loggedIn) => {
-        if (loggedIn) {
-            authModalVisible.value = false
-            loadFavorites()
-            loadOrderHistory()
-        } else {
-            favoriteProducts.value = []
-            orderHistory.value = []
-            authModalVisible.value = true // 未登入就顯示選擇 Modal
-        }
-    },
-    { immediate: true }
-)
+// ── 登入狀態變化時，自動載入收藏 / 歷史訂單
+// 不用 immediate：Modal 由 ref(true) 控制一律顯示，登入成功後再關閉
+watch(isLoggedIn, (loggedIn) => {
+    if (loggedIn) {
+        authModalVisible.value = false // 登入成功 → 關閉選擇 Modal
+        loadFavorites()
+        loadOrderHistory()
+    } else {
+        favoriteProducts.value = []
+        orderHistory.value = []
+        // 登出後重新顯示選擇 Modal（下次進入頁面）
+    }
+})
 
 // ── 此頁為全螢幕版面，移除全域 body padding（Navbar 已隱藏）──
 onMounted(async () => {
@@ -1857,6 +1989,23 @@ function reorder(order) {
 </script>
 
 <style>
+/*
+ * ╔══════════════════════════════════════════════════════════════╗
+ * ║                  DineIn.vue  CSS 架構說明                   ║
+ * ╠══════════════════════════════════════════════════════════════╣
+ * ║  共用（網頁版 + 手機板）                                    ║
+ * ║    → 沒有 @media 包裹的普通 CSS class                      ║
+ * ║    → 改動此區會同時影響網頁版與手機板                       ║
+ * ║                                                              ║
+ * ║  ----網頁版----   @media (min-width: 1101px)                ║
+ * ║    → 僅桌機 / 平板寬螢幕有效，不影響手機                   ║
+ * ║                                                              ║
+ * ║  ----手機板----   @media (max-width: 1100px)                ║
+ * ║    → 僅手機版有效；若要覆寫共用樣式，在此區加 override     ║
+ * ║    → 檔案底部有「手機板 — 餐點卡片獨立區」可直接修改       ║
+ * ╚══════════════════════════════════════════════════════════════╝
+ */
+
 /* 內用點餐頁面：清除全域 padding，鎖死頁面高度（不讓 body 出捲軸）*/
 html:has(.root-wrap),
 body:has(.root-wrap) {
@@ -2123,6 +2272,7 @@ html:has(.gate-wrap) footer {
     font-family: 'Newsreader', serif;
     /* 鎖死整頁：flex 直欄，不讓 body 出捲軸 */
     height: 100vh;
+    height: 100dvh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -2323,7 +2473,6 @@ html:has(.gate-wrap) footer {
 }
 .dh-chevron {
     color: rgba(208, 197, 181, 0.4);
-    flex-shrink: 0;
     transition: transform 0.2s;
 }
 .dh-chevron.open {
@@ -2344,7 +2493,7 @@ html:has(.gate-wrap) footer {
     z-index: 100;
 }
 .member-dropdown-item {
-    width: 100%;
+    width: 90%;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -2377,7 +2526,7 @@ html:has(.gate-wrap) footer {
     top: var(--dine-header-h);
     z-index: 50;
     background: #180b06;
-    border-bottom: 1px solid rgba(77, 70, 58, 0.3);
+    margin-bottom: -0.8rem;
 }
 .mobile-cat-tabs {
     display: flex;
@@ -2432,7 +2581,11 @@ html:has(.gate-wrap) footer {
     background: #180b06;
     border-right: 1px solid rgba(77, 70, 58, 0.2);
 }
+/* ----網頁版---- */
 @media (min-width: 1101px) {
+    .dine-header-mobile {
+        display: none;
+    } /* 網頁版隱藏手機板 header */
     .sidebar-left {
         height: 100%; /* 撐滿 grid 格 */
         overflow-y: auto;
@@ -2530,6 +2683,7 @@ html:has(.gate-wrap) footer {
 .menu-main {
     background: #1e100b;
 }
+/* ----網頁版---- */
 @media (min-width: 1101px) {
     .menu-main {
         height: 100%; /* 撐滿 grid 格，只有這欄捲動 */
@@ -2539,6 +2693,7 @@ html:has(.gate-wrap) footer {
 .menu-sections {
     padding: 0 1.25rem 7rem;
 }
+/* ----網頁版---- */
 @media (min-width: 1101px) {
     .menu-sections {
         padding: 0 1.5rem 2.5rem;
@@ -2632,52 +2787,68 @@ html:has(.gate-wrap) footer {
     display: none;
 }
 
-/* ═══ Mobile ≤ 1100px ═══ */
+/* ════════════════════════════════════════════════════════════════
+   ----手機板----   ≤ 1100px  版面結構覆寫
+   ════════════════════════════════════════════════════════════════ */
 @media (max-width: 1100px) {
-    /* 手機版解除整頁高度鎖定，讓內容自然流動 */
+    /* ── App-shell：body 鎖死，讓 menu-main 內部捲動 ──
+       order-panel / overlay 已 Teleport 到 body，不受 overflow:hidden 影響 */
     html:has(.root-wrap),
     body:has(.root-wrap) {
-        overflow: auto !important;
-        height: auto !important;
+        overflow: hidden !important;
+        height: 100% !important;
     }
     .root-wrap {
-        height: auto;
-        overflow: visible;
+        height: 100vh;
+        height: 100dvh; /* 排除手機 URL bar */
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
     }
 
-    /* dine-header 手機版：隱藏標題文字，保留彈性填充 */
-    .dh-title {
+    /* ----手機板---- 切換 header */
+    .dine-header {
         display: none;
-    }
-    .dh-member {
-        display: none;
-    }
-    .dh-center {
-        justify-content: flex-start;
-        gap: 0.75rem;
+    } /* 隱藏網頁版 header */
+    .dine-header-mobile {
+        display: grid;
+    } /* 顯示手機板 header（grid 由 .dine-header-mobile 自身定義） */
+
+    .toolbar {
+        top: 0;
+        z-index: 10;
+        background: #180b06;
     }
 
     .mobile-header {
         display: block;
+        flex-shrink: 0; /* 不讓 header 被壓縮 */
     }
     .mobile-search-wrap {
         display: flex;
     }
     .page-layout {
         grid-template-columns: 1fr;
-        flex: none;
-        height: auto;
-        overflow: visible;
+        flex: 1; /* 撐滿 root-wrap 剩餘高度 */
+        min-height: 0; /* flex 子項必須，否則不縮小 */
+        overflow: hidden;
     }
     .sidebar-left {
         display: none;
+    }
+    /* menu-main 成為唯一捲動容器 */
+    .menu-main {
+        height: 100%;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* iOS 慣性捲動 */
+        padding-bottom: 5rem; /* 避免底部列遮住最後一道菜 */
     }
 
     /* Order panel → full-height bottom sheet */
     .order-panel {
         position: fixed;
         inset: 0;
-        z-index: 200;
+        z-index: 200 !important;
         transform: translateY(100%);
         transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
         border-left: none;
@@ -2709,12 +2880,12 @@ html:has(.gate-wrap) footer {
         cursor: pointer;
         box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
     }
-    /* backdrop-filter 會在 Chromium 造成 z-index 失效，改用純背景色 */
+    /* Teleport 到 body，z-index 低於 order-panel(200)，高於 bottom-bar(80) */
     .mobile-overlay {
         display: block;
         position: fixed;
         inset: 0;
-        z-index: 100;
+        z-index: 150;
         background: rgba(24, 11, 6, 0.78);
         pointer-events: auto;
     }
@@ -2740,6 +2911,10 @@ html:has(.gate-wrap) footer {
     border-radius: 0.125rem;
 }
 
+/* ════════════════════════════════════════════════════════════════
+   共用（網頁版 + 手機板）— 餐點卡片
+   ⚠️  若只想改手機板，請到檔案底部的「----手機板---- 餐點卡片」區覆寫
+   ════════════════════════════════════════════════════════════════ */
 /* ═══ Dish rows ═══ */
 .dish-row {
     display: grid;
@@ -2842,6 +3017,10 @@ html:has(.gate-wrap) footer {
     justify-content: space-between;
     margin-top: auto;
     padding-top: 0.4rem;
+}
+.list-footer p {
+    margin: 0; /* 移除 <p> 預設 margin，讓價格與按鈕垂直對齊 */
+    line-height: 1;
 }
 .qty-col {
     display: flex;
@@ -3452,5 +3631,196 @@ html:has(.gate-wrap) footer {
 .btn-danger,
 .btn-info {
     display: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ----手機板----   dine-header-mobile（雙列 header）
+   只在手機板顯示，網頁版 .dine-header 仍保留原樣
+   ════════════════════════════════════════════════════════════════ */
+.dine-header-mobile {
+    /* display 由 media query 控制：手機板=grid，網頁版=none */
+
+    /* Grid：左欄固定(logo)，右欄填滿；共兩行 */
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 1fr 1fr; /* 兩行等高，讓右側各佔一半 */
+    column-gap: 0.65rem;
+    row-gap: 0;
+    align-items: center; /* 各格垂直置中 */
+
+    background: #180b06;
+    padding: 0.4rem 0.85rem;
+    position: relative;
+    z-index: 60;
+    min-height: 3.8rem; /* header 總高度 */
+}
+
+/* Logo 跨兩行，靠左垂直置中 */
+.dhm-logo-img {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    height: 3rem;
+    width: auto;
+    object-fit: contain;
+    align-self: center;
+}
+
+/* 右上：今日菜單 ｜ 會員（靠下對齊，貼近分隔線） */
+.dhm-row1 {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    align-items: center; /* 今日菜單 與 會員 垂直置中 */
+    justify-content: center;
+    gap: 0.5rem;
+    padding-bottom: 0.1rem;
+    align-self: end;
+}
+.dhm-title {
+    font-size: 1.35rem;
+    font-style: italic;
+    color: #e3c76b;
+    margin: 0;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+}
+
+/* 手機板 header 內的下拉選單：與會員按鈕等寬，緊貼按鈕 */
+.dine-header-mobile .member-dropdown {
+    min-width: 100%; /* 與父層 .dh-member 同寬 */
+    border-radius: 0.375rem;
+    top: calc(100% + 0.05rem); /* 縮短與會員按鈕的距離 */
+}
+.dine-header-mobile .member-dropdown-item {
+    padding: 0.2rem 0.65rem;
+    font-size: 0.7rem;
+    gap: 0.35rem;
+    justify-content: center;
+    width: 100%;
+}
+.dine-header-mobile .member-dropdown-item svg {
+    width: 10px;
+    height: 10px;
+}
+
+/* 手機板 header 內的 +/- 按鈕與人數輸入框：縮小 */
+.dine-header-mobile .dh-pax-btn {
+    width: 18px;
+    height: 18px;
+    font-size: 0.85rem;
+    border-radius: 0.15rem;
+}
+.dine-header-mobile .dh-pax-input {
+    width: 1.5rem;
+    font-size: 0.78rem;
+}
+
+/* 手機板 header 內的會員按鈕：縮小，移除固定寬度 */
+.dine-header-mobile .dh-member {
+    min-width: unset;
+    gap: 0.25rem;
+    padding: 0.2rem 0.35rem;
+}
+.dine-header-mobile .dh-member-label {
+    font-size: 0.75rem;
+    max-width: 5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dine-header-mobile .dh-chevron {
+    width: 7px;
+    height: 7px;
+}
+
+/* 右下：桌號 ｜ 用餐人數（靠上對齊） */
+.dhm-row2 {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    align-items: center; /* 桌號、人數控制項垂直置中 */
+    gap: 0.35rem;
+    padding-top: 0.1rem;
+    align-self: start; /* 整行靠上 */
+}
+.dhm-label {
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(208, 197, 181, 0.5);
+    white-space: nowrap;
+}
+.dhm-table-name {
+    color: #e3c76b;
+    font-size: 0.82rem;
+    font-style: italic;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ----手機板----   ≤ 1100px  餐點卡片獨立區
+   此區為共用餐點卡片 CSS 的手機板複本，可自由修改不影響網頁版
+   ════════════════════════════════════════════════════════════════ */
+@media (max-width: 1100px) {
+    /* ── 列表視圖卡片 ── */
+    .dish-row {
+        grid-template-columns: 110px 1fr; /* 手機板：圖片縮窄 */
+        border-radius: 0.5rem;
+    }
+    .dish-img {
+        width: 110px;
+        height: 90px;
+    }
+    .dish-img-placeholder {
+        width: 110px;
+        height: 90px;
+    }
+    .dish-content {
+        padding: 0.5rem 0.6rem;
+    }
+    .dish-name {
+        font-size: 1rem; /* 手機板列表視圖名稱字體 */
+    }
+    .dish-desc {
+        font-size: 0.78rem;
+        -webkit-line-clamp: 2;
+    }
+    .list-price {
+        font-size: 0.8rem;
+        margin: 0.15rem 0 0;
+    }
+    .list-qty {
+        margin-top: 0.25rem;
+        gap: 0.3rem;
+    }
+
+    /* ── 網格視圖卡片 ── */
+    .dishes-wrap.grid-view {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 0.5rem;
+    }
+    .dish-row-grid .dish-img {
+        width: 100%;
+        height: 110px;
+    }
+    .dish-row-grid .dish-name {
+        font-size: 0.95rem; /* 手機板網格視圖名稱字體 */
+    }
+
+    /* ── 區塊標題 ── */
+    .section-title {
+        font-size: 1.4rem;
+        padding-top: 1rem;
+        margin-bottom: 0.6rem;
+    }
+
+    /* ── 數量按鈕 ── */
+    .qty-btn {
+        width: 26px;
+        height: 26px;
+        font-size: 1.2rem;
+    }
+    .qty-num {
+        width: 30px;
+    }
 }
 </style>

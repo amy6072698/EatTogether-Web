@@ -1,14 +1,10 @@
 <template>
     <div v-if="dish" @click.self="$emit('close')" class="modal-wrap open">
         <div class="modal-box">
+            <!-- 叉叉關閉按鈕 -->
+            <button class="close-btn" @click="$emit('close')" aria-label="關閉">✕</button>
             <div class="detail-img-wrap">
                 <img :src="dish.imageUrl" :alt="dish.productName" />
-                <button
-                    @click="$emit('close')"
-                    class="close-btn absolute top-4 right-4 z-10 w-8 h-8 rounded-full backdrop-blur-sm flex items-center justify-center text-lg transition-colors"
-                >
-                    ✕
-                </button>
             </div>
             <div class="detail-body">
                 <!-- 第一排：餐點名稱（左）+ 標籤（右） -->
@@ -49,7 +45,7 @@
                     <textarea
                         v-model="note"
                         class="font-body detail-note resize-none"
-                        rows="2"
+                        rows="1"
                         placeholder="備註 : 過敏食材、特殊需求…"
                     ></textarea>
                 </div>
@@ -116,10 +112,57 @@ function onConfirm() {
 }
 .modal-box {
     background: #2b1c16;
-    width: min(580px, 95vw);
-    max-height: 90vh;
+    width: min(580px, 92vw);
+    max-height: 88vh;
     overflow-y: auto;
+    border-radius: 0.75rem;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+    position: relative;
+}
+
+@media (max-width: 600px) {
+    /* 最大高度留出底部空間，讓活動通知 toast 與「加入訂單」按鈕同時可見 */
+    .modal-box {
+        width: min(420px, 88vw);
+        max-height: 68vh; /* 預留 ~32vh 給底部通知 + 操作空間 */
+        border-radius: 0.75rem;
+        overflow-y: auto; /* 內容超出時可捲動，確保按鈕可觸達 */
+    }
+    .detail-img-wrap {
+        height: 100px; /* 圖片更小，讓文字與按鈕有更多空間 */
+        flex-shrink: 0;
+    }
+    .detail-name {
+        font-size: 1.05rem;
+    }
+    .detail-desc {
+        font-size: 0.85rem;
+        margin-bottom: 0.4rem;
+        /* 最多顯示 2 行，避免長描述撐高卡片 */
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .detail-body {
+        padding: 0.6rem 1.25rem 0;
+        gap: 0;
+    }
+    .detail-row-3 {
+        padding: 0.4rem 0;
+        margin-bottom: 0.5rem;
+    }
+    .detail-note-wrap {
+        margin-bottom: 0.4rem;
+    }
+    .detail-note {
+        rows: 1; /* 備註欄縮為 1 行高 */
+        font-size: 0.85rem;
+    }
+    .detail-submit {
+        padding: 0.7rem 0;
+        margin-bottom: 0.75rem;
+    }
 }
 .detail-img-wrap {
     position: relative;
@@ -138,11 +181,28 @@ function onConfirm() {
     background: linear-gradient(to top, #2b1c16 0%, transparent 55%);
 }
 .close-btn {
-    background: rgba(24, 11, 6, 0.7);
-    border: 1px solid rgba(77, 70, 58, 0.4);
-    color: rgba(208, 197, 181, 0.8);
+    position: absolute;
+    top: 0.65rem;
+    right: 0.65rem;
+    z-index: 10;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: rgba(24, 11, 6, 0.75);
+    border: 1px solid rgba(77, 70, 58, 0.5);
+    color: rgba(208, 197, 181, 0.85);
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+        background 0.2s,
+        color 0.2s;
+    backdrop-filter: blur(4px);
 }
 .close-btn:hover {
+    background: rgba(43, 28, 22, 0.95);
     color: #e3c76b;
 }
 .qty-btn {
