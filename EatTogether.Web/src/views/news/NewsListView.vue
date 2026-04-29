@@ -223,18 +223,19 @@ onMounted(fetchNews)
     width: 3rem;
     height: 3rem;
     border-radius: 50%;
-    border: 1px solid rgba(201, 169, 110, 0.2);
+    border: 1px solid var(--eat-outline-variant);
     background: transparent;
     color: var(--eat-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: var(--eat-transition);
 }
 .news-page-btn:hover:not(:disabled) {
     background: var(--eat-primary);
     color: var(--eat-on-primary);
+    border-color: var(--eat-primary);
 }
 .news-page-btn:disabled {
     opacity: 0.25;
@@ -254,17 +255,16 @@ onMounted(fetchNews)
     transition: all 0.2s ease;
     padding-bottom: 2px;
 }
-.news-page-num:hover {
+.news-page-num:hover,
+.news-page-num.active {
     color: var(--eat-primary);
     opacity: 1;
 }
 .news-page-num.active {
-    color: var(--eat-primary);
-    opacity: 1;
     border-bottom: 1px solid var(--eat-primary);
 }
 
-/* ── Loading / Empty ──────────────────────────────── */
+/* ── 載入 / 空狀態 ────────────────────────────────── */
 .news-state {
     padding: 6rem 0;
     text-align: center;
@@ -283,10 +283,6 @@ onMounted(fetchNews)
     }
     .news-layout {
         padding: 2.5rem 1.5rem 5rem;
-    }
-    .news-card-body {
-        padding: 1.5rem;
-        padding-top: 3.5rem;
     }
 }
 </style>

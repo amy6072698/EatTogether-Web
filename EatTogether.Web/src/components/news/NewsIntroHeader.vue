@@ -41,20 +41,15 @@ function formatDate(dateStr) {
     flex-direction: row;
     width: 100%;
     height: 320px;
-    margin: 0;
-    padding: 0;
-    gap: 0;
 }
 
+/* ── 圖片欄 ───────────────────────────────────────── */
 .detail-intro-img {
     width: 30%;
     height: 100%;
     overflow: hidden;
     flex-shrink: 0;
-    border-radius: 0;
-    aspect-ratio: unset;
 }
-
 .detail-intro-img img {
     width: 100%;
     height: 100%;
@@ -66,13 +61,13 @@ function formatDate(dateStr) {
 .detail-intro:hover .detail-intro-img img {
     transform: scale(1.04);
 }
-
 .detail-intro-img-placeholder {
     width: 100%;
     height: 100%;
     background: var(--eat-surface-high);
 }
 
+/* ── 文字欄 ───────────────────────────────────────── */
 .detail-intro-text {
     flex: 1;
     background: var(--eat-surface-high);
@@ -82,22 +77,31 @@ function formatDate(dateStr) {
     justify-content: center;
     gap: 0.75rem;
     position: relative;
-    border-radius: 0;
 }
 
-/* RWD：手機才改直排 */
-@media (max-width: 767px) {
-    .detail-intro {
-        flex-direction: column;
-        height: auto;
-    }
-    .detail-intro-img {
-        width: 100%;
-        height: 260px;
-    }
+/* ── 標題列 ───────────────────────────────────────── */
+.detail-title-row {
+    position: relative;
+}
+.detail-title {
+    font-family: var(--font-headline);
+    font-size: clamp(1.6rem, 3.5vw, 2.6rem);
+    color: var(--eat-on-surface);
+    line-height: 3.5;
+    font-style: italic;
+    margin: 0;
+}
+.detail-pin-icon {
+    position: absolute;
+    top: -1rem;
+    left: 0.5rem;
+    font-size: 1rem;
+    color: var(--eat-secondary);
+    opacity: 0.8;
+    rotate: 45deg;
 }
 
-/* ── 共用文字元件 ──────────────────────────────────── */
+/* ── 分類 / Meta ──────────────────────────────────── */
 .detail-eyebrow {
     display: block;
     font-family: var(--font-label);
@@ -107,31 +111,6 @@ function formatDate(dateStr) {
     color: var(--eat-secondary);
     margin-left: 0.5rem;
 }
-
-.detail-title {
-    font-family: var(--font-headline);
-    font-size: clamp(1.6rem, 3.5vw, 2.6rem);
-    color: var(--eat-on-surface);
-    line-height: 3.5;
-    font-style: italic;
-    margin: 0;
-}
-
-.detail-title-row {
-    position: relative;
-    padding-left: 0;
-}
-
-.detail-pin-icon {
-    position: absolute;
-    top: -1rem; /* 在標題上方 */
-    left: 0.5rem;
-    font-size: 1rem;
-    color: var(--eat-secondary);
-    opacity: 0.8;
-    rotate: 45deg;
-}
-
 .detail-meta-row {
     display: flex;
     align-items: center;
@@ -145,5 +124,16 @@ function formatDate(dateStr) {
 .detail-sep {
     opacity: 0.4;
 }
+
+/* ── RWD ──────────────────────────────────────────── */
+@media (max-width: 767px) {
+    .detail-intro {
+        flex-direction: column;
+        height: auto;
+    }
+    .detail-intro-img {
+        width: 100%;
+        height: 260px;
+    }
+}
 </style>
->

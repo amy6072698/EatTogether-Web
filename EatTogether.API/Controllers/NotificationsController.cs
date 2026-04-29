@@ -9,7 +9,7 @@ namespace EatTogether.API.Controllers
 {
 	[Route("api/[controller]")]
 	[ApiController]
-	[Authorize]
+	//[Authorize]
 	public class NotificationsController : ControllerBase
 	{
 		private readonly INotificationService _service;
@@ -57,10 +57,11 @@ namespace EatTogether.API.Controllers
 
 
 
-
+		// 會員ID:2測試，正式上線即要拿掉return 2;
 		// 從 JWT 取得 MemberId
 		private int? GetMemberId()
 		{
+			return 2;
 			var claim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
 			return int.TryParse(claim, out var id) ? id : null;
 		}

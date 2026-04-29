@@ -72,6 +72,8 @@ namespace EatTogether.API.Models.Services
 
 			if (article.PublishDate == null) return null;
 
+			if (article.Status != 1) return null;  //排查文章狀態非發佈中的
+
 			var prev = await _newsRepo.GetPrevArticleAsync(article.PublishDate.Value);
 			var next = await _newsRepo.GetNextArticleAsync(article.PublishDate.Value);
 
