@@ -535,14 +535,14 @@ watch(isModalOpen, async (open) => {
   await nextTick();
   updateBtnPos();
 
-  // B: Ken Burns
+  // B: 淡入
   const img = modalImgRef.value;
   if (img) {
     img.style.transition = 'none';
-    img.style.transform = 'scale(1.18)';
+    img.style.opacity = '0';
     img.offsetHeight;
-    img.style.transition = 'transform 7s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-    img.style.transform = 'scale(1.0)';
+    img.style.transition = 'opacity 0.6s ease';
+    img.style.opacity = '1';
   }
 
   const body = modalBodyRef.value;
@@ -803,7 +803,14 @@ const fetchSetMeals = async () => {
   try {
     const res = await apiFetch('/SetMeals/active');
     if (!res.ok) throw new Error(`抓取失敗 (${res.status})`);
-    setMeals.value = await res.json();
+    const data = await res.json();
+    console.log('第一筆套餐欄位：', Object.keys(data[0]));
+    console.log('isRecommended 範例：', data[0]?.isRecommended, data[0]?.isPopular);
+    setMeals.value = [...data].sort((a, b) => {
+      const scoreA = (a.isRecommended ? 2 : 0) + (a.isPopular ? 1 : 0);
+      const scoreB = (b.isRecommended ? 2 : 0) + (b.isPopular ? 1 : 0);
+      return scoreB - scoreA;
+    });
     error.value = null;
   } catch (err) {
     console.error('SetMeal Fetch Error:', err);

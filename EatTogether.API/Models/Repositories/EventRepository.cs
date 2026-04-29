@@ -127,8 +127,9 @@ namespace EatTogether.Models.Repositories
                 }
                 else if (e.DiscountType == "Percent")
                 {
-                    calculated = (int)Math.Round(amount * (1 - (double)e.DiscountValue / 10));
-                    desc = $"打 {e.DiscountValue} 折，省 NT${calculated}";
+                    // DiscountValue 以小數儲存（0.88 = 打88折，實付88%）
+                    calculated = (int)Math.Round(amount * (1.0 - (double)e.DiscountValue));
+                    desc = $"打 {(int)(e.DiscountValue * 100)} 折";
                 }
                 else
                 {
@@ -187,13 +188,11 @@ namespace EatTogether.Models.Repositories
                 }
                 else if (e.DiscountType == "Percent")
                 {
+                    // DiscountValue 以小數儲存（0.88 = 打88折，實付88%，省12%）
                     calculated = eligible
-                        ? (int)(amount * e.DiscountValue / 100m)
+                        ? (int)Math.Round(amount * (1.0 - (double)e.DiscountValue))
                         : 0;
-                    // ↓ 不管是否符合都給描述
-                    desc = eligible
-                        ? $"折扣 {e.DiscountValue}%，省 NT${calculated}"
-                        : $"折扣 {e.DiscountValue}%";
+                    desc = $"打 {(int)(e.DiscountValue * 100)} 折";
                 }
                 else
                 {
@@ -321,7 +320,7 @@ namespace EatTogether.Models.Repositories
                 if (e.DiscountType == "FixedAmount")
                     desc = $"折抵 NT${(int)e.DiscountValue}";
                 else if (e.DiscountType == "Percent")
-                    desc = $"打折 {e.DiscountValue}%";
+                    desc = $"打 {(int)(e.DiscountValue * 100)} 折";
                 else
                     desc = $"贈送：{dishName}";
 
@@ -385,10 +384,11 @@ namespace EatTogether.Models.Repositories
                 }
                 else if (e.DiscountType == "Percent")
                 {
-                    calculated = eligible ? (int)Math.Floor(amount * e.DiscountValue / 100m) : 0;
-                    desc = eligible
-                        ? $"打折 {e.DiscountValue}%，省 NT${calculated}"
-                        : $"打折 {e.DiscountValue}%";
+                    // DiscountValue 以小數儲存（0.88 = 打88折，實付88%，省12%）
+                    calculated = eligible
+                        ? (int)Math.Round(amount * (1.0 - (double)e.DiscountValue))
+                        : 0;
+                    desc = $"打 {(int)(e.DiscountValue * 100)} 折";
                 }
                 else
                 {

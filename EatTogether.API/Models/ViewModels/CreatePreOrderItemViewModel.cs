@@ -12,6 +12,7 @@ namespace EatTogether.Models.ViewModels
 
         public int UnitPrice { get; set; }
         public bool IsSetMeal { get; set; }
+        public int? SetMealId { get; set; }   // SetMeal 表 ID，IsSetMeal=true 時有值
         public int? ParentIndex { get; set; }
         public string? CategoryName { get; set; }
 

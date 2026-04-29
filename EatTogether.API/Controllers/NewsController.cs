@@ -1,8 +1,11 @@
 ﻿using EatTogether.API.Models.DTOs;
 using EatTogether.API.Models.EfModels;
+using EatTogether.API.Models.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using System.Security.Claims;
 
 namespace EatTogether.API.Controllers
 {
@@ -10,99 +13,63 @@ namespace EatTogether.API.Controllers
 	[ApiController]
 	public class NewsController : ControllerBase
 	{
-		private readonly EatTogetherDBContext _context;
+		private readonly INewsService _service;
+		private readonly IMemoryCache _cache;
 
-		public NewsController(EatTogetherDBContext context)
+		public NewsController(INewsService service, IMemoryCache cache)
 		{
-			_context = context;
+			_service = service;
+			_cache = cache;
 		}
 
 		/// <summary>查看文章列表</summary>
 		// GET: api/News
 		[HttpGet]
-		public async Task<ActionResult<NewsPagedResultDto<NewsListDto>>> GetNewsList(int page = 1, int pageSize = 5,	string? categoryName = null)  
+		public async Task<ActionResult<NewsPagedResultDto<NewsListDto>>> GetNewsList(
+			int page = 1, int pageSize = 5, string? categoryName = null)
 		{
-			var now = DateTime.Now;
-
-			IQueryable<Article> query = _context.Articles
-				.Where(n => n.Status == 1 && n.PublishDate <= now); // 只顯示已發佈、日期已到發佈日期的文章
-
-			//有傳分類才過濾
-			if (!string.IsNullOrEmpty(categoryName))
-			{
-				query = query.Where(n => n.Category.Name == categoryName);
-			}
-
-			int totalCount = await query.CountAsync();   //篩選後才算數量
-
-			List<NewsListDto> newsList = await query
-				.OrderByDescending(n => n.IsPinned)
-				.ThenByDescending(n => n.PublishDate)
-				.Skip((page - 1) * pageSize)
-				.Take(pageSize)
-				.Select(n => new NewsListDto
-				{
-					Id = n.Id,
-					CategoryName = n.Category.Name,
-					Title = n.Title,
-					Summary = n.Description != null
-							  ? (n.Description.Length > 100 ? n.Description.Substring(0, 100) + "…" : n.Description)
-							  : "",
-					CoverImageUrl = n.CoverImageUrl != null   
-								? "/images/articles/" + n.CoverImageUrl
-								: "",
-					PublishDate = n.PublishDate,
-					IsPinned = n.IsPinned,
-					ViewCount = n.ViewCount
-				})
-				.ToListAsync();
-
-			NewsPagedResultDto<NewsListDto> result = new NewsPagedResultDto<NewsListDto>
-			{
-				Data = newsList,
-				Page = page,
-				PageSize = pageSize,
-				TotalCount = totalCount,
-				TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-			};
+			var result = await _service.GetNewsListAsync(page, pageSize, categoryName);
 			return Ok(result);
-
 		}
 
 		/// <summary>查看單篇文章</summary>
 		// GET: api/News/5
 		[HttpGet("{id}")]
-		public async Task<ActionResult<NewsDetailDto>> GetNewsDetail(int id)
+		public async Task<ActionResult<NewsDetailResultDto>> GetNewsDetail(int id)
 		{
-
-			var now = DateTime.Now;
-
-			var news = await _context.Articles
-				.Where(n=> n.Id == id
-					&& n.Status == 1
-					&& n.PublishDate <= now
-				)
-				.Select(n => new NewsDetailDto
-				{
-					Id = n.Id,
-					CategoryName = n.Category.Name,
-					Title = n.Title,
-					Description = n.Description,
-					CoverImageUrl = n.CoverImageUrl != null   
-									? "/images/articles/" + n.CoverImageUrl
-									: "",
-					PublishDate = n.PublishDate,
-					ViewCount = n.ViewCount
-				})
-				.FirstOrDefaultAsync();
-
-			if (news == null)
-			{
-				return NotFound();
-			}
-
-			return Ok(news);
+			var result = await _service.GetNewsDetailAsync(id);
+			if (result == null) return NotFound();
+			return Ok(result);
 		}
 
+		/// <summary>增加文章瀏覽次數</summary>
+		// POST: api/News/5/view
+		[HttpPost("{id}/view")]
+		public async Task<ActionResult> IncrementViewCount(int id)
+		{
+			// 預防短時間點擊去刷閱覽數，以cache去抓
+			// 登入者用 memberId，未登入用 VisitorId，都沒有才 fallback IP
+			var memberId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			var visitorId = Request.Headers["X-Visitor-Id"].FirstOrDefault();
+
+			var viewerKey = !string.IsNullOrWhiteSpace(memberId)
+				? $"user_{memberId}"
+				: !string.IsNullOrWhiteSpace(visitorId)
+					? $"visitor_{visitorId}"
+					: $"ip_{HttpContext.Connection.RemoteIpAddress}";
+
+			var cacheKey = $"view_{viewerKey}_{id}";
+
+			// 後端再擋一次（防止繞過前端直接打 API）
+			if (_cache.TryGetValue(cacheKey, out _))
+				return NoContent();
+
+			_cache.Set(cacheKey, true, TimeSpan.FromMinutes(5));
+
+			var success = await _service.IncrementViewCountAsync(id);
+			if (!success) return NotFound();
+
+			return NoContent();
+		}
 	}
 }

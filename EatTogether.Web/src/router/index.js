@@ -62,10 +62,17 @@ const routes = [
         name: 'Limited',
         component: () => import('@/views/menu/Limited.vue'),
     },
+    // ── 點餐 ────────────────────────────────────────────
     {
-        path: '/in',
+        path: '/dinein',
         name: 'DineIn',
-        component: () => import('@/views/order/In.vue'),
+        component: () => import('@/views/order/DineIn.vue'),
+        meta: { hideChrome: true },
+    },
+    {
+        path: '/takeout',
+        name: 'TakeOut',
+        component: () => import('@/views/order/TakeOut.vue'),
         meta: { hideChrome: true },
     },
 

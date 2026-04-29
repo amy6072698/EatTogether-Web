@@ -116,11 +116,16 @@ namespace EatTogether.API
 			builder.Services.AddScoped<IUserRepository, UserRepository>();
 			builder.Services.AddScoped<IMemberRepository, MemberRepository>();
 			builder.Services.AddScoped<IMemberFavoriteRepository, MemberFavoriteRepository>();
+			builder.Services.AddScoped<INewsRepository, NewsRepository>();
+			builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+      builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 
 			// 註冊 Service
 			builder.Services.AddScoped<IAuthService, AuthService>();
-			builder.Services.AddScoped<IOrderService, OrderService>();
 			builder.Services.AddScoped<IMemberService, MemberService>();
+      builder.Services.AddScoped<IOrderService, OrderService>();
+			builder.Services.AddScoped<INewsService, NewsService>();
+			builder.Services.AddScoped<INotificationService, NotificationService>();
 
 			// 註冊 JWT Helper：生成 JWT Token 的 infra 工具
 			builder.Services.AddSingleton<JwtHelper>();

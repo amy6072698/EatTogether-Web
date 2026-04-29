@@ -15,7 +15,7 @@ public class IngredientsController : ControllerBase
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IMemoryCache _cache;
 
-    private const string Model = "gemini-2.5-flash";
+    private const string Model = "gemini-2.5-flash-lite";
 
     public IngredientsController(IConfiguration config, IHttpClientFactory httpClientFactory, IMemoryCache cache)
     {
@@ -39,14 +39,15 @@ public class IngredientsController : ControllerBase
         if (string.IsNullOrEmpty(apiKey))
             return StatusCode(503, new { error = "Gemini API Key 未設定" });
 
-        var prompt = $"請用繁體中文簡短介紹食材「{req.IngredientName}」，格式如下（每項1~2句）：\n【來源產地】\n【烹煮方式】\n【過敏原提示】\n【營養價值】\n每項控制在30字以內，語氣輕鬆易懂。";
+        var prompt = $"食材：{req.IngredientName}\n請用繁體中文回傳以下 JSON，禁止任何多餘文字或 markdown：\n{{\"origin\":\"產地(20字內)\",\"cooking\":\"烹調(20字內)\",\"allergy\":\"過敏(20字內)\",\"nutrition\":\"營養(20字內)\"}}";
 
         var payload = JsonSerializer.Serialize(new
         {
             contents = new[]
             {
                 new { parts = new[] { new { text = prompt } } }
-            }
+            },
+            generationConfig = new { maxOutputTokens = 120, temperature = 0.0 }
         });
 
         var client = _httpClientFactory.CreateClient();
@@ -54,45 +55,54 @@ public class IngredientsController : ControllerBase
 
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{Model}:generateContent?key={apiKey}";
 
-        // 503 = Google 端暫時過載，等待後重試（最多 3 次）
-        int[] retryDelays = [1000, 3000, 6000];
-        string? lastError = null;
+        var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        var httpRes = await client.PostAsync(url, content);
 
-        for (int attempt = 0; attempt <= retryDelays.Length; attempt++)
+        if (!httpRes.IsSuccessStatusCode)
         {
-            if (attempt > 0)
-                await Task.Delay(retryDelays[attempt - 1]);
-
-            var content = new StringContent(payload, Encoding.UTF8, "application/json");
-            var httpRes = await client.PostAsync(url, content);
-
-            if (httpRes.IsSuccessStatusCode)
-            {
-                var json = await httpRes.Content.ReadAsStringAsync();
-                var data = JsonSerializer.Deserialize<JsonElement>(json);
-                var text = data
-                    .GetProperty("candidates")[0]
-                    .GetProperty("content")
-                    .GetProperty("parts")[0]
-                    .GetProperty("text")
-                    .GetString();
-                // 去除 Gemini 自行加上的開場白（第一個【之前的內容）
-                var firstBracket = text?.IndexOf('【') ?? -1;
-                if (firstBracket > 0) text = text![firstBracket..];
-
-                _cache.Set(cacheKey, text, TimeSpan.FromHours(24));
-                return Ok(new { text });
-            }
-
-            lastError = await httpRes.Content.ReadAsStringAsync();
+            var errorBody = await httpRes.Content.ReadAsStringAsync();
             var sc = (int)httpRes.StatusCode;
             if (sc == 429)
-                return StatusCode(429, new { error = "AI 食材介紹今日使用量已達上限，請明天再試。" });
-            if (sc != 503)
-                return StatusCode(502, new { error = $"Gemini API 回傳錯誤 ({sc})", detail = lastError });
+                return StatusCode(429, new { error = "AI 食材查詢請求過於頻繁，請稍候幾秒再試。" });
+            if (sc == 503)
+                return StatusCode(503, new { error = "Gemini 服務暫時忙碌，請稍後再試。" });
+            return StatusCode(502, new { error = $"Gemini API 回傳錯誤 ({sc})", detail = errorBody });
         }
 
-        return StatusCode(503, new { error = "Gemini 服務暫時忙碌，請稍後再試。", detail = lastError });
+        var json = await httpRes.Content.ReadAsStringAsync();
+        var data = JsonSerializer.Deserialize<JsonElement>(json);
+        var text = data
+            .GetProperty("candidates")[0]
+            .GetProperty("content")
+            .GetProperty("parts")[0]
+            .GetProperty("text")
+            .GetString() ?? "";
+
+        var cleaned = text.Trim();
+        if (cleaned.StartsWith("```"))
+        {
+            cleaned = cleaned.TrimStart('`');
+            if (cleaned.StartsWith("json")) cleaned = cleaned[4..];
+            cleaned = cleaned.Trim().TrimEnd('`').Trim();
+        }
+
+        string result;
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<JsonElement>(cleaned);
+            var origin = parsed.GetProperty("origin").GetString() ?? "";
+            var cooking = parsed.GetProperty("cooking").GetString() ?? "";
+            var allergy = parsed.GetProperty("allergy").GetString() ?? "";
+            var nutrition = parsed.GetProperty("nutrition").GetString() ?? "";
+            result = $"【來源產地】\n{origin}\n\n【烹煮方式】\n{cooking}\n\n【過敏原提示】\n{allergy}\n\n【營養價值】\n{nutrition}";
+        }
+        catch
+        {
+            result = text;
+        }
+
+        _cache.Set(cacheKey, result, TimeSpan.FromHours(24));
+        return Ok(new { text = result });
     }
 }
 
