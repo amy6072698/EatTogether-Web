@@ -4,6 +4,7 @@ using EatTogether.Models.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace EatTogether.API.Controllers
 {
@@ -72,7 +73,7 @@ namespace EatTogether.API.Controllers
         public async Task<IActionResult> GetFavorites([FromQuery] int? memberId)
         {
             // 先嘗試從 JWT 取，沒有就用 query parameter（測試用）
-            var memberIdClaim = User.FindFirst("userId")?.Value;
+            var memberIdClaim = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
             int id;
             if (!int.TryParse(memberIdClaim, out id))
             {
@@ -114,7 +115,7 @@ namespace EatTogether.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetMemberOrderHistory([FromQuery] int? memberId)
         {
-            var memberIdClaim = User.FindFirst("userId")?.Value;
+            var memberIdClaim = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
             int id;
             if (!int.TryParse(memberIdClaim, out id))
             {

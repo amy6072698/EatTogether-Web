@@ -106,8 +106,8 @@
                         <div
                             v-if="
                                 idx > 0 &&
-                                !['今日推薦', '主廚特選'].includes(cat.key) &&
-                                ['今日推薦', '主廚特選'].includes(sidebarCategories[idx - 1].key)
+                                !['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(cat.key) &&
+                                ['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(sidebarCategories[idx - 1].key)
                             "
                             class="cat-divider"
                         ></div>
@@ -115,7 +115,7 @@
                             :class="[
                                 'cat-link',
                                 { active: activeSidebarCat === cat.key },
-                                { 'cat-special': ['今日推薦', '主廚特選'].includes(cat.key) },
+                                { 'cat-special': ['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(cat.key) },
                             ]"
                             @click="scrollToSection(cat.key)"
                         >
@@ -211,6 +211,67 @@
                 </div>
 
                 <div v-else class="menu-sections">
+                    <!-- 歷史訂單 -->
+                    <template v-if="activeSidebarCat === '歷史訂單'">
+                        <h2 class="section-title">歷史訂單</h2>
+                        <div
+                            v-for="order in orderHistory"
+                            :key="order.orderNumber"
+                            class="history-card"
+                        >
+                            <div class="history-meta">
+                                <span
+                                    class="font-label"
+                                    style="color: rgba(208, 197, 181, 0.5); font-size: 0.7rem"
+                                    >訂單編號：{{ order.orderNumber }}</span
+                                >
+                                <span
+                                    class="font-label"
+                                    style="color: rgba(208, 197, 181, 0.5); font-size: 0.7rem"
+                                >
+                                    下單時間：{{
+                                        new Date(order.orderAt).toLocaleString('zh-TW', {
+                                            year: 'numeric',
+                                            month: '2-digit',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                        })
+                                    }}
+                                </span>
+                            </div>
+                            <div class="history-items">
+                                <div
+                                    v-for="item in order.items?.filter((i) => i)"
+                                    :key="item.productName"
+                                    class="font-body"
+                                    style="color: #f9ddd3; font-size: 0.9rem"
+                                >
+                                    {{ item.qty }} x {{ item.productName }}
+                                    <span
+                                        v-if="item.note"
+                                        style="color: rgba(208, 197, 181, 0.5); font-size: 0.8rem"
+                                        >（{{ item.note }}）</span
+                                    >
+                                </div>
+                                <div
+                                    v-if="order.orderNote"
+                                    class="font-body"
+                                    style="
+                                        color: rgba(208, 197, 181, 0.5);
+                                        font-size: 0.8rem;
+                                        margin-top: 0.25rem;
+                                    "
+                                >
+                                    備註：{{ order.orderNote }}
+                                </div>
+                            </div>
+                            <button class="history-reorder-btn font-label" @click="reorder(order)">
+                                再點一次
+                            </button>
+                        </div>
+                    </template>
+
                     <template v-for="section in displaySections" :key="section.key">
                         <div v-show="section.dishes.length > 0" :id="'out-sec-' + section.key">
                             <h2 class="section-title">{{ section.label }}</h2>
@@ -360,7 +421,9 @@
             <!-- 右：購物車 -->
             <aside class="out-cart" :class="{ 'cart-open': cartOpen }">
                 <div class="cart-header candle-glow">
-                    <span class="font-headline" style="color: #e3c76b; font-size: 1.1rem"
+                    <span
+                        class="font-headline"
+                        style="color: #e3c76b; font-size: 1.1rem; line-height: 1"
                         >外帶訂單</span
                     >
                     <div style="display: flex; align-items: center; gap: 0.75rem">
@@ -1356,6 +1419,37 @@ let _oneEventNoteKey = null
 let _lastBestEventId = null
 let _appliedEventToastTimer = null
 
+// ── 收藏 / 歷史訂單 ──────────────────────────────────
+const favoriteProducts = ref([])
+const orderHistory = ref([])
+
+async function loadFavorites() {
+    try {
+        const res = await apiFetch('/Orders/Favorites')
+        if (res.ok) favoriteProducts.value = await res.json()
+    } catch {}
+}
+
+async function loadOrderHistory() {
+    try {
+        const res = await apiFetch('/Orders/MemberOrderHistory')
+        if (res.ok) orderHistory.value = await res.json()
+    } catch {}
+}
+
+function reorder(order) {
+    order.items.forEach((item) => {
+        const matched = products.value.find((p) => p.productName === item.productName)
+        if (matched) {
+            for (let i = 0; i < item.qty; i++) {
+                store.addItem(matched.productId, item.note || '')
+            }
+        }
+    })
+    activeSidebarCat.value = '全部'
+    showToast('已加入購物車')
+}
+
 // ── Toast ────────────────────────────────────────────
 const toastVisible = ref(false)
 const toastMsg = ref('')
@@ -1440,6 +1534,13 @@ const sidebarCategories = computed(() => {
         },
     ].filter((s) => s.count > 0)
 
+    if (isLoggedIn.value) {
+        specials.push(
+            { key: '我的收藏', label: '我的收藏', count: favoriteProducts.value.length },
+            { key: '歷史訂單', label: '歷史訂單', count: orderHistory.value.length },
+        )
+    }
+
     const map = new Map()
     products.value.forEach((p) => {
         if (!p.categoryName) return
@@ -1468,6 +1569,14 @@ const filteredProducts = computed(() => {
 })
 
 const displaySections = computed(() => {
+    if (activeSidebarCat.value === '我的收藏') {
+        return favoriteProducts.value.length
+            ? [{ key: '我的收藏', label: '我的收藏', dishes: favoriteProducts.value }]
+            : []
+    }
+    if (activeSidebarCat.value === '歷史訂單') {
+        return []
+    }
     if (searchQuery.value.trim()) {
         const dishes = filteredProducts.value
         return dishes.length ? [{ key: 'search', label: `搜尋：${searchQuery.value}`, dishes }] : []
@@ -1895,17 +2004,39 @@ function resolveImage(url) {
     return `/${path.replace(/^\//, '')}`
 }
 
+watch(isLoggedIn, (loggedIn) => {
+    if (loggedIn) {
+        loadFavorites()
+        loadOrderHistory()
+    } else {
+        favoriteProducts.value = []
+        orderHistory.value = []
+    }
+})
+
 onMounted(async () => {
-    // 量 navbar + step-banner 真實高度，設成 CSS 變數供各欄位定位用
+    // 路由守衛已 await checkAuth()，此時 isLoggedIn 已確定
+    if (isLoggedIn.value) {
+        loadFavorites()
+        loadOrderHistory()
+    }
+
+    // 量 navbar + step-banner + 手機分類列 真實高度，設成 CSS 變數
     const navbar = document.querySelector('nav.navbar-eat') ?? document.querySelector('.navbar')
     const banner = document.querySelector('.step-banner')
     if (navbar) {
         const navH = Math.ceil(navbar.getBoundingClientRect().height)
         document.documentElement.style.setProperty('--navbar-h', `${navH}px`)
-        // step-banner 在 navbar 正下方，量好後算出總固定高度
+        // step-banner 在 navbar 正下方，量好後算出 navbar + step-banner 總高
         await nextTick()
         const banH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 73
         document.documentElement.style.setProperty('--top-fixed', `${navH + banH}px`)
+        // 手機版分類列（.mobile-cat-bar）固定在 step-banner 正下方
+        // 量測其高度供 toolbar sticky top 計算使用
+        await nextTick()
+        const catBar = document.querySelector('.mobile-cat-bar')
+        const catBarH = catBar ? Math.ceil(catBar.getBoundingClientRect().height) : 40
+        document.documentElement.style.setProperty('--cat-bar-h', `${catBarH}px`)
     }
 
     try {
@@ -2059,14 +2190,14 @@ onMounted(async () => {
     color: #f9ddd3;
     font-family: 'Newsreader', serif;
     min-height: 100vh;
-    padding-top: calc(61px); /* navbar + step-banner */
+    padding-top: calc(27px); /* navbar + step-banner */
 }
 
 /* ════ Step Banner ════ */
 .step-banner {
     background: #180b06;
     border-bottom: 1px solid rgba(77, 70, 58, 0.3);
-    padding: 1rem 2.5rem;
+    padding: 0.5rem 2.5rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -2763,6 +2894,43 @@ onMounted(async () => {
     font-style: italic;
     color: rgba(249, 221, 211, 0.4);
 }
+
+/* ═══ 歷史訂單 ═══ */
+.history-card {
+    background: rgba(43, 28, 22, 0.6);
+    border: 1px solid rgba(77, 70, 58, 0.4);
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.history-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+.history-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+.history-reorder-btn {
+    align-self: flex-end;
+    padding: 0.5rem 1.25rem;
+    background: linear-gradient(to right, #e3c76b, #c6ab53);
+    color: #3b2f00;
+    border: none;
+    border-radius: 0.375rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: filter 0.2s;
+}
+.history-reorder-btn:hover {
+    filter: brightness(1.08);
+}
 .input-line {
     background: transparent;
     border: none;
@@ -3299,18 +3467,37 @@ onMounted(async () => {
     border-radius: 0.125rem;
 }
 
-/* ════ RWD ≤ 1100px ════ */
+/* ════════════════════════════════════════════════════
+   桌機網頁版 (min-width: 1101px)
+   ════════════════════════════════════════════════════ */
+@media (min-width: 1101px) {
+    /* toolbar 固定在 navbar + step-banner 正下方 */
+    .toolbar {
+        top: var(--top-fixed, 153px);
+    }
+    /* 移除 overflow-x: hidden，讓 toolbar position:sticky 可正常運作 */
+    .out-menu {
+        overflow-x: visible;
+    }
+}
+
+/* ════════════════════════════════════════════════════
+   手機版 (max-width: 1100px)
+   ════════════════════════════════════════════════════ */
 @media (max-width: 1100px) {
+    /* 單欄佈局，隱藏桌機側邊欄 */
     .out-layout {
         grid-template-columns: 1fr;
     }
     .out-sidebar {
         display: none;
     }
+
+    /* 手機版分類列：固定在 step-banner 正下方 */
     .mobile-cat-bar {
         display: block;
         position: sticky;
-        top: 3.5rem;
+        top: var(--top-fixed, 130px); /* navbar + step-banner 高度（JS 量測後注入） */
         z-index: 50;
         background: #180b06;
         border-bottom: 1px solid rgba(77, 70, 58, 0.3);
@@ -3353,11 +3540,14 @@ onMounted(async () => {
         border-radius: 99px;
         padding: 0.05rem 0.35rem;
     }
+
+    /* 手機版搜尋列（toolbar 內）顯示 */
     .mobile-search-wrap {
         display: flex;
     }
+    /* toolbar 固定在分類列正下方：step-banner 底部 + 分類列高度 */
     .toolbar {
-        top: calc(3.5rem + 2.1rem);
+        top: calc(var(--top-fixed, 130px) + var(--cat-bar-h, 40px));
     }
     .out-menu {
         min-height: auto;
@@ -3413,12 +3603,28 @@ onMounted(async () => {
     }
 }
 
+/* ════════════════════════════════════════════════════
+   手機版小螢幕微調 (max-width: 560px)
+   ════════════════════════════════════════════════════ */
 @media (max-width: 560px) {
+    /* step-banner 縮短左右 padding */
     .step-banner {
-        padding: 0.65rem 1rem;
+        padding: 0.5rem 1rem;
     }
+    /* 進度圓點縮小 */
+    .step-dot {
+        width: 30px;
+        height: 30px;
+        font-size: 0.8rem;
+    }
+    /* 只顯示目前步驟的 label，其餘隱藏 */
     .step-lbl {
         display: none;
+    }
+    .step-lbl.active {
+        display: inline;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
     }
     .step-card-title {
         font-size: 1.4rem;

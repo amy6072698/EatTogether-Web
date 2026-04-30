@@ -1358,7 +1358,6 @@ function onGuestOrder() {
 }
 
 // ── 登入狀態變化時，自動載入收藏 / 歷史訂單
-// 不用 immediate：Modal 由 ref(true) 控制一律顯示，登入成功後再關閉
 watch(isLoggedIn, (loggedIn) => {
     if (loggedIn) {
         authModalVisible.value = false // 登入成功 → 關閉選擇 Modal
@@ -1369,13 +1368,19 @@ watch(isLoggedIn, (loggedIn) => {
     } else {
         favoriteProducts.value = []
         orderHistory.value = []
-        // 登出後重新顯示選擇 Modal（下次進入頁面）
     }
 })
 
 // ── 此頁為全螢幕版面，移除全域 body padding（Navbar 已隱藏）──
 onMounted(async () => {
     document.body.style.paddingTop = '0'
+
+    // 路由守衛已 await checkAuth()，此時 isLoggedIn 已確定
+    // watch(isLoggedIn) 不會再次觸發（無值變化），需在此明確呼叫
+    if (isLoggedIn.value) {
+        loadFavorites()
+        loadOrderHistory()
+    }
 
     try {
         const [menuRes, tablesRes] = await Promise.all([
@@ -1440,7 +1445,7 @@ function resolveImage(url) {
 const CATEGORY_ORDER = ['套餐', '主餐', '湯品', '甜點', '附餐', '飲料']
 
 const sidebarCategories = computed(() => {
-    // ── 特殊分類（依資料有無顯示）──
+    // ── 特殊分類（今日推薦/主廚特選依資料有無顯示；會員專區登入即顯示）──
     const specials = [
         {
             key: '今日推薦',
@@ -1452,9 +1457,16 @@ const sidebarCategories = computed(() => {
             label: '主廚特選',
             count: products.value.filter((p) => p.isPopular).length,
         },
-        { key: '我的收藏', label: '我的收藏', count: favoriteProducts.value.length },
-        { key: '歷史訂單', label: '歷史訂單', count: orderHistory.value.length },
     ].filter((s) => s.count > 0)
+
+    // 我的收藏 / 歷史訂單：資料非同步載入，不能用 count > 0 過濾，
+    // 否則第一次計算時 count 為 0 會被永遠過濾掉
+    if (isLoggedIn.value) {
+        specials.push(
+            { key: '我的收藏', label: '我的收藏', count: favoriteProducts.value.length },
+            { key: '歷史訂單', label: '歷史訂單', count: orderHistory.value.length }
+        )
+    }
 
     // ── 一般分類 ──
     const map = new Map()
@@ -2554,7 +2566,7 @@ html:has(.gate-wrap) footer {
     white-space: nowrap;
     padding: 0.3rem 0.85rem;
     font-family: 'Work Sans', sans-serif;
-    font-size: 0.68rem;
+    font-size: 0.9rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: rgba(208, 197, 181, 0.5);
@@ -2648,7 +2660,7 @@ html:has(.gate-wrap) footer {
 /* 今日推薦 / 主廚特選 特殊分類的分隔線 */
 .cat-link.cat-special {
     color: rgba(227, 199, 107, 0.75);
-    font-size: 1rem;
+    font-size: 1.2rem;
 }
 .cat-link.cat-special.active {
     color: #e3c76b;
