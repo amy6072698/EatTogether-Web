@@ -98,6 +98,11 @@ const routes = [
         component: () => import('@/views/reservation/BookingView.vue'),
     },
     {
+        path: '/walkin',
+        name: 'WalkIn',
+        component: () => import('@/views/reservation/WalkInView.vue'),
+    },
+    {
         path: '/reservation/query',
         name: 'ReservationQuery',
         component: () => import('@/views/reservation/ReservationQueryView.vue'),
