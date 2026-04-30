@@ -1,35 +1,52 @@
 <template>
   <div class="booking-page">
-    <div class="container py-5">
-      <h1 class="page-title text-center mb-5">線上訂位</h1>
 
-      <!-- 訂位表單 -->
-      <div class="booking-form-card">
+    <!-- ── Hero ── -->
+    <div class="booking-hero">
+      <div class="hero-glow"></div>
+      <div class="container position-relative">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <div>
+            <p class="eat-label mb-2" style="color:var(--eat-secondary)">
+              <i class="bi bi-calendar-check me-2"></i>ONLINE RESERVATION
+            </p>
+            <h1 class="eat-h1 fst-normal mb-2">線上訂位</h1>
+            <p class="eat-body-muted mb-0">即時確認桌位，輕鬆安排您的義式饗宴</p>
+          </div>
+          <router-link to="/reservation/query" class="query-link">
+            <i class="bi bi-search me-2"></i>查詢 / 取消訂位
+          </router-link>
+        </div>
+      </div>
+    </div>
+
+    <div class="container pb-5">
+      <div class="form-wrapper">
         <form @submit.prevent="submitBooking" novalidate>
           <div class="row g-4">
 
-            <!-- 日期 -->
+            <!-- ── 日期 ── -->
             <div class="col-md-6">
-              <label class="form-label required">訂位日期</label>
+              <label class="form-label-eat">訂位日期 <span class="required-star">*</span></label>
               <input
                 v-model="form.date"
                 type="date"
-                class="form-control"
+                class="form-control-eat"
                 :class="{ 'is-invalid': errors.date }"
                 :min="minDateStr"
                 :max="maxDateStr"
                 @change="onDateTimeChange"
               />
-              <div v-if="errors.date" class="invalid-feedback d-block">{{ errors.date }}</div>
+              <div v-if="errors.date" class="field-error">{{ errors.date }}</div>
             </div>
 
-            <!-- 時段 -->
+            <!-- ── 時段 ── -->
             <div class="col-md-6">
-              <label class="form-label required">訂位時段</label>
+              <label class="form-label-eat">訂位時段 <span class="required-star">*</span></label>
               <div class="d-flex gap-2">
                 <select
                   v-model="form.hour"
-                  class="form-select"
+                  class="form-select-eat"
                   :class="{ 'is-invalid': errors.time }"
                   @change="onDateTimeChange"
                 >
@@ -38,7 +55,7 @@
                 </select>
                 <select
                   v-model="form.minute"
-                  class="form-select"
+                  class="form-select-eat"
                   :class="{ 'is-invalid': errors.time }"
                   @change="onDateTimeChange"
                 >
@@ -46,99 +63,116 @@
                   <option v-for="m in minutes" :key="m" :value="m">{{ String(m).padStart(2,'0') }} 分</option>
                 </select>
               </div>
-              <div v-if="errors.time" class="invalid-feedback d-block">{{ errors.time }}</div>
+              <div v-if="errors.time" class="field-error">{{ errors.time }}</div>
             </div>
 
-            <!-- 大人人數 -->
+            <!-- ── 大人人數 ── -->
             <div class="col-md-6">
-              <label class="form-label required">大人人數</label>
+              <label class="form-label-eat">大人人數 <span class="required-star">*</span></label>
               <div class="number-input">
-                <button type="button" @click="form.adults = Math.max(1, form.adults - 1); onDateTimeChange()">−</button>
-                <span>{{ form.adults }}</span>
-                <button type="button" @click="form.adults = Math.min(10, form.adults + 1); onDateTimeChange()">+</button>
+                <button type="button" class="num-btn" @click="form.adults = Math.max(1, form.adults - 1); onDateTimeChange()">
+                  <i class="bi bi-dash"></i>
+                </button>
+                <span class="num-value">{{ form.adults }}</span>
+                <button type="button" class="num-btn" @click="form.adults = Math.min(10, form.adults + 1); onDateTimeChange()">
+                  <i class="bi bi-plus"></i>
+                </button>
               </div>
-              <div v-if="errors.people" class="invalid-feedback d-block">{{ errors.people }}</div>
+              <div v-if="errors.people" class="field-error">{{ errors.people }}</div>
             </div>
 
-            <!-- 小孩人數 -->
+            <!-- ── 小孩人數 ── -->
             <div class="col-md-6">
-              <label class="form-label">小孩人數</label>
+              <label class="form-label-eat">兒童人數</label>
               <div class="number-input">
-                <button type="button" @click="form.children = Math.max(0, form.children - 1); onDateTimeChange()">−</button>
-                <span>{{ form.children }}</span>
-                <button type="button" @click="form.children = Math.min(10, form.children + 1); onDateTimeChange()">+</button>
+                <button type="button" class="num-btn" @click="form.children = Math.max(0, form.children - 1); onDateTimeChange()">
+                  <i class="bi bi-dash"></i>
+                </button>
+                <span class="num-value">{{ form.children }}</span>
+                <button type="button" class="num-btn" @click="form.children = Math.min(10, form.children + 1); onDateTimeChange()">
+                  <i class="bi bi-plus"></i>
+                </button>
               </div>
             </div>
 
-            <!-- 即時可用性回饋 -->
-            <div class="col-12" v-if="availability">
-              <div
-                class="availability-feedback"
-                :class="availability.isAvailable ? 'available' : 'unavailable'"
-              >
-                <i :class="availability.isAvailable ? 'bi bi-check-circle-fill' : 'bi bi-x-circle-fill'"></i>
+            <!-- ── 即時桌況回饋 ── -->
+            <div v-if="availability" class="col-12">
+              <div class="availability-feedback" :class="availability.isAvailable ? 'available' : 'unavailable'">
+                <i class="bi me-2" :class="availability.isAvailable ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
                 {{ availability.message }}
               </div>
             </div>
 
-            <!-- 姓名 -->
+            <!-- ── 分隔線 ── -->
+            <div class="col-12">
+              <div class="form-divider"></div>
+            </div>
+
+            <!-- ── 姓名 ── -->
             <div class="col-md-6">
-              <label class="form-label required">姓名</label>
+              <label class="form-label-eat">姓名 <span class="required-star">*</span></label>
               <input
                 v-model.trim="form.name"
                 type="text"
-                class="form-control"
+                class="form-control-eat"
                 :class="{ 'is-invalid': errors.name }"
                 placeholder="請輸入姓名"
               />
-              <div v-if="errors.name" class="invalid-feedback">{{ errors.name }}</div>
+              <div v-if="errors.name" class="field-error">{{ errors.name }}</div>
             </div>
 
-            <!-- 電話 -->
+            <!-- ── 電話 ── -->
             <div class="col-md-6">
-              <label class="form-label required">電話</label>
+              <label class="form-label-eat">手機號碼 <span class="required-star">*</span></label>
               <input
                 v-model.trim="form.phone"
                 type="tel"
-                class="form-control"
+                class="form-control-eat"
                 :class="{ 'is-invalid': errors.phone }"
                 placeholder="09xxxxxxxx"
               />
-              <div v-if="errors.phone" class="invalid-feedback">{{ errors.phone }}</div>
+              <div v-if="errors.phone" class="field-error">{{ errors.phone }}</div>
             </div>
 
-            <!-- Email -->
+            <!-- ── Email ── -->
             <div class="col-12">
-              <label class="form-label">Email <span class="text-muted">(選填，用於接收確認信)</span></label>
+              <label class="form-label-eat">
+                Email
+                <span class="label-hint">（選填，用於接收確認信）</span>
+              </label>
               <input
                 v-model.trim="form.email"
                 type="email"
-                class="form-control"
+                class="form-control-eat"
                 :class="{ 'is-invalid': errors.email }"
                 placeholder="example@email.com"
               />
-              <div v-if="errors.email" class="invalid-feedback">{{ errors.email }}</div>
+              <div v-if="errors.email" class="field-error">{{ errors.email }}</div>
             </div>
 
-            <!-- 備註 -->
+            <!-- ── 備註 ── -->
             <div class="col-12">
-              <label class="form-label">備註</label>
+              <label class="form-label-eat">
+                備註
+                <span class="label-hint">（過敏食材、特殊需求等）</span>
+              </label>
               <textarea
                 v-model.trim="form.remark"
-                class="form-control"
+                class="form-control-eat"
                 rows="3"
-                placeholder="過敏食材、特殊需求等"
+                placeholder="如：素食、嬰兒椅、生日布置需求…"
               ></textarea>
             </div>
 
-            <!-- 提交 -->
-            <div class="col-12 text-center">
+            <!-- ── 送出 ── -->
+            <div class="col-12 text-center pt-2">
               <button
                 type="submit"
-                class="btn-eat-primary px-5 py-3"
+                class="submit-btn"
                 :disabled="submitting || (availability && !availability.isAvailable)"
               >
-                <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                <span v-if="submitting" class="spinner-border spinner-border-sm me-2" style="width:.9rem;height:.9rem;border-width:2px"></span>
+                <i v-else class="bi bi-calendar-check me-2"></i>
                 {{ submitting ? '訂位中…' : '確認訂位' }}
               </button>
             </div>
@@ -148,30 +182,33 @@
       </div>
     </div>
 
-    <!-- 訂位查詢連結 -->
-    <div class="text-center mt-4 pb-2">
-      <span style="color:var(--eat-text-muted);font-size:.9rem">已有訂位？</span>
-      <router-link to="/reservation/query" style="color:var(--eat-primary);font-size:.9rem;margin-left:6px">
-        查詢 / 取消訂位 <i class="bi bi-arrow-right"></i>
-      </router-link>
-    </div>
-
-    <!-- 成功 Modal -->
-    <div v-if="successModal" class="modal-overlay" @click.self="successModal = false">
-      <div class="success-modal">
-        <div class="success-icon">🎉</div>
-        <h3>訂位成功！</h3>
-        <div class="booking-number">
-          <span class="label">訂位單號</span>
-          <span class="number">{{ bookingNumber }}</span>
-        </div>
-        <p class="hint">確認信已寄至您的 Email，請記錄訂位單號以便查詢</p>
-        <div class="d-flex gap-3 justify-content-center mt-4">
-          <router-link to="/reservation/query" class="btn btn-outline-secondary">查詢訂位</router-link>
-          <button class="btn-eat-primary" @click="successModal = false">關閉</button>
+    <!-- ── 成功 Modal ── -->
+    <Transition name="modal-fade">
+      <div v-if="successModal" class="modal-overlay" @click.self="successModal = false">
+        <div class="success-modal">
+          <div class="success-glow"></div>
+          <div class="success-icon-wrap">
+            <i class="bi bi-calendar-check-fill"></i>
+          </div>
+          <h3 class="success-title">訂位成功！</h3>
+          <p class="success-sub">感謝您的訂位，我們期待您的到來</p>
+          <div class="booking-number-card">
+            <div class="bn-label">訂位單號</div>
+            <div class="bn-value">{{ bookingNumber }}</div>
+          </div>
+          <p class="success-hint">請記錄訂位單號，或至「查詢訂位」隨時查看狀態</p>
+          <div class="d-flex gap-3 justify-content-center mt-4">
+            <router-link to="/reservation/query" class="btn-ghost-eat">
+              <i class="bi bi-search me-1"></i>查詢訂位
+            </router-link>
+            <button class="btn-primary-eat" @click="successModal = false">
+              關閉
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Transition>
+
   </div>
 </template>
 
@@ -216,9 +253,9 @@ const form = ref({
   remark:   ''
 })
 
-const errors      = ref({})
+const errors       = ref({})
 const availability = ref(null)
-const submitting  = ref(false)
+const submitting   = ref(false)
 const successModal = ref(false)
 const bookingNumber = ref('')
 
@@ -238,12 +275,11 @@ async function fetchAvailability() {
   const dt = buildDateTime()
   if (!dt) return
   try {
-    // 使用 Availability endpoint（含防線⑤桌型組數 + ⑥總容量70%）
     const res = await apiFetch(
       `/Reservations/Availability?date=${encodeURIComponent(toLocalISOString(dt))}&adults=${form.value.adults}&children=${form.value.children}`
     )
     if (res.ok) availability.value = await res.json()
-  } catch { /* 忽略網路錯誤，不影響使用者操作 */ }
+  } catch { /* 忽略網路錯誤 */ }
 }
 
 function buildDateTime() {
@@ -252,8 +288,6 @@ function buildDateTime() {
   return new Date(y, m - 1, day, Number(form.value.hour), Number(form.value.minute), 0, 0)
 }
 
-// 送給後端的本地時間字串（不帶 Z），避免 UTC 轉換後時段錯誤
-// 例：台灣 17:00 → "2026-05-20T17:00:00"，後端以本地時間解析
 function toLocalISOString(d) {
   const pad = n => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
@@ -274,7 +308,7 @@ function validate() {
     const minute = Number(form.value.minute)
     if (hour < 11 || hour > 20) e.time = '訂位時段須在 11:00 ~ 20:00 之間'
     else if (hour === 20 && minute > 0) e.time = '最晚訂位時段為 20:00'
-    else if (![0, 15, 30, 45].includes(minute)) e.time = '訂位分鐘只允許 00、15、30、45'  // ③ 分鐘格式
+    else if (![0, 15, 30, 45].includes(minute)) e.time = '訂位分鐘只允許 00、15、30、45'
     else if (dt < new Date(now.getTime() + 30 * 60000)) e.time = '訂位時間必須在 30 分鐘後'
   }
 
@@ -353,72 +387,310 @@ onMounted(async () => {
     if (data.email) form.value.email = data.email
   } catch { /* 靜默，不影響訂位流程 */ }
 })
-
-
 </script>
 
 <style scoped>
-.booking-page { min-height: 100vh; padding-top: 80px; background: var(--eat-bg); }
-.page-title { font-family: var(--font-display); color: var(--eat-primary); font-size: 2rem; }
+/* ── 頁面 ── */
+.booking-page {
+  min-height: 100vh;
+  padding-top: 80px;
+  background: var(--eat-bg);
+}
 
-.booking-form-card {
-  background: rgba(255,255,255,.04); border: 1px solid rgba(180,120,30,.15);
-  border-radius: 20px; padding: 40px; max-width: 800px; margin: 0 auto;
+/* ── Hero ── */
+.booking-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 3.5rem 0 2.5rem;
+  background: linear-gradient(160deg, #1a0a05 0%, #2b1c16 60%, #1e100b 100%);
+  border-bottom: 1px solid var(--eat-outline-variant);
+  margin-bottom: 2.5rem;
 }
-.form-label { color: var(--eat-text-secondary); font-size: .9rem; margin-bottom: 6px; }
-.form-label.required::after { content: ' *'; color: #c0392b; }
-.form-control, .form-select {
-  background: rgba(255,255,255,.06); border: 1px solid rgba(180,120,30,.25);
-  color: var(--eat-text-primary); border-radius: 8px;
+.hero-glow {
+  position: absolute;
+  top: -60px; left: 50%;
+  transform: translateX(-50%);
+  width: 600px; height: 300px;
+  background: radial-gradient(ellipse, rgba(227,199,107,.08) 0%, transparent 70%);
+  pointer-events: none;
 }
-.form-select option {
-  background: #1e120b;
-  color: var(--eat-text-primary);
+.query-link {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-label);
+  font-size: .85rem;
+  letter-spacing: .06em;
+  color: rgba(226,210,185,.6);
+  text-decoration: none;
+  border: 1px solid rgba(180,120,30,.3);
+  border-radius: var(--eat-radius-sm);
+  padding: .5rem 1.1rem;
+  transition: color .2s, border-color .2s, background .2s;
+  white-space: nowrap;
 }
-.form-control:focus, .form-select:focus {
-  background: rgba(255,255,255,.08); border-color: var(--eat-primary); box-shadow: none; color: var(--eat-text-primary);
+.query-link:hover {
+  color: var(--eat-primary);
+  border-color: rgba(227,199,107,.5);
+  background: rgba(227,199,107,.06);
 }
+
+/* ── 表單容器 ── */
+.form-wrapper {
+  max-width: 760px;
+  margin: 0 auto;
+  background: var(--eat-surface-container);
+  border: 1px solid rgba(180,120,30,.18);
+  border-radius: 1.25rem;
+  padding: 2.5rem 2rem;
+}
+@media (max-width: 576px) {
+  .form-wrapper { padding: 1.5rem 1rem; }
+}
+
+/* ── 表單元素 ── */
+.form-label-eat {
+  display: block;
+  font-size: .875rem;
+  color: rgba(226,210,185,.75);
+  margin-bottom: .4rem;
+  letter-spacing: .04em;
+}
+.required-star { color: #e05a5a; }
+.label-hint {
+  font-size: .78rem;
+  color: rgba(226,210,185,.4);
+  font-weight: 400;
+}
+
+.form-control-eat,
+.form-select-eat {
+  width: 100%;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(180,120,30,.25);
+  border-radius: .5rem;
+  color: var(--eat-on-surface);
+  padding: .65rem .9rem;
+  font-size: .95rem;
+  font-family: var(--font-body);
+  transition: border-color .2s, box-shadow .2s;
+  appearance: auto;
+}
+.form-control-eat::placeholder { color: rgba(226,210,185,.3); }
+.form-control-eat:focus,
+.form-select-eat:focus {
+  outline: none;
+  border-color: rgba(227,199,107,.55);
+  box-shadow: 0 0 0 3px rgba(227,199,107,.1);
+  background: rgba(255,255,255,.07);
+}
+.form-control-eat.is-invalid,
+.form-select-eat.is-invalid { border-color: #e05a5a; }
+.form-select-eat option { background: #1e120b; color: var(--eat-on-surface); }
+textarea.form-control-eat { resize: vertical; min-height: 88px; }
+
 /* 原生日期選擇器深色主題 */
 input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.8);
+  filter: invert(0.7);
   cursor: pointer;
 }
 
+.field-error {
+  color: #e05a5a;
+  font-size: .8rem;
+  margin-top: .3rem;
+}
+
+/* ── 人數加減器 ── */
 .number-input {
-  display: flex; align-items: center; gap: 20px;
-  background: rgba(255,255,255,.06); border: 1px solid rgba(180,120,30,.25);
-  border-radius: 8px; padding: 8px 16px; width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: .75rem;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(180,120,30,.25);
+  border-radius: .5rem;
+  padding: .5rem 1rem;
 }
-.number-input button {
-  background: none; border: none; color: var(--eat-primary);
-  font-size: 1.4rem; cursor: pointer; line-height: 1; padding: 0 4px;
+.num-btn {
+  background: none;
+  border: none;
+  color: var(--eat-primary);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 .25rem;
+  transition: opacity .15s;
 }
-.number-input span { font-size: 1.2rem; color: var(--eat-text-primary); min-width: 24px; text-align: center; }
+.num-btn:hover { opacity: .75; }
+.num-value {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--eat-on-surface);
+  min-width: 1.5rem;
+  text-align: center;
+}
 
+/* ── 即時桌況回饋 ── */
 .availability-feedback {
-  padding: 12px 20px; border-radius: 10px; font-size: .95rem;
-  display: flex; align-items: center; gap: 8px;
+  display: flex;
+  align-items: center;
+  padding: .85rem 1.1rem;
+  border-radius: .5rem;
+  font-size: .9rem;
+  font-weight: 500;
 }
-.availability-feedback.available { background: rgba(60,179,113,.15); color: #3cb371; border: 1px solid #3cb371; }
-.availability-feedback.unavailable { background: rgba(192,57,43,.15); color: #c0392b; border: 1px solid #c0392b; }
+.availability-feedback.available {
+  background: rgba(60,179,113,.12);
+  color: #3cb371;
+  border: 1px solid rgba(60,179,113,.35);
+}
+.availability-feedback.unavailable {
+  background: rgba(192,57,43,.12);
+  color: #e05a50;
+  border: 1px solid rgba(192,57,43,.35);
+}
 
-/* 成功 Modal */
+/* ── 分隔線 ── */
+.form-divider {
+  border: none;
+  border-top: 1px solid rgba(180,120,30,.15);
+}
+
+/* ── 送出按鈕 ── */
+.submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: .85rem 3rem;
+  background: var(--eat-primary);
+  color: var(--eat-on-primary);
+  border: none;
+  border-radius: var(--eat-radius-sm);
+  font-family: var(--font-label);
+  font-size: .95rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  cursor: pointer;
+  transition: background .2s, box-shadow .2s, opacity .2s;
+  box-shadow: 0 4px 20px rgba(227,199,107,.25);
+}
+.submit-btn:hover:not(:disabled) {
+  background: #f0d060;
+  box-shadow: 0 6px 28px rgba(227,199,107,.4);
+}
+.submit-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ── 成功 Modal ── */
 .modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.7);
-  display: flex; align-items: center; justify-content: center; z-index: 9999;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
 }
 .success-modal {
-  background: #1e120b; border: 1px solid rgba(180,120,30,.4);
-  border-radius: 20px; padding: 48px 40px; text-align: center; max-width: 420px; width: 90%;
+  position: relative;
+  background: linear-gradient(145deg, #1e100b 0%, #2b1c16 60%, #1a0a05 100%);
+  border: 1px solid rgba(227,199,107,.3);
+  border-radius: 1.25rem;
+  padding: 3rem 2.5rem;
+  text-align: center;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 24px 64px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.05);
+  overflow: hidden;
 }
-.success-icon { font-size: 3rem; margin-bottom: 12px; }
-.success-modal h3 { color: var(--eat-primary); margin-bottom: 20px; font-size: 1.6rem; }
-.booking-number {
-  background: rgba(255,255,255,.06); border-radius: 12px;
-  padding: 16px 24px; margin-bottom: 16px; display: flex;
-  flex-direction: column; gap: 4px;
+.success-glow {
+  position: absolute;
+  top: -80px; left: 50%;
+  transform: translateX(-50%);
+  width: 300px; height: 200px;
+  background: radial-gradient(ellipse, rgba(227,199,107,.15) 0%, transparent 70%);
+  pointer-events: none;
 }
-.booking-number .label { font-size: .8rem; color: var(--eat-text-muted); }
-.booking-number .number { font-size: 1.6rem; font-weight: 700; letter-spacing: 3px; color: var(--eat-primary); }
-.hint { font-size: .85rem; color: var(--eat-text-muted); }
+.success-icon-wrap {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: rgba(227,199,107,.12);
+  border: 1px solid rgba(227,199,107,.3);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1.25rem;
+  font-size: 1.75rem;
+  color: var(--eat-primary);
+}
+.success-title {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: var(--eat-primary);
+  margin-bottom: .4rem;
+}
+.success-sub {
+  font-size: .9rem;
+  color: rgba(226,210,185,.55);
+  margin-bottom: 1.5rem;
+}
+.booking-number-card {
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(180,120,30,.2);
+  border-radius: .75rem;
+  padding: 1.1rem 1.5rem;
+  margin-bottom: 1rem;
+}
+.bn-label {
+  font-size: .72rem;
+  letter-spacing: .1em;
+  color: rgba(226,210,185,.4);
+  text-transform: uppercase;
+  margin-bottom: .3rem;
+}
+.bn-value {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: .18em;
+  color: var(--eat-primary);
+  text-shadow: 0 0 20px rgba(227,199,107,.3);
+}
+.success-hint {
+  font-size: .8rem;
+  color: rgba(226,210,185,.35);
+}
+
+/* Modal 按鈕 */
+.btn-primary-eat {
+  display: inline-flex; align-items: center;
+  padding: .6rem 1.6rem;
+  background: var(--eat-primary); color: var(--eat-on-primary);
+  border: none; border-radius: var(--eat-radius-sm);
+  font-family: var(--font-label); font-size: .85rem; font-weight: 600;
+  letter-spacing: .08em; cursor: pointer;
+  transition: background .2s, box-shadow .2s;
+  box-shadow: 0 4px 16px rgba(227,199,107,.25);
+}
+.btn-primary-eat:hover { background: #f0d060; }
+
+.btn-ghost-eat {
+  display: inline-flex; align-items: center; text-decoration: none;
+  padding: .6rem 1.6rem;
+  background: transparent; color: rgba(226,210,185,.7);
+  border: 1px solid rgba(180,120,30,.3); border-radius: var(--eat-radius-sm);
+  font-family: var(--font-label); font-size: .85rem; letter-spacing: .08em;
+  transition: color .2s, border-color .2s, background .2s;
+}
+.btn-ghost-eat:hover { color: var(--eat-primary); border-color: rgba(227,199,107,.45); background: rgba(227,199,107,.05); }
+
+/* ── Modal 動畫 ── */
+.modal-fade-enter-active,
+.modal-fade-leave-active { transition: opacity .25s ease; }
+.modal-fade-enter-active .success-modal,
+.modal-fade-leave-active .success-modal { transition: transform .25s cubic-bezier(.22,1,.36,1), opacity .25s ease; }
+.modal-fade-enter-from { opacity: 0; }
+.modal-fade-enter-from .success-modal { transform: translateY(24px) scale(.97); opacity: 0; }
+.modal-fade-leave-to { opacity: 0; }
 </style>
