@@ -20,8 +20,7 @@
             <div class="col-12 col-md-6">
                 <p class="text-eat-primary fw-medium mb-3 letter-spacing-1">營業時間</p>
                 <p class="eat-body text-eat-muted m-0 lh-lg">
-                    週一至週五：17:30 – 23:00<br />
-                    週末及例假日：11:30 – 23:30
+                    每天：11:00 – 21:00
                 </p>
             </div>
         </div>
