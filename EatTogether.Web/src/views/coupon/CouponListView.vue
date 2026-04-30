@@ -74,7 +74,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import CouponCard from '@/components/coupon/CouponCard.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Button from '@/components/common/Button.vue'
@@ -82,6 +82,14 @@ import apiFetch from '@/utils/apiFetch.js'
 import { useAuthStore } from '@/stores/auth.js'
 
 const authStore    = useAuthStore()
+
+// 登入後重新抓券（更新 isClaimed 狀態）
+watch(() => authStore.isLoggedIn, (loggedIn) => {
+  if (loggedIn) {
+    fetchCoupons()
+    fetchMyUsableCount()
+  }
+})
 const coupons      = ref([])
 const loading      = ref(true)
 const activeFilter = ref('all')

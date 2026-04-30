@@ -6,19 +6,73 @@
       <div class="hero-glow"></div>
       <div class="container position-relative">
         <p class="eat-label mb-2" style="color:var(--eat-secondary)">
-          <i class="bi bi-people me-2"></i>WALK-IN QUEUE
+          <i class="bi bi-people me-2"></i>WALK-IN &amp; TABLE STATUS
         </p>
         <h1 class="eat-h1 fst-normal mb-2">現場候位</h1>
         <p class="eat-body-muted mb-0">
-          目前等待：<span style="color:var(--eat-primary);font-weight:600">{{ todayStatus.waitingCount }}</span> 組&ensp;
-          已叫號：<span style="color:var(--eat-secondary);font-weight:600">{{ todayStatus.calledCount }}</span> 組
+          目前時間：<span style="color:var(--eat-primary);font-weight:600">{{ currentTimeStr }}</span>
+          &ensp;｜&ensp;
+          等待中：<span style="color:var(--eat-primary);font-weight:600">{{ todayStatus.waitingCount }}</span> 組
+          &ensp;已叫號：<span style="color:var(--eat-secondary);font-weight:600">{{ todayStatus.calledCount }}</span> 組
         </p>
       </div>
     </div>
 
     <div class="container pb-5">
 
-      <!-- Tab 切換 -->
+      <!-- ══════════════════════════════════════════
+           即時桌況區塊
+      ══════════════════════════════════════════ -->
+      <div class="section-title mb-3">
+        <i class="bi bi-grid-3x3-gap me-2" style="color:var(--eat-secondary)"></i>
+        <span>即時桌況</span>
+        <span class="section-time ms-2">{{ currentTimeStr }}</span>
+      </div>
+
+      <!-- 載入中 -->
+      <div v-if="tableLoading" class="d-flex justify-content-center py-4">
+        <LoadingSpinner message="查詢桌況中..." />
+      </div>
+
+      <!-- 桌況卡片 -->
+      <div v-else-if="tableSlots.length" class="row g-3 mb-2">
+        <div v-for="slot in tableSlots" :key="slot.tableType" class="col-6 col-md-3">
+          <div class="seat-card" :class="slot.available > 0 ? 'available' : 'full'">
+            <div class="seat-badge" :class="slot.available > 0 ? 'badge-open' : 'badge-full'">
+              {{ slot.available > 0 ? '有位' : '已滿' }}
+            </div>
+            <div class="seat-type">{{ slot.tableType }}</div>
+            <div class="seat-count">
+              <span class="available-num">{{ slot.available }}</span>
+              <span class="total-num"> / {{ slot.total }}</span>
+            </div>
+            <div class="seat-label">剩餘桌數</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 非營業時間 -->
+      <div v-else class="card-eat p-4 text-center mb-2">
+        <i class="bi bi-moon-stars" style="font-size:2rem;opacity:.35;color:var(--eat-on-surface-variant)"></i>
+        <p class="eat-body-muted mt-2 mb-0">目前非訂位服務時段</p>
+      </div>
+
+      <!-- 重新整理 + 訂位按鈕 -->
+      <div class="d-flex justify-content-end gap-2 mb-5">
+        <Button variant="secondary" size="sm" @click="fetchTableStatus" :loading="tableLoading">
+          <i class="bi bi-arrow-clockwise me-1"></i>重新整理
+        </Button>
+        <Button variant="primary" size="sm" :to="{ name: 'Reservation' }">
+          <i class="bi bi-calendar-plus me-1"></i>立即訂位
+        </Button>
+      </div>
+
+      <!-- 分隔線 -->
+      <div class="divider mb-4"></div>
+
+      <!-- ══════════════════════════════════════════
+           候位 Tab 切換
+      ══════════════════════════════════════════ -->
       <div class="walkin-tabs mb-4">
         <button
           class="walkin-tab"
@@ -30,7 +84,7 @@
         <button
           class="walkin-tab"
           :class="{ active: activeTab === 'query' }"
-          @click="activeTab = 'query'; resetQuery()"
+          @click="switchToQuery"
         >
           <i class="bi bi-search me-1"></i>查詢號碼
         </button>
@@ -40,7 +94,7 @@
       <Transition name="fade-slide" mode="out-in">
         <div v-if="activeTab === 'register'" key="register">
 
-          <!-- 登記成功卡片 -->
+          <!-- 登記成功：號碼牌 -->
           <div v-if="registered" class="ticket-card mb-4">
             <div class="ticket-header">
               <i class="bi bi-ticket-perforated me-2"></i>候位號碼牌
@@ -85,7 +139,7 @@
                   placeholder="請輸入姓名"
                   maxlength="50"
                 />
-                <div v-if="errors.name" class="invalid-feedback">{{ errors.name }}</div>
+                <div v-if="errors.name" class="invalid-feedback d-block">{{ errors.name }}</div>
               </div>
 
               <!-- 電話 -->
@@ -99,7 +153,7 @@
                   placeholder="09xxxxxxxx"
                   maxlength="10"
                 />
-                <div v-if="errors.phone" class="invalid-feedback">{{ errors.phone }}</div>
+                <div v-if="errors.phone" class="invalid-feedback d-block">{{ errors.phone }}</div>
               </div>
 
               <!-- 大人人數 -->
@@ -198,19 +252,16 @@
                       {{ queryResult.statusText }}
                     </span>
                   </div>
-                  <div v-if="queryResult.status === 0">
+                  <template v-if="queryResult.status === 0">
                     <div v-if="queryResult.groupsAhead > 0" class="ticket-ahead">
                       前方還有 <strong>{{ queryResult.groupsAhead }}</strong> 組
                     </div>
                     <div v-else class="ticket-ahead" style="color:var(--eat-primary)">
                       <i class="bi bi-star me-1"></i>您是下一組！請注意叫號
                     </div>
-                  </div>
+                  </template>
                   <div class="ticket-time">登記時間：{{ formatTime(queryResult.registeredAt) }}</div>
-                  <div
-                    v-if="queryResult.status === 0"
-                    class="d-flex justify-content-center mt-4"
-                  >
+                  <div v-if="queryResult.status === 0" class="d-flex justify-content-center mt-4">
                     <Button variant="secondary" @click="leaveQueue(queryResult.id)" :loading="leaving">
                       <i class="bi bi-x-circle me-1"></i>取消候位
                     </Button>
@@ -230,28 +281,84 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import apiFetch from '@/utils/apiFetch.js'
 import Button from '@/components/common/Button.vue'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import { useAuthStore } from '@/stores/auth.js'
 
-// ── 今日摘要 ──────────────────────────────────────
+const authStore = useAuthStore()
+
+// ── 時間顯示 ──────────────────────────────────────
+const currentTimeStr = ref('')
+
+function updateTime() {
+  const now = new Date()
+  const pad = n => String(n).padStart(2, '0')
+  currentTimeStr.value = `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`
+  return now
+}
+
+// ── 即時桌況 ──────────────────────────────────────
+const tableSlots   = ref([])
+const tableLoading = ref(false)
+
+function toLocalISO(d) {
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
+}
+
+async function fetchTableStatus() {
+  tableLoading.value = true
+  const now = updateTime()
+  try {
+    const res = await apiFetch(`/Reservations/TableAvailability?date=${encodeURIComponent(toLocalISO(now))}`)
+    if (res.ok) tableSlots.value = await res.json()
+  } catch { /* 靜默 */ }
+  finally { tableLoading.value = false }
+}
+
+// ── 今日候位摘要 ──────────────────────────────────
 const todayStatus = ref({ waitingCount: 0, calledCount: 0 })
-let refreshTimer = null
 
 async function fetchTodayStatus() {
   try {
-    const data = await apiFetch('/api/WalkInQueues/TodayStatus')
-    todayStatus.value = data
-  } catch {
-    // 靜默失敗，不影響頁面
-  }
+    const res = await apiFetch('/WalkInQueues/TodayStatus')
+    if (res.ok) todayStatus.value = await res.json()
+  } catch { /* 靜默 */ }
 }
 
-onMounted(() => {
+// ── 定時刷新 ─────────────────────────────────────
+let refreshTimer = null
+
+onMounted(async () => {
+  fetchTableStatus()
   fetchTodayStatus()
-  refreshTimer = setInterval(fetchTodayStatus, 30_000)
+  refreshTimer = setInterval(() => {
+    fetchTableStatus()
+    fetchTodayStatus()
+  }, 60_000)
+
+  // 登入狀態：自動填入候位表單
+  if (authStore.isLoggedIn) {
+    try {
+      const res = await apiFetch('/members/me')
+      if (res.ok) {
+        const data = await res.json()
+        if (data.name)  form.name  = data.name
+        if (data.phone) form.phone = data.phone
+      }
+    } catch { /* 靜默 */ }
+  }
 })
 onUnmounted(() => clearInterval(refreshTimer))
 
 // ── Tab 切換 ──────────────────────────────────────
 const activeTab = ref('register')
+
+function switchToQuery() {
+  activeTab.value = 'query'
+  queryPhone.value = ''
+  queryError.value = ''
+  queryResult.value = null
+}
 
 // ── 登記候位 ──────────────────────────────────────
 const form = reactive({
@@ -261,34 +368,30 @@ const form = reactive({
   childrenCount: 0,
   remark: '',
 })
-const errors = reactive({ name: '', phone: '', people: '' })
+const errors     = reactive({ name: '', phone: '', people: '' })
 const submitting = ref(false)
 const submitError = ref('')
-const registered = ref(null)  // 登記成功後的 WalkInStatusDto
+const registered = ref(null)
 
 function validateRegister() {
   errors.name = ''
   errors.phone = ''
   errors.people = ''
-
   let valid = true
 
   if (!form.name || form.name.length < 2 || form.name.length > 50) {
     errors.name = '請輸入正確姓名（2～50 字）'
     valid = false
   }
-
   if (!form.phone || !/^09\d{8}$/.test(form.phone)) {
     errors.phone = '請輸入有效手機號碼（格式：09xxxxxxxx）'
     valid = false
   }
-
   const total = form.adultsCount + form.childrenCount
   if (total < 1 || total > 10) {
     errors.people = '候位人數須在 1～10 人之間'
     valid = false
   }
-
   return valid
 }
 
@@ -298,21 +401,25 @@ async function submitRegister() {
 
   submitting.value = true
   try {
-    const data = await apiFetch('/api/WalkInQueues', {
+    const res = await apiFetch('/WalkInQueues', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: form.name.trim(),
-        phone: form.phone.trim(),
-        adultsCount: form.adultsCount,
+        name:          form.name.trim(),
+        phone:         form.phone.trim(),
+        adultsCount:   form.adultsCount,
         childrenCount: form.childrenCount,
-        remark: form.remark.trim(),
+        remark:        form.remark.trim(),
       }),
     })
-    registered.value = data
-    await fetchTodayStatus()
-  } catch (err) {
-    submitError.value = err?.message || '登記失敗，請稍後再試'
+    if (res.ok) {
+      registered.value = await res.json()
+      await fetchTodayStatus()
+    } else {
+      const body = await res.json().catch(() => ({}))
+      submitError.value = body.message || '登記失敗，請稍後再試'
+    }
+  } catch {
+    submitError.value = '登記失敗，請稍後再試'
   } finally {
     submitting.value = false
   }
@@ -325,31 +432,30 @@ async function leaveQueue(id) {
   if (!confirm('確定要取消候位嗎？')) return
   leaving.value = true
   try {
-    await apiFetch(`/api/WalkInQueues/${id}/Leave`, { method: 'PUT' })
-    registered.value = null
-    queryResult.value = null
-    await fetchTodayStatus()
-  } catch (err) {
-    alert(err?.message || '取消失敗，請稍後再試')
+    const res = await apiFetch(`/WalkInQueues/${id}/Leave`, { method: 'PUT' })
+    if (res.ok) {
+      registered.value  = null
+      queryResult.value = null
+      await fetchTodayStatus()
+    } else {
+      const body = await res.json().catch(() => ({}))
+      alert(body.message || '取消失敗，請稍後再試')
+    }
+  } catch {
+    alert('取消失敗，請稍後再試')
   } finally {
     leaving.value = false
   }
 }
 
 // ── 查詢候位 ─────────────────────────────────────
-const queryPhone = ref('')
-const queryError = ref('')
-const querying = ref(false)
+const queryPhone  = ref('')
+const queryError  = ref('')
+const querying    = ref(false)
 const queryResult = ref(null)
 
-function resetQuery() {
-  queryPhone.value = ''
-  queryError.value = ''
-  queryResult.value = null
-}
-
 async function submitQuery() {
-  queryError.value = ''
+  queryError.value  = ''
   queryResult.value = null
 
   if (!queryPhone.value || !/^09\d{8}$/.test(queryPhone.value)) {
@@ -359,10 +465,15 @@ async function submitQuery() {
 
   querying.value = true
   try {
-    const data = await apiFetch(`/api/WalkInQueues/My?phone=${encodeURIComponent(queryPhone.value)}`)
-    queryResult.value = data
-  } catch (err) {
-    queryError.value = err?.message || '查無今日候位紀錄'
+    const res = await apiFetch(`/WalkInQueues/My?phone=${encodeURIComponent(queryPhone.value)}`)
+    if (res.ok) {
+      queryResult.value = await res.json()
+    } else {
+      const body = await res.json().catch(() => ({}))
+      queryError.value = body.message || '查無今日候位紀錄'
+    }
+  } catch {
+    queryError.value = '查詢失敗，請稍後再試'
   } finally {
     querying.value = false
   }
@@ -376,23 +487,11 @@ function formatTime(dtStr) {
 }
 
 function statusClass(status) {
-  return {
-    0: 'status-waiting',
-    1: 'status-called',
-    2: 'status-seated',
-    3: 'status-left',
-    4: 'status-missed',
-  }[status] ?? ''
+  return { 0: 'status-waiting', 1: 'status-called', 2: 'status-seated', 3: 'status-left', 4: 'status-missed' }[status] ?? ''
 }
 
 function statusIcon(status) {
-  return {
-    0: 'bi-hourglass-split',
-    1: 'bi-megaphone',
-    2: 'bi-check-circle',
-    3: 'bi-x-circle',
-    4: 'bi-skip-forward',
-  }[status] ?? 'bi-question-circle'
+  return { 0: 'bi-hourglass-split', 1: 'bi-megaphone', 2: 'bi-check-circle', 3: 'bi-x-circle', 4: 'bi-skip-forward' }[status] ?? 'bi-question-circle'
 }
 </script>
 
@@ -400,30 +499,92 @@ function statusIcon(status) {
 /* ── 頁面佈局 ── */
 .walkin-page {
   min-height: 100vh;
-  background: var(--eat-surface);
+  padding-top: 80px;
+  background: var(--eat-bg);
 }
 
 /* ── Hero ── */
 .walkin-hero {
   position: relative;
-  padding: 8rem 0 3rem;
   overflow: hidden;
+  padding: 3.5rem 0 2.5rem;
+  background: linear-gradient(160deg, #1a0a05 0%, #2b1c16 60%, #1e100b 100%);
+  border-bottom: 1px solid var(--eat-outline-variant);
+  margin-bottom: 2.5rem;
 }
 .hero-glow {
   position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(227,199,107,.18) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 60% at 80% 50%, rgba(180,100,40,.1) 0%, transparent 70%);
+  top: -60px; left: 50%;
+  transform: translateX(-50%);
+  width: 700px; height: 300px;
+  background: radial-gradient(ellipse, rgba(227,199,107,.09) 0%, transparent 70%);
   pointer-events: none;
+}
+
+/* ── 區塊標題 ── */
+.section-title {
+  display: flex;
+  align-items: center;
+  font-family: var(--font-label);
+  font-size: .8rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(226,210,185,.55);
+}
+.section-time {
+  font-size: .75rem;
+  color: rgba(226,210,185,.35);
+}
+
+/* ── 桌況卡片（從 TableStatusView 搬移）── */
+.seat-card {
+  position: relative;
+  border-radius: var(--eat-radius-lg);
+  padding: 1.5rem 1rem;
+  text-align: center;
+  border: 1px solid rgba(180,120,30,.2);
+  background: var(--eat-surface-container);
+  transition: transform .2s, box-shadow .2s;
+}
+.seat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,.4); }
+.seat-card.available { border-color: rgba(60,179,113,.5); }
+.seat-card.full      { border-color: rgba(192,57,43,.4); opacity: .75; }
+
+.seat-badge {
+  position: absolute;
+  top: 10px; right: 10px;
+  font-family: var(--font-label);
+  font-size: .6rem;
+  letter-spacing: .1em;
+  padding: .15rem .5rem;
+  border-radius: 50px;
+}
+.badge-open { background: rgba(60,179,113,.2);  color: #3cb371; border: 1px solid rgba(60,179,113,.4); }
+.badge-full { background: rgba(192,57,43,.2);   color: #e05a50; border: 1px solid rgba(192,57,43,.4); }
+
+.seat-type {
+  font-family: var(--font-label);
+  font-size: .8rem;
+  letter-spacing: .08em;
+  color: var(--eat-on-surface-variant);
+  margin-bottom: .5rem;
+}
+.seat-count { line-height: 1; margin-bottom: .4rem; }
+.available-num { font-family: var(--font-headline); font-size: 2.2rem; font-weight: 700; color: var(--eat-primary); }
+.total-num     { font-size: 1rem; color: var(--eat-on-surface-variant); }
+.seat-label    { font-size: .72rem; color: var(--eat-on-surface-variant); opacity: .7; }
+
+/* ── 分隔線 ── */
+.divider {
+  border: none;
+  border-top: 1px solid rgba(180,120,30,.15);
 }
 
 /* ── Tabs ── */
 .walkin-tabs {
   display: flex;
-  gap: 0.5rem;
+  gap: .5rem;
   border-bottom: 1px solid rgba(180,120,30,.2);
-  padding-bottom: 0;
 }
 .walkin-tab {
   background: none;
@@ -432,19 +593,13 @@ function statusIcon(status) {
   color: rgba(226,210,185,.6);
   font-family: var(--font-body);
   font-size: 1rem;
-  padding: 0.6rem 1.25rem;
+  padding: .6rem 1.25rem;
   cursor: pointer;
   transition: color .2s, border-color .2s;
   margin-bottom: -1px;
 }
-.walkin-tab:hover {
-  color: rgba(226,210,185,.9);
-}
-.walkin-tab.active {
-  color: var(--eat-primary);
-  border-bottom-color: var(--eat-primary);
-  font-weight: 600;
-}
+.walkin-tab:hover  { color: rgba(226,210,185,.9); }
+.walkin-tab.active { color: var(--eat-primary); border-bottom-color: var(--eat-primary); font-weight: 600; }
 
 /* ── 表單 ── */
 .form-label-eat {
@@ -473,18 +628,9 @@ function statusIcon(status) {
   box-shadow: 0 0 0 3px rgba(227,199,107,.12);
 }
 .form-control-eat.is-invalid,
-.form-select-eat.is-invalid {
-  border-color: #e05a5a;
-}
-.invalid-feedback {
-  color: #e05a5a;
-  font-size: .8rem;
-  margin-top: .25rem;
-}
-.form-select-eat option {
-  background: #1e120b;
-  color: var(--eat-on-surface);
-}
+.form-select-eat.is-invalid { border-color: #e05a5a; }
+.invalid-feedback { color: #e05a5a; font-size: .8rem; margin-top: .25rem; }
+.form-select-eat option { background: #1e120b; color: var(--eat-on-surface); }
 
 /* ── 錯誤提示框 ── */
 .alert-eat {
@@ -505,9 +651,7 @@ function statusIcon(status) {
   border-radius: 1rem;
   padding: 2rem;
   text-align: center;
-  box-shadow:
-    0 8px 32px rgba(0,0,0,.35),
-    inset 0 1px 0 rgba(255,255,255,.05);
+  box-shadow: 0 8px 32px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.05);
 }
 .ticket-header {
   font-size: .85rem;
@@ -526,23 +670,10 @@ function statusIcon(status) {
   margin-bottom: .5rem;
   text-shadow: 0 0 30px rgba(227,199,107,.4);
 }
-.ticket-name {
-  font-size: 1.1rem;
-  color: rgba(226,210,185,.85);
-  margin-bottom: .75rem;
-}
-.ticket-status {
-  margin-bottom: .75rem;
-}
-.ticket-ahead {
-  font-size: .95rem;
-  color: rgba(226,210,185,.7);
-  margin-bottom: .5rem;
-}
-.ticket-time {
-  font-size: .8rem;
-  color: rgba(226,210,185,.4);
-}
+.ticket-name   { font-size: 1.1rem; color: rgba(226,210,185,.85); margin-bottom: .75rem; }
+.ticket-status { margin-bottom: .75rem; }
+.ticket-ahead  { font-size: .95rem; color: rgba(226,210,185,.7); margin-bottom: .5rem; }
+.ticket-time   { font-size: .8rem; color: rgba(226,210,185,.4); }
 
 /* ── 狀態標籤 ── */
 .status-badge {
@@ -553,23 +684,15 @@ function statusIcon(status) {
   font-size: .85rem;
   font-weight: 600;
 }
-.status-waiting  { background: rgba(227,199,107,.15); color: var(--eat-primary); border: 1px solid rgba(227,199,107,.35); }
-.status-called   { background: rgba(100,180,255,.12); color: #7bc8ff; border: 1px solid rgba(100,180,255,.3); }
-.status-seated   { background: rgba(100,220,130,.12); color: #7de0a0; border: 1px solid rgba(100,220,130,.3); }
-.status-left     { background: rgba(180,180,180,.1);  color: rgba(226,210,185,.5); border: 1px solid rgba(180,180,180,.2); }
-.status-missed   { background: rgba(224,90,90,.12);   color: #e88; border: 1px solid rgba(224,90,90,.3); }
+.status-waiting { background: rgba(227,199,107,.15); color: var(--eat-primary);          border: 1px solid rgba(227,199,107,.35); }
+.status-called  { background: rgba(100,180,255,.12); color: #7bc8ff;                     border: 1px solid rgba(100,180,255,.3);  }
+.status-seated  { background: rgba(100,220,130,.12); color: #7de0a0;                     border: 1px solid rgba(100,220,130,.3);  }
+.status-left    { background: rgba(180,180,180,.1);  color: rgba(226,210,185,.5);        border: 1px solid rgba(180,180,180,.2);  }
+.status-missed  { background: rgba(224,90,90,.12);   color: #e88;                        border: 1px solid rgba(224,90,90,.3);    }
 
-/* ── 頁面切換動畫 ── */
+/* ── 動畫 ── */
 .fade-slide-enter-active,
-.fade-slide-leave-active {
-  transition: opacity .2s ease, transform .2s ease;
-}
-.fade-slide-enter-from {
-  opacity: 0;
-  transform: translateY(8px);
-}
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-}
+.fade-slide-leave-active { transition: opacity .2s ease, transform .2s ease; }
+.fade-slide-enter-from   { opacity: 0; transform: translateY(8px);  }
+.fade-slide-leave-to     { opacity: 0; transform: translateY(-8px); }
 </style>

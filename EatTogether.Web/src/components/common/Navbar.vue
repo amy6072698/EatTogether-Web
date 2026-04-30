@@ -182,7 +182,6 @@ const navLinks = [
         ],
     },
     { label: '優惠券', to: '/coupons' },
-    { label: '即時桌況', to: '/table-status' },
     { label: '訂位', to: '/reservation' },
     { label: '候位', to: '/walkin' },
     { label: '外帶點餐', to: '/takeout' },

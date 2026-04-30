@@ -50,6 +50,11 @@ const routes = [
                 component: () => import('@/views/reservation/MyReservationsView.vue'),
             },
             {
+                path: 'walkin',
+                name: 'MyWalkIn',
+                component: () => import('@/views/member/MyWalkInView.vue'),
+            },
+            {
                 path: 'coupons',
                 name: 'MyCoupons',
                 component: () => import('@/views/coupon/MyCouponsView.vue'),
@@ -109,8 +114,7 @@ const routes = [
     },
     {
         path: '/table-status',
-        name: 'TableStatus',
-        component: () => import('@/views/reservation/TableStatusView.vue'),
+        redirect: '/walkin',
     },
     // ── 優惠券 ──────────────────────────────────────────
     {

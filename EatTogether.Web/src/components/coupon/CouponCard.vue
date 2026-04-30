@@ -67,10 +67,11 @@ const claiming   = ref(false)
 
 async function handleClaim() {
   if (!isLoggedIn.value) {
+    // 未登入：開啟登入 Modal，登入後由 CouponListView 重新抓券
     const modalEl = document.querySelector('#authModal')
     if (modalEl) {
-      const { default: bootstrap } = await import('bootstrap')
-      bootstrap.Modal.getOrCreateInstance(modalEl).show()
+      const { Modal } = await import('bootstrap')
+      Modal.getOrCreateInstance(modalEl).show()
     }
     return
   }
