@@ -50,6 +50,11 @@ const routes = [
                 component: () => import('@/views/reservation/MyReservationsView.vue'),
             },
             {
+                path: 'walkin',
+                name: 'MyWalkIn',
+                component: () => import('@/views/member/MyWalkInView.vue'),
+            },
+            {
                 path: 'coupons',
                 name: 'MyCoupons',
                 component: () => import('@/views/coupon/MyCouponsView.vue'),
@@ -98,14 +103,18 @@ const routes = [
         component: () => import('@/views/reservation/BookingView.vue'),
     },
     {
+        path: '/walkin',
+        name: 'WalkIn',
+        component: () => import('@/views/reservation/WalkInView.vue'),
+    },
+    {
         path: '/reservation/query',
         name: 'ReservationQuery',
         component: () => import('@/views/reservation/ReservationQueryView.vue'),
     },
     {
         path: '/table-status',
-        name: 'TableStatus',
-        component: () => import('@/views/reservation/TableStatusView.vue'),
+        redirect: '/walkin',
     },
     // ── 優惠券 ──────────────────────────────────────────
     {

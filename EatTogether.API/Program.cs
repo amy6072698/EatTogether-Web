@@ -148,6 +148,10 @@ namespace EatTogether.API
 			builder.Services.AddScoped<IReservationRepository, ReservationRepository>();
 			builder.Services.AddScoped<ReservationService>();
 
+			// ── 候位模組 ──
+			builder.Services.AddScoped<IWalkInQueueRepository, WalkInQueueRepository>();
+			builder.Services.AddScoped<WalkInQueueService>();
+
 			// ── 優惠券前台 Service ──
 			builder.Services.AddScoped<CouponService>();
 

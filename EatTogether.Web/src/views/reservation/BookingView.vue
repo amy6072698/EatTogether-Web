@@ -176,11 +176,13 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import apiFetch from '@/utils/apiFetch.js'
 import { useToast } from '@/composables/useToast.js'
+import { useAuthStore } from '@/stores/auth.js'
 
-const { show } = useToast()
+const { show }  = useToast()
+const authStore = useAuthStore()
 
 // 時段選項
 const hours   = Array.from({ length: 10 }, (_, i) => i + 11)  // 11~20
@@ -338,6 +340,19 @@ function resetForm() {
   errors.value = {}
   availability.value = null
 }
+
+// 登入狀態：自動填入會員資料
+onMounted(async () => {
+  if (!authStore.isLoggedIn) return
+  try {
+    const res = await apiFetch('/members/me')
+    if (!res.ok) return
+    const data = await res.json()
+    if (data.name)  form.value.name  = data.name
+    if (data.phone) form.value.phone = data.phone
+    if (data.email) form.value.email = data.email
+  } catch { /* 靜默，不影響訂位流程 */ }
+})
 
 
 </script>
