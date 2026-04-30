@@ -1054,6 +1054,7 @@ onUnmounted(() => {
     window.removeEventListener('scroll', handleParallax)
     document.removeEventListener('click', handleShareClickOutside)
     window.removeEventListener('resize', updateBtnPos)
+    document.body.style.overflow = ''
 })
 </script>
 
@@ -1491,6 +1492,7 @@ onUnmounted(() => {
     left: 1rem;
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: 0.4rem;
     z-index: 2;
 }
@@ -1532,6 +1534,7 @@ onUnmounted(() => {
 .badge-lim {
     background-color: rgba(200, 40, 40, 0.92);
     color: white;
+    white-space: nowrap;
 }
 .badge-soon {
     background-color: rgba(180, 120, 0, 0.9);

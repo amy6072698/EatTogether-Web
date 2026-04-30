@@ -748,6 +748,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleEsc)
   window.removeEventListener('scroll', handleParallax)
   document.removeEventListener('click', handleShareClickOutside)
+  document.body.style.overflow = ''
 })
 </script>
 
