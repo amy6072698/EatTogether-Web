@@ -44,6 +44,21 @@ const routes = [
                 name: 'MemberOrders',
                 component: () => import('@/views/member/OrderHistory.vue'),
             },
+            {
+                path: 'reservations',
+                name: 'MyReservations',
+                component: () => import('@/views/reservation/MyReservationsView.vue'),
+            },
+            {
+                path: 'coupons',
+                name: 'MyCoupons',
+                component: () => import('@/views/coupon/MyCouponsView.vue'),
+            },
+            {
+                path: 'coupon-usage',
+                name: 'CouponUsage',
+                component: () => import('@/views/coupon/CouponUsageView.vue'),
+            },
         ],
     },
 
@@ -88,29 +103,15 @@ const routes = [
         component: () => import('@/views/reservation/ReservationQueryView.vue'),
     },
     {
-        path: '/member/reservations',
-        name: 'MyReservations',
-        component: () => import('@/views/reservation/MyReservationsView.vue'),
-        meta: { requiresAuth: true },
+        path: '/table-status',
+        name: 'TableStatus',
+        component: () => import('@/views/reservation/TableStatusView.vue'),
     },
-
     // ── 優惠券 ──────────────────────────────────────────
     {
         path: '/coupons',
         name: 'CouponList',
         component: () => import('@/views/coupon/CouponListView.vue'),
-    },
-    {
-        path: '/member/coupons',
-        name: 'MyCoupons',
-        component: () => import('@/views/coupon/MyCouponsView.vue'),
-        meta: { requiresAuth: true },
-    },
-    {
-        path: '/member/coupon-usage',
-        name: 'CouponUsage',
-        component: () => import('@/views/coupon/CouponUsageView.vue'),
-        meta: { requiresAuth: true },
     },
 
     // ── 最新消息 ─────────────────────────────────────────

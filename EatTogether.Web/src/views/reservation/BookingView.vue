@@ -3,27 +3,6 @@
     <div class="container py-5">
       <h1 class="page-title text-center mb-5">線上訂位</h1>
 
-      <!-- 各桌型即時剩餘空位 -->
-      <div v-if="tableAvailability.length" class="table-availability mb-5">
-        <h5 class="section-subtitle mb-3">各桌型即時座位狀況</h5>
-        <div class="row g-3">
-          <div
-            v-for="slot in tableAvailability"
-            :key="slot.seatCount"
-            class="col-6 col-md-3"
-          >
-            <div class="seat-card" :class="slot.available > 0 ? 'available' : 'full'">
-              <div class="seat-type">{{ slot.tableType }}</div>
-              <div class="seat-count">
-                <span class="available-num">{{ slot.available }}</span>
-                <span class="total-num"> / {{ slot.total }}</span>
-              </div>
-              <div class="seat-label">剩餘桌數</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- 訂位表單 -->
       <div class="booking-form-card">
         <form @submit.prevent="submitBooking" novalidate>
@@ -32,15 +11,14 @@
             <!-- 日期 -->
             <div class="col-md-6">
               <label class="form-label required">訂位日期</label>
-              <VueDatePicker
+              <input
                 v-model="form.date"
-                :min-date="minDate"
-                :max-date="maxDate"
-                :enable-time-picker="false"
-                :format="'yyyy/MM/dd'"
-                placeholder="選擇日期"
-                @update:model-value="onDateTimeChange"
-                auto-apply
+                type="date"
+                class="form-control"
+                :class="{ 'is-invalid': errors.date }"
+                :min="minDateStr"
+                :max="maxDateStr"
+                @change="onDateTimeChange"
               />
               <div v-if="errors.date" class="invalid-feedback d-block">{{ errors.date }}</div>
             </div>
@@ -170,6 +148,14 @@
       </div>
     </div>
 
+    <!-- 訂位查詢連結 -->
+    <div class="text-center mt-4 pb-2">
+      <span style="color:var(--eat-text-muted);font-size:.9rem">已有訂位？</span>
+      <router-link to="/reservation/query" style="color:var(--eat-primary);font-size:.9rem;margin-left:6px">
+        查詢 / 取消訂位 <i class="bi bi-arrow-right"></i>
+      </router-link>
+    </div>
+
     <!-- 成功 Modal -->
     <div v-if="successModal" class="modal-overlay" @click.self="successModal = false">
       <div class="success-modal">
@@ -191,27 +177,28 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { VueDatePicker } from '@vuepic/vue-datepicker'
-import '@vuepic/vue-datepicker/dist/main.css'
 import apiFetch from '@/utils/apiFetch.js'
 import { useToast } from '@/composables/useToast.js'
 
 const { show } = useToast()
 
 // 時段選項
-const hours   = Array.from({ length: 9 }, (_, i) => i + 11)  // 11~19
+const hours   = Array.from({ length: 10 }, (_, i) => i + 11)  // 11~20
 const minutes = [0, 15, 30, 45]
 
-// 日期範圍
-const minDate = computed(() => {
+// 日期範圍（原生 input[type=date] 需要 "yyyy-MM-dd" 格式）
+function toDateStr(d) {
+  return d.toISOString().split('T')[0]
+}
+const minDateStr = computed(() => {
   const d = new Date()
   d.setMinutes(d.getMinutes() + 30)
-  return d
+  return toDateStr(d)
 })
-const maxDate = computed(() => {
+const maxDateStr = computed(() => {
   const d = new Date()
   d.setDate(d.getDate() + 90)
-  return d
+  return toDateStr(d)
 })
 
 // 表單狀態
@@ -229,7 +216,6 @@ const form = ref({
 
 const errors      = ref({})
 const availability = ref(null)
-const tableAvailability = ref([])
 const submitting  = ref(false)
 const successModal = ref(false)
 const bookingNumber = ref('')
@@ -240,29 +226,19 @@ let debounceTimer = null
 function onDateTimeChange() {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
-    fetchTableAvailability()
     if (form.value.date && form.value.hour !== '' && form.value.minute !== '') {
       fetchAvailability()
     }
   }, 500)
 }
 
-async function fetchTableAvailability() {
-  if (!form.value.date || form.value.hour === '' || form.value.minute === '') return
-  const dt = buildDateTime()
-  if (!dt) return
-  try {
-    const res = await apiFetch(`/Reservations/TableAvailability?date=${encodeURIComponent(dt.toISOString())}`)
-    if (res.ok) tableAvailability.value = await res.json()
-  } catch { /* 忽略網路錯誤，不影響使用者操作 */ }
-}
-
 async function fetchAvailability() {
   const dt = buildDateTime()
   if (!dt) return
   try {
+    // 使用 Availability endpoint（含防線⑤桌型組數 + ⑥總容量70%）
     const res = await apiFetch(
-      `/Reservations/Availability?date=${encodeURIComponent(dt.toISOString())}&adults=${form.value.adults}&children=${form.value.children}`
+      `/Reservations/Availability?date=${encodeURIComponent(toLocalISOString(dt))}&adults=${form.value.adults}&children=${form.value.children}`
     )
     if (res.ok) availability.value = await res.json()
   } catch { /* 忽略網路錯誤，不影響使用者操作 */ }
@@ -270,9 +246,15 @@ async function fetchAvailability() {
 
 function buildDateTime() {
   if (!form.value.date || form.value.hour === '' || form.value.minute === '') return null
-  const d = new Date(form.value.date)
-  d.setHours(Number(form.value.hour), Number(form.value.minute), 0, 0)
-  return d
+  const [y, m, day] = String(form.value.date).split('-').map(Number)
+  return new Date(y, m - 1, day, Number(form.value.hour), Number(form.value.minute), 0, 0)
+}
+
+// 送給後端的本地時間字串（不帶 Z），避免 UTC 轉換後時段錯誤
+// 例：台灣 17:00 → "2026-05-20T17:00:00"，後端以本地時間解析
+function toLocalISOString(d) {
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
 }
 
 // 前端七道驗證
@@ -286,9 +268,11 @@ function validate() {
   if (form.value.hour === '' || form.value.minute === '') {
     e.time = '請選擇訂位時段'
   } else if (dt) {
-    const hour = Number(form.value.hour)
-    if (hour < 11 || hour > 19) e.time = '訂位時段須在 11:00 ~ 19:45 之間'
-    else if (hour === 19 && Number(form.value.minute) > 45) e.time = '最晚訂位時段為 19:45'
+    const hour   = Number(form.value.hour)
+    const minute = Number(form.value.minute)
+    if (hour < 11 || hour > 20) e.time = '訂位時段須在 11:00 ~ 20:00 之間'
+    else if (hour === 20 && minute > 0) e.time = '最晚訂位時段為 20:00'
+    else if (![0, 15, 30, 45].includes(minute)) e.time = '訂位分鐘只允許 00、15、30、45'  // ③ 分鐘格式
     else if (dt < new Date(now.getTime() + 30 * 60000)) e.time = '訂位時間必須在 30 分鐘後'
   }
 
@@ -318,7 +302,7 @@ async function submitBooking() {
       name:            form.value.name,
       phone:           form.value.phone,
       email:           form.value.email || null,
-      reservationDate: dt.toISOString(),
+      reservationDate: toLocalISOString(dt),
       adultsCount:     form.value.adults,
       childrenCount:   form.value.children,
       remark:          form.value.remark || null
@@ -361,18 +345,6 @@ function resetForm() {
 <style scoped>
 .booking-page { min-height: 100vh; padding-top: 80px; background: var(--eat-bg); }
 .page-title { font-family: var(--font-display); color: var(--eat-primary); font-size: 2rem; }
-.section-subtitle { color: var(--eat-primary-light); letter-spacing: .05em; }
-
-.seat-card {
-  border-radius: 12px; padding: 16px; text-align: center;
-  border: 1px solid rgba(180,120,30,.2); background: rgba(255,255,255,.04);
-}
-.seat-card.available { border-color: #3cb371; }
-.seat-card.full { border-color: #c0392b; opacity: .7; }
-.seat-type { font-size: .85rem; color: var(--eat-text-muted); margin-bottom: 6px; }
-.available-num { font-size: 2rem; font-weight: 700; color: var(--eat-primary); }
-.total-num { font-size: 1rem; color: var(--eat-text-muted); }
-.seat-label { font-size: .75rem; color: var(--eat-text-muted); margin-top: 4px; }
 
 .booking-form-card {
   background: rgba(255,255,255,.04); border: 1px solid rgba(180,120,30,.15);
@@ -384,8 +356,17 @@ function resetForm() {
   background: rgba(255,255,255,.06); border: 1px solid rgba(180,120,30,.25);
   color: var(--eat-text-primary); border-radius: 8px;
 }
+.form-select option {
+  background: #1e120b;
+  color: var(--eat-text-primary);
+}
 .form-control:focus, .form-select:focus {
   background: rgba(255,255,255,.08); border-color: var(--eat-primary); box-shadow: none; color: var(--eat-text-primary);
+}
+/* 原生日期選擇器深色主題 */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+  cursor: pointer;
 }
 
 .number-input {
