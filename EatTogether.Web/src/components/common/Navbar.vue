@@ -182,8 +182,8 @@ const navLinks = [
         ],
     },
     { label: '優惠券', to: '/coupons' },
+    { label: '即時桌況', to: '/table-status' },
     { label: '訂位', to: '/reservation' },
-    { label: '訂位查詢', to: '/reservation/query' },
     { label: '外帶點餐', to: '/takeout' },
 ]
 
@@ -429,10 +429,21 @@ onMounted(() => {
 }
 
 /* Mobile toggler */
+/* 關掉特定元素 */
 .navbar-eat .navbar-toggler {
-    border-color: var(--eat-outline-variant);
+    padding: 0.5rem;
+    margin-left: 0.25rem;
+    border: none;
 }
+
+.navbar-eat .navbar-toggler:focus {
+    box-shadow: none;
+    outline: none;
+}
+
 .navbar-eat .navbar-toggler-icon {
+    width: 1.5rem;
+    height: 1.5rem;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(249,221,211,0.8)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
 }
 
