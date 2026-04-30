@@ -78,6 +78,14 @@ namespace EatTogether.Models.Services
             return Result.Success();
         }
 
+        // ─── 以折扣碼領取（會員輸入碼直接兌換）─────────────────────────
+        public async Task<Result> ClaimByCodeAsync(string code, int memberId)
+        {
+            var coupon = await _couponRepo.GetByCodeAsync(code.Trim().ToUpper());
+            if (coupon == null) return Result.Fail("折扣碼不存在");
+            return await ClaimCouponAsync(coupon.Id, memberId);
+        }
+
         // ─── 我的優惠券 ──────────────────────────────────────────────
         public async Task<IEnumerable<MemberCouponDto>> GetMyCouponsAsync(int memberId)
         {

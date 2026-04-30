@@ -60,6 +60,22 @@ namespace EatTogether.API.Controllers
             return Ok(new { message = "領取成功！已加入您的優惠券" });
         }
 
+        // POST api/Coupons/ClaimByCode  [需登入]
+        [HttpPost("ClaimByCode")]
+        [Authorize]
+        public async Task<IActionResult> ClaimByCode([FromBody] ClaimByCodeRequest req)
+        {
+            var memberId = GetMemberId();
+            if (memberId == null) return Unauthorized();
+
+            var result = await _service.ClaimByCodeAsync(req.Code, memberId.Value);
+
+            if (!result.IsSuccess)
+                return BadRequest(new { message = result.ErrorMessage });
+
+            return Ok(new { message = "領取成功！已加入您的優惠券" });
+        }
+
         // GET api/Coupons/My  [需登入]
         [HttpGet("My")]
         [Authorize]
@@ -105,6 +121,11 @@ namespace EatTogether.API.Controllers
             var list = await _service.GetUsageHistoryAsync(memberId.Value);
             return Ok(list);
         }
+    }
+
+    public class ClaimByCodeRequest
+    {
+        public string Code { get; set; } = string.Empty;
     }
 
     public class ValidateCouponRequest

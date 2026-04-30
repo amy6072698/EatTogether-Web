@@ -57,8 +57,12 @@
           <span class="value">{{ reservation.phone }}</span>
         </div>
         <div class="detail-row">
-          <span class="label">訂位日期時段</span>
+          <span class="label">訂位日期</span>
           <span class="value">{{ formatDate(reservation.reservationDate) }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">訂位時間</span>
+          <span class="value">{{ formatTime(reservation.reservationDate) }}</span>
         </div>
         <div class="detail-row">
           <span class="label">人數</span>
@@ -70,7 +74,7 @@
         </div>
         <div class="detail-row" v-if="reservation.cancelledAt">
           <span class="label">取消時間</span>
-          <span class="value">{{ formatDate(reservation.cancelledAt) }}</span>
+          <span class="value">{{ formatDate(reservation.cancelledAt) }} {{ formatTime(reservation.cancelledAt) }}</span>
         </div>
 
         <div class="mt-4 d-flex gap-3">
@@ -170,10 +174,11 @@ async function cancelReservation() {
 }
 
 function formatDate(dt) {
-  return new Date(dt).toLocaleString('zh-TW', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit'
-  })
+  return new Date(dt).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })
+}
+
+function formatTime(dt) {
+  return new Date(dt).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
 }
 </script>
 

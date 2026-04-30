@@ -16,7 +16,7 @@ namespace EatTogether.Models.Services
 
         // 營業時段常數
         private static readonly TimeSpan BusinessStart = new(11, 0, 0);
-        private static readonly TimeSpan BusinessEnd   = new(19, 45, 0);
+        private static readonly TimeSpan BusinessEnd   = new(20, 0, 0);
         private static readonly int[]    ValidMinutes  = { 0, 15, 30, 45 };
         private const double CapacityUsageLimit = 0.7;
         private const int    WindowMinutes      = 90;

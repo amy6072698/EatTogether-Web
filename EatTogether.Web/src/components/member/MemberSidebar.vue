@@ -64,10 +64,12 @@ import AvatarInitial from '@/components/member/AvatarInitial.vue'
 const authStore = useAuthStore()
 
 const navItems = [
-    { label: '個人資料', name: 'MemberProfile', icon: 'bi bi-person' },
-    { label: '收藏餐點', name: 'MemberFavorites', icon: 'bi bi-suit-heart' },
-    { label: '訂單紀錄', name: 'MemberOrders', icon: 'bi bi-file-earmark-text' },
-    // { label: '我的優惠券', name: 'MyCoupons' }, -> router/index.js 要移到 member 的巢狀路由下才能正常運作
+    { label: '個人資料', name: 'MemberProfile',    icon: 'bi bi-person' },
+    { label: '收藏餐點', name: 'MemberFavorites',  icon: 'bi bi-suit-heart' },
+    { label: '訂單紀錄', name: 'MemberOrders',     icon: 'bi bi-file-earmark-text' },
+    { label: '我的訂位', name: 'MyReservations',   icon: 'bi bi-calendar-check' },
+    { label: '我的優惠券', name: 'MyCoupons',      icon: 'bi bi-ticket-perforated' },
+    { label: '優惠券明細', name: 'CouponUsage',    icon: 'bi bi-clock-history' },
 ]
 </script>
 
