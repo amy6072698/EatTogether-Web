@@ -1,5 +1,5 @@
-﻿using EatTogether.Models.DTOs;
-using EatTogether.Models.Repositories;
+﻿using EatTogether.API.Models.Repositories;
+using EatTogether.Models.DTOs;
 
 namespace EatTogether.Models.Services
 {

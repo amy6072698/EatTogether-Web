@@ -840,6 +840,7 @@ onMounted(async () => {
 onUnmounted(() => {
   clearInterval(_refreshTimer);
   clearInterval(_clockTimer);
+  document.body.style.overflow = '';
 });
 </script>
 

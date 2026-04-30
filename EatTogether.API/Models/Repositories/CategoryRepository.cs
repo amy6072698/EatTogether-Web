@@ -2,7 +2,7 @@
 using EatTogether.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
 
-namespace EatTogether.Models.Repositories
+namespace EatTogether.API.Models.Repositories
 {
     public class CategoryRepository : ICategoryRepository
     {

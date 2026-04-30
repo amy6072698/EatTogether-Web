@@ -345,10 +345,13 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { Modal } from 'bootstrap'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 import { useToast } from '@/composables/useToast.js'
 import apiFetch from '@/utils/apiFetch.js'
+import { useAuthStore } from '@/stores/auth.js'
 const { show } = useToast()
+const authStore = useAuthStore()
 
 // ── Intersection Observer 進場動畫 ───────────────────
 const vReveal = {
@@ -437,18 +440,59 @@ const isUrgent = (endDateStr) => {
 const spicyLabel = (level) => ['', '微辣', '中辣', '大辣', '極辣'][level] ?? '辣'
 
 // ── 收藏 ─────────────────────────────────────────────
-const favorites = ref(JSON.parse(localStorage.getItem('menu-favorites') || '[]'))
-const toggleFavorite = (dishId) => {
-  const idx = favorites.value.indexOf(dishId)
-  if (idx === -1) {
-    favorites.value.push(dishId)
-    show('❤️ 已加入收藏', 'success')
-  } else {
-    favorites.value.splice(idx, 1)
-    show('🤍 已取消收藏', 'info')
+const favorites = ref([])
+
+const loadFavorites = async () => {
+  if (authStore.isLoggedIn) {
+    try {
+      const res = await apiFetch('/Favorites')
+      if (res.ok) {
+        favorites.value = await res.json()
+        return
+      }
+    } catch { /* fall through */ }
   }
-  localStorage.setItem('menu-favorites', JSON.stringify(favorites.value))
+  favorites.value = JSON.parse(localStorage.getItem('menu-favorites') || '[]')
 }
+
+const toggleFavorite = async (dishId) => {
+  if (!authStore.isLoggedIn) {
+    show('請先登入才能收藏', 'info')
+    Modal.getOrCreateInstance(document.querySelector('#authModal')).show()
+    return
+  }
+  const isFav = favorites.value.includes(dishId)
+  try {
+    const res = await apiFetch(`/Favorites/${dishId}`, { method: isFav ? 'DELETE' : 'POST' })
+    if (!res.ok) throw new Error()
+    if (isFav) {
+      favorites.value = favorites.value.filter(id => id !== dishId)
+      show('🤍 已取消收藏', 'info')
+    } else {
+      favorites.value.push(dishId)
+      show('❤️ 已加入收藏', 'success')
+    }
+  } catch {
+    show('操作失敗，請稍後再試', 'error')
+  }
+}
+
+// 登入後同步 localStorage 收藏到伺服器
+watch(() => authStore.isLoggedIn, async (loggedIn) => {
+  if (loggedIn) {
+    const local = JSON.parse(localStorage.getItem('menu-favorites') || '[]')
+    if (local.length > 0) {
+      await apiFetch('/Favorites/Sync', {
+        method: 'POST',
+        body: JSON.stringify(local),
+      })
+      localStorage.removeItem('menu-favorites')
+    }
+    await loadFavorites()
+  } else {
+    favorites.value = JSON.parse(localStorage.getItem('menu-favorites') || '[]')
+  }
+})
 
 // ── 提醒 ─────────────────────────────────────────────
 const reminders = ref(JSON.parse(localStorage.getItem('limited-reminders') || '[]'))
@@ -664,6 +708,7 @@ const handleParallax = () => {
 
 onMounted(async () => {
   await fetchLimited()
+  await loadFavorites()
   _refreshTimer = setInterval(fetchLimited, 10_000)
   _clockTimer   = setInterval(() => { currentTime.value = new Date() }, 1000)
   window.addEventListener('keydown', handleEsc)
@@ -703,6 +748,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleEsc)
   window.removeEventListener('scroll', handleParallax)
   document.removeEventListener('click', handleShareClickOutside)
+  document.body.style.overflow = ''
 })
 </script>
 
