@@ -3,12 +3,13 @@ using EatTogether.Models.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace EatTogether.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[AllowAnonymous]
 public class ReviewsController : ControllerBase
 {
     private readonly IReviewRepository _reviewRepository;
@@ -19,6 +20,7 @@ public class ReviewsController : ControllerBase
     }
 
     // GET /api/reviews/{dishId}
+    [AllowAnonymous]
     [HttpGet("{dishId:int}")]
     public async Task<IActionResult> GetByDishId(int dishId)
     {
@@ -35,15 +37,20 @@ public class ReviewsController : ControllerBase
     }
 
     // POST /api/reviews/{dishId}
+    [Authorize]
     [HttpPost("{dishId:int}")]
     public async Task<IActionResult> Add(int dishId, [FromBody] AddReviewRequest request)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
+        var nickname = User.FindFirstValue(JwtRegisteredClaimNames.Name)
+                    ?? User.FindFirstValue(ClaimTypes.Name)
+                    ?? "會員";
+
         var review = new Review
         {
             DishId    = dishId,
-            Nickname  = request.Nickname,
+            Nickname  = nickname,
             Content   = request.Content,
             CreatedAt = DateTime.Now
         };
@@ -63,10 +70,6 @@ public class ReviewsController : ControllerBase
 
 public class AddReviewRequest
 {
-    [Required]
-    [MaxLength(20)]
-    public string Nickname { get; set; }
-
     [Required]
     [MaxLength(200)]
     public string Content { get; set; }

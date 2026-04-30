@@ -1,6 +1,6 @@
 ﻿using EatTogether.Models.DTOs;
 
-namespace EatTogether.Models.Repositories
+namespace EatTogether.API.Models.Repositories
 {
     // ICategoryRepository 規格書，不實作，實作由 CategoryRepository 實作
     public interface ICategoryRepository

@@ -375,30 +375,37 @@
 
                         <!-- 評分 -->
                         <div class="modal-section rating-section">
-                            <!-- 互動評分 -->
-                            <div class="modal-section-label">為這道餐點評分</div>
-                            <div class="star-row">
-                                <button
-                                    v-for="star in 5"
-                                    :key="star"
-                                    class="star-btn"
-                                    :class="{ 'is-rated': hasRated(selectedDish.id) }"
-                                    :disabled="hasRated(selectedDish.id)"
-                                    @click="submitRating(selectedDish.id, star)"
-                                    @mouseenter="!hasRated(selectedDish.id) && (hoverStar = star)"
-                                    @mouseleave="hoverStar = 0"
-                                    :aria-label="`${star} 顆星`"
-                                >
-                                    {{
-                                        (hoverStar || selectedStar || 0) >= star
-                                            ? '★'
-                                            : '☆'
-                                    }}
-                                </button>
+                            <!-- 已登入：顯示互動評分 -->
+                            <template v-if="authStore.isLoggedIn">
+                                <div class="modal-section-label">為這道餐點評分</div>
+                                <div class="star-row">
+                                    <button
+                                        v-for="star in 5"
+                                        :key="star"
+                                        class="star-btn"
+                                        :class="{ 'is-rated': hasRated(selectedDish.id) }"
+                                        :disabled="hasRated(selectedDish.id)"
+                                        @click="submitRating(selectedDish.id, star)"
+                                        @mouseenter="!hasRated(selectedDish.id) && (hoverStar = star)"
+                                        @mouseleave="hoverStar = 0"
+                                        :aria-label="`${star} 顆星`"
+                                    >
+                                        {{
+                                            (hoverStar || selectedStar || 0) >= star
+                                                ? '★'
+                                                : '☆'
+                                        }}
+                                    </button>
+                                </div>
+                                <p v-if="hasRated(selectedDish.id)" class="star-voted">
+                                    已評 {{ ratedScore(selectedDish.id) }} 顆星 ★
+                                </p>
+                            </template>
+                            <!-- 未登入：提示 -->
+                            <div v-else class="login-hint">
+                                <span class="login-hint-text">登入後即可為餐點評分</span>
+                                <button class="login-hint-btn" @click="openAuthModal">立即登入</button>
                             </div>
-                            <p v-if="hasRated(selectedDish.id)" class="star-voted">
-                                已評 {{ ratedScore(selectedDish.id) }} 顆星 ★
-                            </p>
                         </div>
 
                         <!-- 留言區 -->
@@ -433,15 +440,8 @@
 
                             <div class="rating-divider" style="margin: 0.6rem 0 0.9rem;"></div>
 
-                            <!-- 留言表單 -->
-                            <div class="review-form">
-                                <input
-                                    v-model="reviewNickname"
-                                    type="text"
-                                    placeholder="暱稱（必填，最多 20 字）"
-                                    maxlength="20"
-                                    class="review-input"
-                                />
+                            <!-- 留言表單：已登入才顯示 -->
+                            <div v-if="authStore.isLoggedIn" class="review-form">
                                 <textarea
                                     v-model="reviewContent"
                                     placeholder="留下您的感想…（最多 200 字）"
@@ -453,12 +453,17 @@
                                     <span class="review-char-count">{{ reviewContent.length }} / 200</span>
                                     <button
                                         class="review-submit-btn"
-                                        :disabled="!reviewNickname.trim() || !reviewContent.trim()"
+                                        :disabled="!reviewContent.trim()"
                                         @click="submitReview(selectedDish.id)"
                                     >
                                         送出留言
                                     </button>
                                 </div>
+                            </div>
+                            <!-- 未登入：提示登入 -->
+                            <div v-else class="login-hint">
+                                <span class="login-hint-text">登入後即可留言</span>
+                                <button class="login-hint-btn" @click="openAuthModal">立即登入</button>
                             </div>
                         </div>
                     </div>
@@ -471,6 +476,7 @@
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Modal } from 'bootstrap'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 import { useToast } from '@/composables/useToast.js'
 import apiFetch from '@/utils/apiFetch.js'
@@ -489,6 +495,8 @@ const parseIngredients = (jsonString) => {
 
 const { show } = useToast()
 const authStore = useAuthStore()
+const openAuthModal = () =>
+    Modal.getOrCreateInstance(document.querySelector('#authModal')).show()
 
 // ── Route / Router ────────────────────────────────────
 const route = useRoute()
@@ -654,7 +662,6 @@ const viewMode = ref('grid')
 // ── 留言 ──────────────────────────────────────────────
 const reviews = ref([])
 const reviewsLoading = ref(false)
-const reviewNickname = ref('')
 const reviewContent = ref('')
 const reviewsShowAll = ref(false)
 
@@ -683,19 +690,17 @@ const loadReviews = async (dishId) => {
 }
 
 const submitReview = async (dishId) => {
-    const nickname = reviewNickname.value.trim()
     const content = reviewContent.value.trim()
-    if (!nickname || !content) return
+    if (!content) return
     try {
         const res = await apiFetch(`/reviews/${dishId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nickname, content }),
+            body: JSON.stringify({ content }),
         })
         if (!res.ok) throw new Error()
         const newReview = await res.json()
         reviews.value = [newReview, ...reviews.value]
-        reviewNickname.value = ''
         reviewContent.value = ''
         show('💬 留言成功！', 'success')
     } catch {
@@ -708,11 +713,20 @@ const dishRatingMap = reactive({})
 const hoverStar = ref(0)
 const selectedStar = ref(0)
 
-const _ratedMap = () => JSON.parse(localStorage.getItem('menu-ratings') || '{}')
-const hasRated = (dishId) => !!_ratedMap()[dishId]
+const _ratingKey = () => authStore.member?.id ? `ratings-${authStore.member.id}` : null
+const _ratedMap = () => {
+    const key = _ratingKey()
+    return key ? JSON.parse(localStorage.getItem(key) || '{}') : {}
+}
+const hasRated = (dishId) => authStore.isLoggedIn && !!_ratedMap()[dishId]
 const ratedScore = (dishId) => _ratedMap()[dishId] || 0
 
 const submitRating = async (dishId, star) => {
+    if (!authStore.isLoggedIn) {
+        show('請先登入才能評分', 'info')
+        openAuthModal()
+        return
+    }
     if (hasRated(dishId)) return
     try {
         const res = await apiFetch(`/Dishes/${dishId}/Rate`, {
@@ -722,9 +736,10 @@ const submitRating = async (dishId, star) => {
         })
         if (!res.ok) throw new Error()
         const data = await res.json()
+        const key = _ratingKey()
         const stored = _ratedMap()
         stored[dishId] = star
-        localStorage.setItem('menu-ratings', JSON.stringify(stored))
+        if (key) localStorage.setItem(key, JSON.stringify(stored))
         selectedStar.value = star
         dishRatingMap[dishId] = { averageScore: data.averageScore, ratingCount: data.ratingCount }
         show('⭐ 感謝您的評分！', 'success')
@@ -924,7 +939,6 @@ const closeModal = () => {
     shareMenuOpen.value = false
     activeIngredient.value = null
     reviews.value = []
-    reviewNickname.value = ''
     reviewContent.value = ''
     reviewsShowAll.value = false
     document.body.style.overflow = ''
@@ -2392,6 +2406,41 @@ onUnmounted(() => {
 .review-submit-btn:disabled {
     opacity: 0.35;
     cursor: not-allowed;
+}
+
+/* ── 登入提示 ──────────────────────────────────────── */
+.login-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+.login-hint-text {
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    font-style: italic;
+    color: rgba(249, 221, 211, 0.35);
+    margin: 0;
+}
+.login-hint-btn {
+    background: none;
+    border: 1px solid rgba(227, 199, 107, 0.28);
+    border-radius: 20px;
+    color: rgba(227, 199, 107, 0.7);
+    font-family: var(--font-label);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.login-hint-btn:hover {
+    background: rgba(227, 199, 107, 0.12);
+    border-color: var(--eat-primary);
+    color: var(--eat-primary);
 }
 
 @media (max-width: 768px) {
