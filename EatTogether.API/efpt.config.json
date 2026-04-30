@@ -111,6 +111,10 @@
          "ObjectType": 0
       },
       {
+         "Name": "[dbo].[Reviews]",
+         "ObjectType": 0
+      },
+      {
          "Name": "[dbo].[RoleFunctions]",
          "ObjectType": 0
       },
@@ -148,6 +152,10 @@
       },
       {
          "Name": "[dbo].[Users]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[WalkInQueues]",
          "ObjectType": 0
       }
    ],
