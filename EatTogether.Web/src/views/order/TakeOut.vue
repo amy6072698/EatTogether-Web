@@ -106,8 +106,12 @@
                         <div
                             v-if="
                                 idx > 0 &&
-                                !['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(cat.key) &&
-                                ['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(sidebarCategories[idx - 1].key)
+                                !['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
+                                    cat.key
+                                ) &&
+                                ['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(
+                                    sidebarCategories[idx - 1].key
+                                )
                             "
                             class="cat-divider"
                         ></div>
@@ -115,7 +119,14 @@
                             :class="[
                                 'cat-link',
                                 { active: activeSidebarCat === cat.key },
-                                { 'cat-special': ['今日推薦', '主廚特選', '我的收藏', '歷史訂單'].includes(cat.key) },
+                                {
+                                    'cat-special': [
+                                        '今日推薦',
+                                        '主廚特選',
+                                        '我的收藏',
+                                        '歷史訂單',
+                                    ].includes(cat.key),
+                                },
                             ]"
                             @click="scrollToSection(cat.key)"
                         >
@@ -640,42 +651,51 @@
                             </div>
                         </div>
 
-                        <!-- 優惠券 -->
-                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem">
-                            <input
-                                v-model="couponCode"
-                                type="text"
-                                class="input-line font-body"
-                                style="flex: 1; font-size: 0.85rem"
-                                placeholder="輸入優惠券代碼"
-                                @keyup.enter="applyCoupon"
-                            />
-                            <button
-                                @click="applyCoupon"
-                                class="font-label"
-                                style="
-                                    padding: 0.4rem 0.75rem;
-                                    background: transparent;
-                                    border: 1px solid rgba(227, 199, 107, 0.5);
-                                    color: #e3c76b;
-                                    border-radius: 0.25rem;
-                                    font-size: 0.75rem;
-                                    letter-spacing: 0.1em;
-                                    cursor: pointer;
-                                    white-space: nowrap;
-                                "
-                            >
-                                套用
-                            </button>
+                        <!-- 優惠券：已登入顯示下拉，未登入顯示文字輸入 -->
+                        <div style="margin-top: 0.5rem">
+                            <!-- 已登入：下拉選已領優惠券 -->
+                            <template v-if="isLoggedIn">
+                                <select
+                                    v-model="selectedCouponCode"
+                                    @change="onCouponSelect"
+                                    class="coupon-select font-body"
+                                >
+                                    <option value="">— 選擇優惠券 —</option>
+                                    <option
+                                        v-for="c in availableCoupons"
+                                        :key="c.id"
+                                        :value="c.code"
+                                    >
+                                        {{ c.couponName }}｜{{ c.discountDescription }}
+                                        <template v-if="c.endDate">
+                                            （{{
+                                                new Date(c.endDate).toLocaleDateString('zh-TW')
+                                            }}
+                                            到期）
+                                        </template>
+                                    </option>
+                                    <!-- 最後一項：導到優惠券專區 -->
+                                    <option value="__coupons__" class="coupon-goto-option">
+                                        ✦ 查看更多優惠券 →
+                                    </option>
+                                </select>
+                                <p
+                                    v-if="couponMsg"
+                                    class="font-label mb-0"
+                                    style="font-size: 0.7rem; margin-top: 0.25rem"
+                                    :style="{ color: couponOk ? '#a3d977' : '#ffb4ab' }"
+                                >
+                                    {{ couponMsg }}
+                                </p>
+                            </template>
+
+                            <!-- 未登入：提示登入才能使用優惠券 -->
+                            <template v-else>
+                                <button @click="openAuthModal" class="font-label coupon-login-btn">
+                                    立即登入會員享優惠
+                                </button>
+                            </template>
                         </div>
-                        <p
-                            v-if="couponMsg"
-                            class="font-label mb-0"
-                            style="font-size: 0.7rem; margin-top: 0.25rem"
-                            :style="{ color: couponOk ? '#a3d977' : '#ffb4ab' }"
-                        >
-                            {{ couponMsg }}
-                        </p>
                     </div>
 
                     <!-- 合計區 -->
@@ -1398,12 +1418,42 @@ const couponOk = ref(false)
 const couponId = ref(null)
 const couponDiscount = ref(0)
 
+// 已領優惠券下拉選單
+const myCoupons = ref([])
+const selectedCouponCode = ref('')
+
+// 只顯示未使用且未過期的券
+const availableCoupons = computed(() => myCoupons.value.filter((c) => !c.isUsed && !c.isExpired))
+
+async function loadMyCoupons() {
+    try {
+        const res = await apiFetch('/Coupons/My')
+        if (res.ok) myCoupons.value = await res.json()
+    } catch {}
+}
+
+// 下拉選單選擇優惠券時自動套用；選到特殊項目時導頁
+async function onCouponSelect() {
+    if (selectedCouponCode.value === '__coupons__') {
+        selectedCouponCode.value = ''
+        window.location.href = '/coupons'
+        return
+    }
+    if (!selectedCouponCode.value) {
+        resetCoupon()
+        return
+    }
+    couponCode.value = selectedCouponCode.value
+    await applyCoupon()
+}
+
 function resetCoupon() {
     couponCode.value = ''
     couponMsg.value = ''
     couponOk.value = false
     couponId.value = null
     couponDiscount.value = 0
+    selectedCouponCode.value = ''
 }
 
 // ── 活動 ─────────────────────────────────────────────
@@ -1435,6 +1485,16 @@ async function loadOrderHistory() {
         const res = await apiFetch('/Orders/MemberOrderHistory')
         if (res.ok) orderHistory.value = await res.json()
     } catch {}
+}
+
+// 開啟全域登入 Modal（Bootstrap #authModal，與 Navbar 共用）
+function openAuthModal() {
+    const modalEl = document.querySelector('#authModal')
+    if (modalEl) {
+        import('bootstrap').then(({ Modal }) => {
+            Modal.getOrCreateInstance(modalEl).show()
+        })
+    }
 }
 
 function reorder(order) {
@@ -1537,7 +1597,7 @@ const sidebarCategories = computed(() => {
     if (isLoggedIn.value) {
         specials.push(
             { key: '我的收藏', label: '我的收藏', count: favoriteProducts.value.length },
-            { key: '歷史訂單', label: '歷史訂單', count: orderHistory.value.length },
+            { key: '歷史訂單', label: '歷史訂單', count: orderHistory.value.length }
         )
     }
 
@@ -1887,7 +1947,7 @@ async function submitOrder() {
                     for (const f of i.setMealData?.fixedItems ?? []) {
                         for (let q = 0; q < (f.quantity || 1); q++) {
                             result.push({
-                                productId: 0,
+                                productId: f.dishId ?? 0,
                                 productName: f.dishName,
                                 qty: 1,
                                 unitPrice: 0,
@@ -1899,7 +1959,7 @@ async function submitOrder() {
                     for (const s of i.setMealData?.selectedOptions ?? []) {
                         for (let q = 0; q < (s.qty || 1); q++) {
                             result.push({
-                                productId: 0,
+                                productId: s.dishId ?? 0,
                                 productName: s.dishName,
                                 qty: 1,
                                 unitPrice: 0,
@@ -2008,9 +2068,12 @@ watch(isLoggedIn, (loggedIn) => {
     if (loggedIn) {
         loadFavorites()
         loadOrderHistory()
+        loadMyCoupons()
     } else {
         favoriteProducts.value = []
         orderHistory.value = []
+        myCoupons.value = []
+        resetCoupon()
     }
 })
 
@@ -2019,6 +2082,7 @@ onMounted(async () => {
     if (isLoggedIn.value) {
         loadFavorites()
         loadOrderHistory()
+        loadMyCoupons()
     }
 
     // 量 navbar + step-banner + 手機分類列 真實高度，設成 CSS 變數
@@ -2949,6 +3013,60 @@ onMounted(async () => {
 .input-line::placeholder {
     color: rgba(208, 197, 181, 0.3);
 }
+
+/* 優惠券下拉選單 */
+.coupon-select {
+    width: 100%;
+    background: rgba(24, 11, 6, 0.6);
+    border: 1px solid rgba(77, 70, 58, 0.6);
+    border-radius: 0.25rem;
+    color: #f9ddd3;
+    font-family: 'Newsreader', serif;
+    font-size: 0.85rem;
+    padding: 0.45rem 2rem 0.45rem 0.65rem;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.25s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23e3c76b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.65rem center;
+}
+.coupon-select:focus {
+    border-color: rgba(227, 199, 107, 0.6);
+}
+.coupon-select option {
+    background: #2b1c16;
+    color: #f9ddd3;
+}
+/* 訪客優惠券區：登入會員按鈕 */
+.coupon-login-btn {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: 1px solid rgba(227, 199, 107, 0.45);
+    border-radius: 0.25rem;
+    color: #e3c76b;
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition:
+        background 0.2s,
+        border-color 0.2s;
+    text-align: center;
+}
+.coupon-login-btn:hover {
+    background: rgba(227, 199, 107, 0.08);
+    border-color: rgba(227, 199, 107, 0.7);
+}
+
+/* 下拉選單最底部「查看更多優惠券」特殊項目 */
+.coupon-goto-option {
+    color: #e3c76b;
+    border-top: 1px solid rgba(77, 70, 58, 0.4);
+}
+
 .note-textarea {
     width: 100%;
     background: transparent;
