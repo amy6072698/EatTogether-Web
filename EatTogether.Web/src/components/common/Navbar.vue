@@ -47,7 +47,7 @@
                             >
                                 <button
                                     class="nav-link nav-dropdown-trigger"
-                                    :class="{ active: link.children.some((c) => isActive(c.to)) }"
+                                    :class="{ active: link.children.some((c) => c.to && isActive(typeof c.to === 'string' ? c.to : c.to.path)) }"
                                     @click.stop="toggleDropdown(link.label)"
                                 >
                                     {{ link.label }}
@@ -60,10 +60,10 @@
                                     >
                                         <RouterLink
                                             v-for="child in link.children"
-                                            :key="child.to"
+                                            :key="child.label"
                                             class="dropdown-item-eat"
                                             :to="child.to"
-                                            :class="{ active: isActive(child.to) }"
+                                            :class="{ active: child.to && isActive(typeof child.to === 'string' ? child.to : child.to.path) }"
                                             @click="handleLinkClick"
                                             >{{ child.label }}</RouterLink
                                         >
@@ -184,7 +184,13 @@ const navLinks = [
     { label: '優惠券', to: '/coupons' },
     { label: '訂位', to: '/reservation' },
     { label: '候位', to: '/walkin' },
-    { label: '外帶點餐', to: '/takeout' },
+    {
+        label: '享用美味',
+        children: [
+            { label: '外帶點餐', to: '/takeout' },
+            { label: '訂單查詢', to: '/order-lookup' },
+        ],
+    },
 ]
 
 function isActive(path) {

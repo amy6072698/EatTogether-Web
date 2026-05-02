@@ -1,7 +1,7 @@
 <template>
     <div class="out-wrap">
         <!-- ══ 步驟 Banner ══ -->
-        <div class="step-banner">
+        <div v-if="step < 4" class="step-banner">
             <div class="step-items">
                 <div :class="['step-dot', step === 1 ? 'active' : 'done']">
                     <svg
@@ -42,23 +42,21 @@
                 <div :class="['step-dot', step === 3 ? 'active' : '']">3</div>
                 <span :class="['step-lbl', step === 3 ? 'active' : '']">確認送出</span>
             </div>
-            <!-- 取餐時段顯示 -->
-            <div v-if="pickupTime" class="pickup-pill">
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="12"
-                    height="12"
-                    fill="currentColor"
-                    viewBox="0 0 16 16"
-                >
-                    <path
-                        d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"
-                    />
-                    <path
-                        d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"
-                    />
-                </svg>
-                取餐時段：<strong>{{ pickupTime }}</strong>
+            <!-- 取餐時段顯示 + 訂單查詢按鈕 -->
+            <div class="banner-right">
+                <div v-if="pickupTime" class="pickup-pill">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+                        <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+                    </svg>
+                    取餐時段：<strong>{{ pickupTime }}</strong>
+                </div>
+                <RouterLink to="/order-lookup" class="lookup-trigger-btn font-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                    </svg>
+                    訂單查詢
+                </RouterLink>
             </div>
         </div>
 
@@ -668,9 +666,7 @@
                                     >
                                         {{ c.couponName }}｜{{ c.discountDescription }}
                                         <template v-if="c.endDate">
-                                            （{{
-                                                new Date(c.endDate).toLocaleDateString('zh-TW')
-                                            }}
+                                            （{{ new Date(c.endDate).toLocaleDateString('zh-TW') }}
                                             到期）
                                         </template>
                                     </option>
@@ -1157,6 +1153,212 @@
             </div>
         </div>
 
+        <!-- ══ STEP 4：訂單成功頁 ══ -->
+        <div v-else-if="step === 4" class="sp-wrap">
+            <!-- ① 頂部橫排：✓圓 | 訂單已送出！ | 訂單編號 -->
+            <div class="sp-header-row">
+                <div class="sp-check-ring">
+                    <!-- 訂單 / 收據圖示 -->
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="30"
+                        height="30"
+                        fill="currentColor"
+                        viewBox="0 0 16 16"
+                    >
+                        <path
+                            d="M1.92.506a.5.5 0 0 1 .434.14L3 1.293l.646-.647a.5.5 0 0 1 .708 0L5 1.293l.646-.647a.5.5 0 0 1 .708 0L7 1.293l.646-.647a.5.5 0 0 1 .708 0L9 1.293l.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .708 0l.646.647.646-.647a.5.5 0 0 1 .801.13l.5 1A.5.5 0 0 1 15 2v12a.5.5 0 0 1-.053.224l-.5 1a.5.5 0 0 1-.8.13L13 14.707l-.646.647a.5.5 0 0 1-.708 0L11 14.707l-.646.647a.5.5 0 0 1-.708 0L9 14.707l-.646.647a.5.5 0 0 1-.708 0L7 14.707l-.646.647a.5.5 0 0 1-.708 0L5 14.707l-.646.647a.5.5 0 0 1-.708 0L3 14.707l-.646.647a.5.5 0 0 1-.801-.13l-.5-1A.5.5 0 0 1 1 14V2a.5.5 0 0 1 .053-.224l.5-1a.5.5 0 0 1 .367-.27zm.217 1.338L2 2.118v11.764l.137.274.51-.51a.5.5 0 0 1 .707 0l.646.647.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.646.646.646-.646a.5.5 0 0 1 .708 0l.509.509.137-.274V2.118l-.137-.274-.51.51a.5.5 0 0 1-.707 0L12 1.707l-.646.647a.5.5 0 0 1-.708 0L10 1.707l-.646.647a.5.5 0 0 1-.708 0L8 1.707l-.646.647a.5.5 0 0 1-.708 0L6 1.707l-.646.647a.5.5 0 0 1-.708 0L4 1.707l-.646.647a.5.5 0 0 1-.708 0l-.509-.51z"
+                        />
+                        <path
+                            d="M3 4.5a.5.5 0 0 1 .5-.5h6a.5.5 0 1 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h6a.5.5 0 1 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h6a.5.5 0 1 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm8-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5z"
+                        />
+                    </svg>
+                </div>
+                <h1 class="font-headline sp-main-title">訂單已送出！</h1>
+                <div class="sp-order-num-block">
+                    <span class="font-label sp-order-num-label">訂單編號</span>
+                    <strong class="sp-order-num-val">{{ orderNumber }}</strong>
+                </div>
+            </div>
+
+            <!-- ② 動態進度條（全寬） -->
+            <div class="sp-progress-bar">
+                <div :class="['sp-prog-step', orderProgress >= 1 ? 'sp-prog-done' : '']">
+                    <div class="sp-prog-dot">
+                        <svg
+                            v-if="orderProgress >= 1"
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            fill="currentColor"
+                            viewBox="0 0 16 16"
+                        >
+                            <path
+                                d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"
+                            />
+                        </svg>
+                        <span v-else>1</span>
+                    </div>
+                    <span class="font-label sp-prog-lbl">訂單已接收</span>
+                </div>
+                <div :class="['sp-prog-line', orderProgress >= 2 ? 'sp-prog-line-lit' : '']"></div>
+                <div :class="['sp-prog-step', orderProgress >= 2 ? 'sp-prog-active' : '']">
+                    <div class="sp-prog-dot">
+                        <svg
+                            v-if="orderProgress >= 3"
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            fill="currentColor"
+                            viewBox="0 0 16 16"
+                        >
+                            <path
+                                d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"
+                            />
+                        </svg>
+                        <span v-else>2</span>
+                    </div>
+                    <span class="font-label sp-prog-lbl">餐點製作中</span>
+                </div>
+                <div :class="['sp-prog-line', orderProgress >= 3 ? 'sp-prog-line-lit' : '']"></div>
+                <div :class="['sp-prog-step', orderProgress >= 3 ? 'sp-prog-done' : '']">
+                    <div class="sp-prog-dot"><span>3</span></div>
+                    <span class="font-label sp-prog-lbl">餐點已完成</span>
+                </div>
+            </div>
+
+            <!-- ③ 雙欄主體 -->
+            <div class="sp-body">
+                <!-- 左欄：餐點明細 -->
+                <div class="sp-col-left">
+                    <section class="sp-section">
+                        <h3 class="font-label sp-section-title">餐點明細</h3>
+                        <div class="sp-items">
+                            <template v-for="item in confirmedItems" :key="item.lineId">
+                                <div class="sp-item">
+                                    <div class="sp-item-left">
+                                        <div
+                                            v-if="item.isSetMeal"
+                                            class="setmeal-badge font-label"
+                                            style="margin-bottom: 0.15rem"
+                                        >
+                                            🍱 套餐
+                                        </div>
+                                        <span class="font-body sp-item-name">{{
+                                            item.productName
+                                        }}</span>
+                                        <div
+                                            v-if="item.isSetMeal"
+                                            class="setmeal-subitems"
+                                            style="margin-top: 0.2rem"
+                                        >
+                                            <span
+                                                v-for="f in item.setMealData?.fixedItems"
+                                                :key="'sf-' + f.dishId"
+                                                class="font-label setmeal-subitem"
+                                                >{{ f.dishName }} × {{ f.quantity }}</span
+                                            >
+                                            <span
+                                                v-for="s in item.setMealData?.selectedOptions"
+                                                :key="'ss-' + s.dishId"
+                                                class="font-label setmeal-subitem"
+                                                >{{ s.dishName }} × {{ s.qty }}</span
+                                            >
+                                        </div>
+                                        <p v-if="item.note" class="font-label sp-item-note">
+                                            {{ item.note }}
+                                        </p>
+                                    </div>
+                                    <div class="sp-item-right">
+                                        <span class="font-label sp-item-qty">× {{ item.qty }}</span>
+                                        <span class="font-label sp-item-price"
+                                            >NT$
+                                            {{ (item.unitPrice * item.qty).toLocaleString() }}</span
+                                        >
+                                    </div>
+                                </div>
+                            </template>
+                            <!-- 贈品 -->
+                            <div
+                                v-if="confirmedGift"
+                                class="sp-item"
+                                style="background: rgba(163, 217, 119, 0.04)"
+                            >
+                                <span class="font-body sp-item-name">{{
+                                    confirmedGift.productName
+                                }}</span>
+                                <span class="gift-order-badge font-label">🎁 贈品</span>
+                            </div>
+                        </div>
+
+                        <div class="feather-divider" style="margin: 1rem 0 0.85rem"></div>
+
+                        <div class="sp-meta-rows">
+                            <div class="sp-meta-row">
+                                <span class="font-label sp-meta-label">金額總計</span>
+                                <span class="font-label sp-meta-val sp-meta-gold"
+                                    >NT$ {{ confirmedTotal.toLocaleString() }}</span
+                                >
+                            </div>
+                            <div class="sp-meta-row">
+                                <span class="font-label sp-meta-label">付款方式</span>
+                                <span class="font-label sp-meta-val">現場付款</span>
+                            </div>
+                            <div class="sp-meta-row">
+                                <span class="font-label sp-meta-label">取餐方式</span>
+                                <span class="font-label sp-meta-val">臨櫃自取</span>
+                            </div>
+                            <div v-if="confirmedNote" class="sp-meta-row">
+                                <span class="font-label sp-meta-label">備註</span>
+                                <span class="font-label sp-meta-val">{{ confirmedNote }}</span>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 右欄：預計取餐 + 聯絡 + 提醒 + 返回 -->
+                <div class="sp-col-right">
+                    <!-- 預計取餐時間 -->
+                    <div class="sp-pickup-banner">
+                        <span class="font-label sp-pickup-label">預計取餐時間</span>
+                        <span class="font-headline sp-pickup-time"
+                            >今日 {{ confirmedPickupTime }}</span
+                        >
+                    </div>
+
+                    <!-- 聯絡資訊 -->
+                    <section class="sp-section">
+                        <h3 class="font-label sp-section-title">餐廳聯絡資訊</h3>
+                        <div class="sp-store-info">
+                            <p class="font-body sp-store-addr">台北市大安區慢食街 88 號</p>
+                            <a href="tel:0223456789" class="font-body sp-store-tel"
+                                >Tel: (02) 2345-6789</a
+                            >
+                        </div>
+                    </section>
+
+                    <!-- 防呆提醒 -->
+                    <div class="sp-reminders">
+                        <div class="sp-reminder-item">
+                            <span class="sp-reminder-icon">⏱</span>
+                            <span class="font-label">餐點現點現做，請耐心等候</span>
+                        </div>
+                        <div class="sp-reminder-item">
+                            <span class="sp-reminder-icon">🍱</span>
+                            <span class="font-label">請於完成後 15 分鐘內取餐，以確保最佳風味</span>
+                        </div>
+                        <div class="sp-reminder-item">
+                            <span class="sp-reminder-icon">🪙</span>
+                            <span class="font-label">取餐時請告知訂單編號或出示本頁面</span>
+                        </div>
+                    </div>
+
+                    <!-- 返回菜單 -->
+                    <button @click="onSuccessClose" class="sp-back-btn font-label">返回菜單</button>
+                </div>
+            </div>
+        </div>
+
         <!-- ══ Detail Modal ══ -->
         <DishDetailModal
             :dish="activeDetail"
@@ -1194,56 +1396,7 @@
             @confirm="onSetMealConfirm"
         />
 
-        <!-- 成功 Modal -->
-        <Teleport to="body">
-            <Transition name="success-modal">
-                <div v-if="successModalOpen" class="success-overlay" @click.self="onSuccessClose">
-                    <div class="success-card">
-                        <div class="success-icon">🛍️</div>
-                        <h2 class="font-headline success-title">訂單送出成功</h2>
-                        <p class="font-body success-sub">訂單編號</p>
-                        <p class="font-label success-number">{{ orderNumber }}</p>
-                        <div class="success-info-box">
-                            <div class="success-info-row">
-                                <span class="font-label" style="color: rgba(208, 197, 181, 0.55)"
-                                    >取餐時段</span
-                                >
-                                <span class="font-label" style="color: #e3c76b"
-                                    >今日 {{ confirmedPickupTime }}</span
-                                >
-                            </div>
-                            <div class="success-info-row">
-                                <span class="font-label" style="color: rgba(208, 197, 181, 0.55)"
-                                    >取餐人</span
-                                >
-                                <span class="font-body">{{ confirmedName }}</span>
-                            </div>
-                            <div class="success-info-row">
-                                <span class="font-label" style="color: rgba(208, 197, 181, 0.55)"
-                                    >應付金額</span
-                                >
-                                <span class="font-label" style="color: #e3c76b"
-                                    >NT$ {{ confirmedTotal.toLocaleString() }}</span
-                                >
-                            </div>
-                        </div>
-                        <p
-                            class="font-label"
-                            style="
-                                color: rgba(208, 197, 181, 0.45);
-                                font-size: 0.75rem;
-                                margin-top: 0.5rem;
-                            "
-                        >
-                            請於取餐時間至櫃台取餐
-                        </p>
-                        <button @click="onSuccessClose" class="success-close-btn font-label">
-                            返回菜單
-                        </button>
-                    </div>
-                </div>
-            </Transition>
-        </Teleport>
+        <!-- 成功 Modal 已移除，改為 step 4 整頁呈現 -->
 
         <!-- 簡易 Toast -->
         <Teleport to="body">
@@ -1335,6 +1488,7 @@
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { useOrderStore } from '@/stores/order'
 import { useAuthStore } from '@/stores/auth'
+import { RouterLink } from 'vue-router'
 import apiFetch from '@/utils/apiFetch'
 import DishDetailModal from '@/components/Order/DishDetailModal.vue'
 import SetMealSelectModal from '@/components/Order/SetMealSelectModal.vue'
@@ -1367,13 +1521,11 @@ const pickupError = ref(false)
 
 const pickupTimeOptions = computed(() => {
     const slots = []
-    const now = new Date()
-    const open = 11 * 60 // 11:00
-    const close = 21 * 60 // 21:00
-    const minPrep = 30 // 30 分鐘備餐時間
-    const nowMins = now.getHours() * 60 + now.getMinutes() + minPrep
-    const start = Math.max(open, Math.ceil(nowMins / 30) * 30)
-    for (let m = start; m <= close; m += 30) {
+    const open = 11 * 60 // 開店 11:00
+    const close = 21 * 60 // 關店 21:00
+    const start = open + 30 // 開店後 30 分：11:30
+    const end = close - 60 // 關店前 1 小時：20:00
+    for (let m = start; m <= end; m += 30) {
         const h = Math.floor(m / 60)
         const mm = m % 60
         slots.push(`${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`)
@@ -1397,10 +1549,14 @@ watch(
     { immediate: true }
 )
 
-// ── 訂單完成後儲存（Modal 顯示用）─────────────────
+// ── 訂單完成後儲存（成功頁顯示用）─────────────────
 const confirmedPickupTime = ref('')
 const confirmedName = ref('')
 const confirmedTotal = ref(0)
+const confirmedItems = ref([]) // 快照購物車（store.clearOrder 前存入）
+const confirmedNote = ref('')
+const confirmedGift = ref(null)
+const orderProgress = ref(1) // 動態進度條：1=接收 2=製作中 3=完成
 
 // ── Modal 狀態 ───────────────────────────────────────
 const activeDetail = ref(null)
@@ -2020,11 +2176,26 @@ async function submitOrder() {
         confirmedPickupTime.value = pickupTime.value
         confirmedName.value = customerName.value
         confirmedTotal.value = finalTotal.value
+        confirmedNote.value = store.specialRequest || ''
+        // 快照購物車（store.clearOrder 前存入，否則資料消失）
+        confirmedItems.value = cartItemsWithDetails.value.map((item) => ({
+            ...item,
+            setMealData: item.setMealData ? JSON.parse(JSON.stringify(item.setMealData)) : null,
+        }))
+        confirmedGift.value = giftCartItem.value ? { ...giftCartItem.value } : null
 
         store.clearOrder()
         resetCoupon()
-        successModalOpen.value = true
-        step.value = 1
+
+        // 進入成功頁並捲回頂部
+        orderProgress.value = 1
+        step.value = 4
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+
+        // 動態進度：1.5 秒後推進到「餐點製作中」
+        setTimeout(() => {
+            orderProgress.value = 2
+        }, 1500)
     } catch (err) {
         console.error(err)
         showToast('送出失敗，請稍後再試')
@@ -2034,11 +2205,13 @@ async function submitOrder() {
 }
 
 function onSuccessClose() {
-    successModalOpen.value = false
     step.value = 1
     pickupTime.value = ''
     customerName.value = ''
     customerPhone.value = ''
+    confirmedItems.value = []
+    confirmedGift.value = null
+    orderProgress.value = 1
     window.scrollTo({ top: 0 })
 }
 
@@ -2232,16 +2405,34 @@ onMounted(async () => {
     overflow: hidden;
 }
 
-/* ── 成功 Modal Transition ── */
-.success-modal-enter-active {
-    transition: opacity 0.3s;
+/* ════ 步驟 Banner 右側區塊 ════ */
+.banner-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
 }
-.success-modal-leave-active {
-    transition: opacity 0.25s;
+/* 訂單查詢觸發連結 */
+.lookup-trigger-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.32rem 0.75rem;
+    background: transparent;
+    border: 1px solid rgba(227, 199, 107, 0.35);
+    border-radius: 999px;
+    color: rgba(227, 199, 107, 0.8);
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    white-space: nowrap;
 }
-.success-modal-enter-from,
-.success-modal-leave-to {
-    opacity: 0;
+.lookup-trigger-btn:hover {
+    background: rgba(227, 199, 107, 0.1);
+    color: #e3c76b;
+    border-color: rgba(227, 199, 107, 0.65);
 }
 </style>
 
@@ -2831,88 +3022,361 @@ onMounted(async () => {
     margin-top: 0.2rem;
 }
 
-/* ════ 成功 Modal ════ */
-.success-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 9800;
-    background: rgba(24, 11, 6, 0.88);
+/* ════ 訂單成功頁（Step 4）════ */
+
+/* 整頁容器 */
+.sp-wrap {
+    min-height: 80vh;
+    padding: 2rem 2.5rem 4rem;
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* ① 頂部橫排：✓ | 標題 | 訂單編號 */
+.sp-header-row {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+.sp-check-ring {
+    flex-shrink: 0;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e3c76b, #c6ab53);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1.5rem;
+    color: #3b2f00;
+    box-shadow: 0 8px 32px rgba(227, 199, 107, 0.35);
+    animation: sp-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
-.success-card {
-    background: #271813;
-    border: 1px solid rgba(77, 70, 58, 0.45);
-    border-radius: 0.75rem;
-    padding: 2.5rem 2rem;
-    max-width: 400px;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    text-align: center;
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
+@keyframes sp-pop {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
-.success-icon {
-    font-size: 3rem;
-    margin-bottom: 0.25rem;
-}
-.success-title {
-    font-size: 1.7rem;
+.sp-main-title {
+    flex: 1;
+    font-size: 2.2rem;
     font-style: italic;
     color: #e3c76b;
     margin: 0;
+    white-space: nowrap;
 }
-.success-sub {
-    font-size: 0.75rem;
+.sp-order-num-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+}
+.sp-order-num-label {
+    font-size: 0.72rem;
     letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: rgba(208, 197, 181, 0.4);
-    margin: 0.5rem 0 0;
+    color: rgba(208, 197, 181, 0.45);
 }
-.success-number {
+.sp-order-num-val {
     font-family: 'Work Sans', sans-serif;
-    font-size: 1.4rem;
-    letter-spacing: 0.2em;
+    font-size: 1.1rem;
+    letter-spacing: 0.15em;
     color: #f9ddd3;
-    margin: 0;
+    font-weight: 600;
 }
-.success-info-box {
+
+/* ② 動態進度條（全寬） */
+.sp-progress-bar {
+    display: flex;
+    align-items: center;
     width: 100%;
-    margin-top: 0.75rem;
-    background: rgba(24, 11, 6, 0.5);
-    border: 1px solid rgba(77, 70, 58, 0.35);
-    border-radius: 0.4rem;
-    padding: 0.85rem 1rem;
+}
+.sp-prog-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    flex: 0 0 auto;
+    min-width: 100px;
+}
+.sp-prog-dot {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid rgba(77, 70, 58, 0.45);
+    background: #271813;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: rgba(208, 197, 181, 0.4);
+    transition:
+        background 0.4s,
+        border-color 0.4s,
+        color 0.4s;
+}
+.sp-prog-step.sp-prog-done .sp-prog-dot {
+    background: linear-gradient(135deg, #e3c76b, #c6ab53);
+    border-color: #e3c76b;
+    color: #3b2f00;
+}
+.sp-prog-step.sp-prog-active .sp-prog-dot {
+    border-color: #e3c76b;
+    background: rgba(227, 199, 107, 0.12);
+    color: #e3c76b;
+    animation: sp-pulse 1.4s ease-in-out infinite;
+}
+@keyframes sp-pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(227, 199, 107, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(227, 199, 107, 0);
+    }
+}
+.sp-prog-lbl {
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+    color: rgba(208, 197, 181, 0.45);
+    white-space: nowrap;
+}
+.sp-prog-step.sp-prog-done .sp-prog-lbl,
+.sp-prog-step.sp-prog-active .sp-prog-lbl {
+    color: #e3c76b;
+}
+.sp-prog-line {
+    flex: 1;
+    height: 2px;
+    background: rgba(77, 70, 58, 0.45);
+    margin-bottom: 1.5rem;
+    transition: background 0.5s;
+}
+.sp-prog-line.sp-prog-line-lit {
+    background: linear-gradient(90deg, #e3c76b, #c6ab53);
+}
+
+/* ③ 雙欄主體 */
+.sp-body {
+    display: grid;
+    grid-template-columns: 1fr 0.72fr;
+    gap: 1.25rem;
+    align-items: start;
+}
+.sp-col-left {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+.sp-col-right {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Section 卡片 */
+.sp-section {
+    background: #271813;
+    border: 1px solid rgba(77, 70, 58, 0.45);
+    border-radius: 0.6rem;
+    padding: 1.4rem 1.4rem 1.1rem;
+}
+.sp-section-title {
+    font-size: 0.75rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(208, 197, 181, 0.45);
+    margin: 0 0 1rem;
+}
+
+/* 品項 */
+.sp-items {
+    display: flex;
+    flex-direction: column;
+}
+.sp-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid rgba(77, 70, 58, 0.2);
+}
+.sp-item:last-child {
+    border-bottom: none;
+}
+.sp-item-left {
+    flex: 1;
+}
+.sp-item-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+    flex-shrink: 0;
+}
+.sp-item-name {
+    font-size: 1rem;
+    color: #f9ddd3;
+    display: block;
+}
+.sp-item-note {
+    font-size: 0.82rem;
+    color: rgba(208, 197, 181, 0.42);
+    margin: 0.15rem 0 0;
+    display: block;
+}
+.sp-item-qty {
+    font-size: 0.85rem;
+    color: rgba(208, 197, 181, 0.5);
+}
+.sp-item-price {
+    font-size: 0.95rem;
+    color: #d5b478;
+}
+
+/* 金額 / 付款 / 取餐方式 */
+.sp-meta-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+.sp-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95rem;
+}
+.sp-meta-label {
+    color: rgba(208, 197, 181, 0.5);
+}
+.sp-meta-val {
+    color: #f9ddd3;
+}
+.sp-meta-gold {
+    color: #e3c76b;
+    font-size: 1.1rem;
+}
+
+/* 預計取餐時間 Banner */
+.sp-pickup-banner {
+    background: rgba(24, 11, 6, 0.55);
+    border: 1px solid rgba(227, 199, 107, 0.25);
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.sp-pickup-label {
+    font-size: 0.82rem;
+    letter-spacing: 0.12em;
+    color: rgba(208, 197, 181, 0.5);
+}
+.sp-pickup-time {
+    font-size: 1.5rem;
+    font-style: italic;
+    color: #e3c76b;
+}
+
+/* 店家資訊 */
+.sp-store-info {
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
 }
-.success-info-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.85rem;
+.sp-store-addr {
+    font-size: 1rem;
+    color: #d0c5b5;
+    margin: 0;
 }
-.success-close-btn {
-    margin-top: 1rem;
+.sp-store-tel {
+    font-size: 1rem;
+    color: #e3c76b;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.sp-store-tel:hover {
+    text-decoration: underline;
+}
+
+/* 防呆提醒 */
+.sp-reminders {
+    background: rgba(24, 11, 6, 0.35);
+    border: 1px solid rgba(77, 70, 58, 0.3);
+    border-radius: 0.5rem;
+    padding: 1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+.sp-reminder-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    font-size: 0.88rem;
+    color: rgba(208, 197, 181, 0.65);
+    line-height: 1.5;
+}
+.sp-reminder-icon {
+    flex-shrink: 0;
+    font-size: 1rem;
+}
+
+/* 返回菜單按鈕 */
+.sp-back-btn {
     width: 100%;
-    padding: 0.85rem;
+    padding: 1rem;
     background: linear-gradient(135deg, #e3c76b, #c6ab53);
     color: #3b2f00;
     border: none;
-    border-radius: 0.25rem;
-    font-size: 0.85rem;
+    border-radius: 0.3rem;
+    font-size: 0.95rem;
     letter-spacing: 0.22em;
     text-transform: uppercase;
     cursor: pointer;
     transition: filter 0.2s;
 }
-.success-close-btn:hover {
+.sp-back-btn:hover {
     filter: brightness(1.1);
+}
+
+/* 手機版：改回單欄 */
+@media (max-width: 680px) {
+    .sp-wrap {
+        padding: 1.5rem 1rem 3rem;
+    }
+    .sp-header-row {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+    .sp-main-title {
+        font-size: 1.6rem;
+    }
+    .sp-order-num-block {
+        align-items: flex-start;
+    }
+    .sp-body {
+        grid-template-columns: 1fr;
+    }
+    .sp-prog-step {
+        min-width: 72px;
+    }
+    .sp-prog-dot {
+        width: 36px;
+        height: 36px;
+    }
+    .sp-prog-lbl {
+        font-size: 0.72rem;
+    }
 }
 
 /* ════ 手機底部列 ════ */

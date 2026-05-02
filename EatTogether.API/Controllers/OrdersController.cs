@@ -110,6 +110,22 @@ namespace EatTogether.API.Controllers
             return Ok(result);
         }
 
+        // 前台外帶訂單查詢（擇一：orderNumber / name / phone）
+        [HttpGet("Lookup")]
+        [AllowAnonymous]
+        public async Task<IActionResult> LookupOrder([FromQuery] string type, [FromQuery] string q)
+        {
+            if (string.IsNullOrWhiteSpace(q) || string.IsNullOrWhiteSpace(type))
+                return BadRequest("請提供查詢條件");
+
+            var allowed = new[] { "orderNumber", "name", "phone" };
+            if (!allowed.Contains(type))
+                return BadRequest("type 必須為 orderNumber / name / phone");
+
+            var result = await _service.QueryTodayPendingTakeoutAsync(type, q.Trim());
+            return Ok(result);
+        }
+
         // 會員歷史訂單
         [HttpGet("MemberOrderHistory")]
         [AllowAnonymous]

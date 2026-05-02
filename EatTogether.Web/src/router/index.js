@@ -95,6 +95,11 @@ const routes = [
         component: () => import('@/views/order/TakeOut.vue'),
         meta: { hideChrome: true },
     },
+    {
+        path: '/order-lookup',
+        name: 'OrderLookup',
+        component: () => import('@/views/order/OrderLookupView.vue'),
+    },
 
     // ── 訂位 ────────────────────────────────────────────
     {

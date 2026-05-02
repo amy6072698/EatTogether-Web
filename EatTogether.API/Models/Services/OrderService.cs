@@ -70,6 +70,8 @@ namespace EatTogether.Models.Services
         Task<List<CreatePreOrderItemViewModel>> GetFavoritesAsync(int memberId);
         // 前台點餐會員歷史訂單
         Task<List<MemberOrderHistoryDto>> GetMemberOrderHistoryAsync(int memberId);
+        // 前台外帶訂單查詢（依訂單編號 / 姓名 / 電話擇一）
+        Task<List<OrderLookupResultDto>> QueryTodayPendingTakeoutAsync(string type, string q);
     }
 
     public class OrderService : IOrderService
@@ -229,8 +231,11 @@ namespace EatTogether.Models.Services
 
             var noteJson = System.Text.Json.JsonSerializer.Serialize(new
             {
-                order = dto.Note ?? "",
-                items = itemNotes
+                order        = dto.Note ?? "",
+                items        = itemNotes,
+                customerName  = dto.CustomerName,
+                customerPhone = dto.CustomerPhone,
+                pickupTime    = dto.PickupTime
             });
 
             var preOrder = new PreOrder
@@ -1722,6 +1727,77 @@ namespace EatTogether.Models.Services
                     }).ToList()
                 };
             }).ToList();
+        }
+
+        // ── 前台外帶訂單查詢 ──────────────────────────────────────────────
+        // type: "orderNumber" | "name" | "phone"
+        public async Task<List<OrderLookupResultDto>> QueryTodayPendingTakeoutAsync(string type, string q)
+        {
+            var today   = DateTime.Today;
+            var pending = await _preOrderRepo.GetByStatusAsync(PreOrderStatus.Pending);
+
+            // 只查當日外帶（InOrOut=false）且有未完成品項的訂單
+            var todayTakeout = pending
+                .Where(p => p.OrderAt.Date == today && !p.InOrOut)
+                .Where(p => p.PreOrderDetails.Any(d => d.DoneOrCancel == 0))
+                .ToList();
+
+            var results = new List<OrderLookupResultDto>();
+            foreach (var p in todayTakeout)
+            {
+                var note = OrderNoteHelper.Parse(p.Note);
+
+                bool match = type switch
+                {
+                    "orderNumber" => p.OrderNumber.Equals(q, StringComparison.OrdinalIgnoreCase),
+                    "name"        => (note.CustomerName ?? "").Equals(q, StringComparison.OrdinalIgnoreCase),
+                    "phone"       => (note.CustomerPhone ?? "") == q,
+                    _             => false
+                };
+
+                if (!match) continue;
+
+                // 父項目（無 ParentDetailId）、未取消
+                var parentDetails = p.PreOrderDetails
+                    .Where(d => d.ParentDetailId == null && d.DoneOrCancel != 2)
+                    .ToList();
+
+                // 取子項目（依 ParentDetailId 分組）
+                var childrenByParent = p.PreOrderDetails
+                    .Where(d => d.ParentDetailId != null && d.DoneOrCancel != 2)
+                    .GroupBy(d => d.ParentDetailId)
+                    .ToDictionary(g => g.Key!.Value, g => g.Select(d => d.ProductName).ToList());
+
+                // 合併相同名稱的父項目（qty 加總）
+                var grouped = parentDetails
+                    .GroupBy(d => new { d.ProductName, d.SubTotal, d.IsSetMeal })
+                    .Select(g => new OrderLookupItemDto
+                    {
+                        ProductName = g.Key.ProductName,
+                        Qty         = g.Count(),
+                        UnitPrice   = g.Key.SubTotal,
+                        IsSetMeal   = g.Key.IsSetMeal,
+                        ItemNote    = note.Items?.GetValueOrDefault(g.Key.ProductName),
+                        SubItems    = g.Key.IsSetMeal
+                            ? g.SelectMany(d => childrenByParent.TryGetValue(d.Id, out var ch) ? ch : new())
+                               .Distinct().ToList()
+                            : new()
+                    })
+                    .ToList();
+
+                results.Add(new OrderLookupResultDto
+                {
+                    OrderNumber   = p.OrderNumber,
+                    CustomerName  = note.CustomerName  ?? "",
+                    CustomerPhone = note.CustomerPhone ?? "",
+                    PickupTime    = note.PickupTime    ?? "",
+                    TotalAmount   = p.TotalAmount,
+                    Note          = note.Order         ?? "",
+                    Items         = grouped
+                });
+            }
+
+            return results;
         }
     }
 }
