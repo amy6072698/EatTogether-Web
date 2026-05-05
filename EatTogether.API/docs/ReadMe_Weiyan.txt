@@ -68,8 +68,8 @@
     [V]找不到（404）導回列表頁或顯示錯誤訊息
     [V]v-html 渲染 Description（Quill.js 產出的 HTML）
     [V]顯示點閱數
-    [working]onMounted 同時呼叫 PATCH api/News/{id}/view 累加點閱數
-    []套入 Stitch 切版樣式
+    [V]onMounted 同時呼叫 PATCH api/News/{id}/view 累加點閱數
+    [V]套入 Stitch 切版樣式
 
 
 ====================點閱數功能====================
@@ -95,12 +95,12 @@
   [V]新增Notification repo、dto、service
 
 
-[working]add 通知列表 API
+[V]add 通知列表 API
   url: GET api/Notifications（或掛在會員身上）
   **需確認是否需要登入才能看通知
 
-[working]add Vue 鈴鐺元件
-  [working]BellNotification.vue
-  [working]點擊展開通知下拉清單
-  [working]未讀數量 badge
-  [working]點擊單筆通知標記已讀
+[V]add Vue 鈴鐺元件
+  [V]BellNotification.vue
+  [V]點擊展開通知下拉清單
+  [V]未讀數量 badge
+  [V]點擊單筆通知標記已讀

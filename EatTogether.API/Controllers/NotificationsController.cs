@@ -19,7 +19,9 @@ namespace EatTogether.API.Controllers
 			_service = service;
 		}
 
-		// 取得登入者的通知列表
+		/// <summary>
+		/// 取得登入者的通知列表
+		/// </summary>
 		// GET: api/Notifications
 		[HttpGet]
 		public async Task<IActionResult> GetNotifications()
@@ -31,7 +33,9 @@ namespace EatTogether.API.Controllers
 			return Ok(result);
 		}
 
-		// 標記單一通知為已讀
+		/// <summary>
+		/// 標記單一通知為已讀
+		/// </summary>
 		// PATCH: api/Notifications/{id}/read
 		[HttpPatch("{id}/read")]
 		public async Task<IActionResult> MarkAsRead(int id)
@@ -44,7 +48,9 @@ namespace EatTogether.API.Controllers
 
 		}
 
-		// 標記所有通知為已讀
+		/// <summary>
+		/// 標記所有通知為已讀
+		/// </summary>
 		// PATCH: api/Notifications/read-all
 		[HttpPatch("read-all")]
 		public async Task<IActionResult> MarkAllAsRead()
@@ -55,7 +61,9 @@ namespace EatTogether.API.Controllers
 			return NoContent();
 		}
 
-		// 從 JWT 取得 MemberId
+		/// <summary>
+		/// 從 JWT 取得 MemberId
+		/// </summary>
 		private int? GetMemberId()
 		{
 			var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

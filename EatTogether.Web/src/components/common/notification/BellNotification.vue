@@ -48,11 +48,6 @@ const isOpen = ref(false)
 // 未讀數量
 const unreadCount = computed(() => notifications.value.filter((n) => !n.isRead).length)
 
-// 取得 JWT token
-// function getToken() {
-//     return localStorage.getItem('token')
-// }
-
 // 取得通知列表
 async function fetchNotifications() {
     try {
@@ -64,7 +59,7 @@ async function fetchNotifications() {
     }
 }
 
-// 標記單筆已讀 → 導向文章
+// 標記單筆已讀 → 導向相關頁面
 async function handleClick(notification) {
     if (!notification.isRead) {
         await apiFetch(`/Notifications/${notification.id}/read`, {
@@ -73,11 +68,25 @@ async function handleClick(notification) {
         notification.isRead = true
     }
     isOpen.value = false
-    // router.push({ name: 'NewsDetail', params: { id: `${notification.articleId}` } })
 
-    if (notification.type === 'NEWS' && notification.referenceId) {
-        router.push({ name: 'NewsDetail', params: { id: notification.referenceId } })
+    // 依通知類型決定跳轉頁面，以下註解為範例，可自訂更改
+    const routes = {
+        NEWS: () => router.push({ name: 'NewsDetail', params: { id: notification.referenceId } }),
+        // RESERVATION_CONFIRM: () =>
+        //     router.push({ name: 'MyReservations' }),
+        // RESERVATION_REMIND: () =>
+        //     router.push({ name: 'MyReservations' }),
+        // RESERVATION_CANCEL: () =>
+        //     router.push({ name: 'MyReservations' }),
+        // TAKEOUT_CREATED: () =>
+        //     router.push({ name: 'OrderDetail', params: { id: notification.referenceId } }),
+        // TAKEOUT_READY: () =>
+        //     router.push({ name: 'OrderDetail', params: { id: notification.referenceId } }),
+        // COUPON_RECEIVED: () => router.push({ name: 'CouponUsage' }),
+        // COUPON_EXPIRING: () => router.push({ name: 'CouponUsage' }),
     }
+    const navigate = routes[notification.type]
+    if (navigate) navigate()
 }
 
 // 全部已讀
