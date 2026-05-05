@@ -27,5 +27,7 @@ namespace EatTogether.Models.Repositories
         Task<IEnumerable<MemberCouponDto>> GetByMemberAsync(int memberId);
         Task AddAsync(int memberId, int couponId);
         Task MarkAsUsedAsync(int memberId, int couponId);
+        /// <summary>從 Orders 直接查該會員使用過優惠券的紀錄（不依賴 MemberCoupons.IsUsed）</summary>
+        Task<IEnumerable<MemberCouponDto>> GetUsageHistoryFromOrdersAsync(int memberId);
     }
 }

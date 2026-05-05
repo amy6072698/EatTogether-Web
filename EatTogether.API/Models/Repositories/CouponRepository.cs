@@ -267,5 +267,30 @@ namespace EatTogether.Models.Repositories
             mc.UsedDate = DateTime.Now;
             await _context.SaveChangesAsync();
         }
+
+        public async Task<IEnumerable<MemberCouponDto>> GetUsageHistoryFromOrdersAsync(int memberId)
+        {
+            return await _context.Orders
+                .AsNoTracking()
+                .Where(o => o.MemberId == memberId && o.CouponId != null)
+                .Include(o => o.Coupon)
+                .OrderByDescending(o => o.OrderAt)
+                .Select(o => new MemberCouponDto
+                {
+                    CouponId       = o.CouponId!.Value,
+                    CouponName     = o.Coupon.Name,
+                    Code           = o.Coupon.Code,
+                    DiscountType   = o.Coupon.DiscountType,
+                    DiscountValue  = o.Coupon.DiscountValue,
+                    IsUsed         = true,
+                    UsedDate       = o.OrderAt,
+                    OrderNumber    = o.OrderNumber,
+                    OriginalAmount = o.OriginalAmount,
+                    DiscountAmount = o.DiscountAmount,
+                    TotalAmount    = o.TotalAmount,
+                    PayMethod      = o.PayMethod,
+                })
+                .ToListAsync();
+        }
     }
 }
