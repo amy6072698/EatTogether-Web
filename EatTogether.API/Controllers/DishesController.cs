@@ -1,4 +1,5 @@
-﻿using EatTogether.Models.DTOs;
+﻿using EatTogether.API.Models.Services;
+using EatTogether.Models.DTOs;
 using EatTogether.Models.Infra;
 using EatTogether.Models.Services;
 using EatTogether.Models.ViewModels;
@@ -12,9 +13,9 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace EatTogether.Controllers
+namespace EatTogether.API.Controllers
 {
-    [Route("api/[controller]")]
+	[Route("api/[controller]")]
     public class DishesController : Controller
     {
         private readonly DishService _dishService;

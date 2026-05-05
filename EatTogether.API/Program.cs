@@ -160,6 +160,10 @@ namespace EatTogether.API
 			builder.Services.AddHostedService<NoShowMarkingBackgroundService>();
 			builder.Services.AddHostedService<CouponExpiryNotifyBackgroundService>();
 
+			// ── 限定餐點提醒 ──
+			builder.Services.AddScoped<LimitedReminderService>();
+			builder.Services.AddHostedService<LimitedReminderBackgroundService>();
+
 
 			// Add services to the container.
 

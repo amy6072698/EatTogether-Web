@@ -1,7 +1,7 @@
 ﻿using EatTogether.Models.DTOs;
 using EatTogether.Models.Repositories;
 
-namespace EatTogether.Models.Services
+namespace EatTogether.API.Models.Services
 {
 	public class SetMealService
 	{

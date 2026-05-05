@@ -2,9 +2,9 @@
 using EatTogether.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
 
-namespace EatTogether.Models.Repositories
+namespace EatTogether.API.Models.Repositories
 {
-    public class DishRepository : IDishRepository
+	public class DishRepository : IDishRepository
     {
         private readonly EatTogetherDBContext _context;
 

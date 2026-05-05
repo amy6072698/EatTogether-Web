@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include=".claude\worktrees\kind-elion-cfa8af\EatTogether.API\efpt.config.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
     <PackageReference Include="Google.Apis.Auth" Version="1.73.0" />
     <PackageReference Include="MailKit" Version="4.16.0" />
@@ -24,6 +28,7 @@
 
 
   <ItemGroup>
+    <None Include=".claude\worktrees\kind-elion-cfa8af\EatTogether.API\efpt.config.json.user" />
     <None Include="efpt.config.json.user" />
   </ItemGroup>
 
