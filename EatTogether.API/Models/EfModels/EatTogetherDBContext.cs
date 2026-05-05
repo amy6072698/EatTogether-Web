@@ -792,14 +792,15 @@ public partial class EatTogetherDBContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
                 .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.IsRead).HasAnnotation("Relational:DefaultConstraintName", "DF_Notifications_IsRead");
+            entity.Property(e => e.Message).HasMaxLength(500);
+            entity.Property(e => e.ReferenceType).HasMaxLength(50);
             entity.Property(e => e.Title)
                 .IsRequired()
                 .HasMaxLength(200);
-
-            entity.HasOne(d => d.Article).WithMany(p => p.UserNotifications)
-                .HasForeignKey(d => d.ArticleId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_UserNotifications_Articles");
+            entity.Property(e => e.Type)
+                .IsRequired()
+                .HasMaxLength(50);
 
             entity.HasOne(d => d.Member).WithMany(p => p.UserNotifications)
                 .HasForeignKey(d => d.MemberId)

@@ -3,11 +3,16 @@
        Hero
     ════════════════════════════════════════════ -->
     <header class="news-hero">
-        <h1 class="eat-display news-hero-title">最新消息</h1>
-        <div class="news-hero-sub">
-            <div class="news-hero-line"></div>
-            <span class="news-hero-eyebrow">Il Manoscritto · News &amp; Stories</span>
-            <div class="news-hero-line"></div>
+        <div>
+            <p class="eat-label mb-2" style="color: var(--eat-secondary)">
+                <i class="bi bi-newspaper me-2"></i>Lastest News
+            </p>
+            <h1 class="eat-h1 mb-2 eat-display">最新消息</h1>
+            <div class="news-hero-sub">
+                <div class="news-hero-line"></div>
+                <span class="eat-body-muted mb-0">IL Manoscritto · News &amp; Stories</span>
+                <div class="news-hero-line"></div>
+            </div>
         </div>
     </header>
 
@@ -151,32 +156,20 @@ onMounted(fetchNews)
 .news-hero {
     padding: 5rem 2rem 4rem;
     text-align: center;
-    background-color: var(--eat-surface-lowest);
-}
-.news-hero-title {
-    color: var(--eat-primary);
-    font-style: italic;
-    margin-bottom: 1.25rem;
+    background-color: var(--eat-surface-container);
 }
 .news-hero-sub {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 1.25rem;
+    opacity: 0.75;
 }
 .news-hero-line {
     flex: 0 0 3rem;
     height: 1px;
     background: var(--eat-secondary);
     opacity: 0.3;
-}
-.news-hero-eyebrow {
-    font-family: var(--font-label);
-    font-size: 0.68rem;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: var(--eat-secondary);
-    white-space: nowrap;
 }
 
 /* ── Layout ───────────────────────────────────────── */
@@ -186,7 +179,7 @@ onMounted(fetchNews)
     gap: 3rem;
     max-width: 1280px;
     margin: 0 auto;
-    padding: 2rem 2rem 8rem;
+    padding: 4rem 2rem 8rem;
 }
 @media (min-width: 768px) {
     .news-layout {
@@ -279,7 +272,7 @@ onMounted(fetchNews)
 /* ── RWD ──────────────────────────────────────────── */
 @media (max-width: 767px) {
     .news-hero {
-        padding: 8rem 1.5rem 3rem;
+        padding: 5rem 1.5rem 3rem;
     }
     .news-layout {
         padding: 2.5rem 1.5rem 5rem;

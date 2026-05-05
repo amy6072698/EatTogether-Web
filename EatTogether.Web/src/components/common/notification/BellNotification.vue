@@ -49,16 +49,14 @@ const isOpen = ref(false)
 const unreadCount = computed(() => notifications.value.filter((n) => !n.isRead).length)
 
 // 取得 JWT token
-function getToken() {
-    return localStorage.getItem('token')
-}
+// function getToken() {
+//     return localStorage.getItem('token')
+// }
 
 // 取得通知列表
 async function fetchNotifications() {
     try {
-        const res = await apiFetch('/Notifications', {
-            headers: { Authorization: `Bearer ${getToken()}` },
-        })
+        const res = await apiFetch('/Notifications')
         if (!res.ok) return
         notifications.value = await res.json()
     } catch (e) {
@@ -71,19 +69,21 @@ async function handleClick(notification) {
     if (!notification.isRead) {
         await apiFetch(`/Notifications/${notification.id}/read`, {
             method: 'PATCH',
-            headers: { Authorization: `Bearer ${getToken()}` },
         })
         notification.isRead = true
     }
     isOpen.value = false
-    router.push({ name: 'NewsDetail', params: { id: `${notification.articleId}` } })
+    // router.push({ name: 'NewsDetail', params: { id: `${notification.articleId}` } })
+
+    if (notification.type === 'NEWS' && notification.referenceId) {
+        router.push({ name: 'NewsDetail', params: { id: notification.referenceId } })
+    }
 }
 
 // 全部已讀
 async function markAllAsRead() {
     await apiFetch('/Notifications/read-all', {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${getToken()}` },
     })
     notifications.value.forEach((n) => (n.isRead = true))
 }
