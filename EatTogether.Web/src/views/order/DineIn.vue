@@ -833,31 +833,7 @@
                                 placeholder="備註：過敏食材、特殊需求…"
                             ></textarea>
 
-                            <!-- 快到門檻提示（差額 ≤ 100 的自動活動） -->
-                            <div v-if="total > 0 && nearAutoEvents.length" class="notify-events">
-                                <div
-                                    v-for="ev in nearAutoEvents"
-                                    :key="'near-' + ev.id"
-                                    class="notify-event-card near-threshold"
-                                >
-                                    <div class="notify-event-top">
-                                        <span class="notify-event-icon">🔥</span>
-                                        <span class="font-label notify-event-title">{{
-                                            ev.title
-                                        }}</span>
-                                        <span class="notify-event-badge font-label near-badge">
-                                            差 NT${{ ev.minSpend - total }}
-                                        </span>
-                                    </div>
-                                    <p class="font-body notify-event-desc">
-                                        再消費 NT${{ ev.minSpend - total }} 即可享{{
-                                            isLoggedIn ? '' : '（登入後）'
-                                        }}限時優惠：{{ ev.discountDescription }}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- 通知型活動（IsAutoDiscount=0）→ 改用 Modal 通知，見下方 Teleport -->
+                            <!-- 通知型活動（IsAutoDiscount=0）→ 改用 Toast 通知，見下方 Teleport -->
 
                             <!-- 優惠券：已登入顯示下拉，未登入顯示文字輸入 -->
                             <div style="margin-top: 0.5rem">

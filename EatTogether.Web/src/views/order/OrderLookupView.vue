@@ -1,203 +1,187 @@
 <template>
     <div class="ol-page">
         <div class="ol-container">
-            <!-- ══ 頁面標題 ══ -->
-            <div class="ol-hero">
-                <div class="ol-icon">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="28"
-                        height="28"
-                        fill="currentColor"
-                        viewBox="0 0 16 16"
-                    >
-                        <path
-                            d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"
-                        />
-                    </svg>
-                </div>
-                <div>
-                    <h1 class="font-headline ol-title">訂單查詢</h1>
-                    <p class="font-label ol-subtitle">查詢今日外帶訂單進度</p>
-                </div>
-            </div>
+            <div class="ol-cards-wrap">
+                <!-- ══ 左卡：搜尋面板 ══ -->
+                <div class="ol-card ol-search-card">
+                    <div class="ol-card-title font-headline">搜尋</div>
+                    <div class="ol-card-divider"></div>
 
-            <!-- ══ 查詢表單 ══ -->
-            <div class="ol-form-card">
-                <div class="ol-fields">
                     <div class="ol-field">
-                        <label class="font-label ol-label">訂單編號</label>
-                        <input
-                            v-model="lkOrderNum"
-                            class="ol-input font-label"
-                            placeholder="例：20260503-0001"
-                            @input="(lkName = '')((lkPhone = ''))"
-                            @keyup.enter="doLookup"
-                        />
-                    </div>
-                    <div class="ol-divider-or"><span class="font-label">或</span></div>
-                    <div class="ol-field">
-                        <label class="font-label ol-label">訂購人姓名</label>
+                        <label class="ol-label font-label">
+                            取餐人姓名
+                            <span class="ol-required">（必填）</span>
+                        </label>
                         <input
                             v-model="lkName"
                             class="ol-input font-label"
                             placeholder="請輸入完整姓名"
-                            @input="(lkOrderNum = '')((lkPhone = ''))"
                             @keyup.enter="doLookup"
                         />
                     </div>
-                    <div class="ol-divider-or"><span class="font-label">或</span></div>
+                    <div class="ol-card-divider"></div>
+                    <p
+                        class="font-label mb-0"
+                        style="
+                            font-size: 0.8rem;
+                            color: rgba(208, 197, 181, 0.5);
+                            margin-left: auto;
+                        "
+                    >
+                        以下擇一必填
+                    </p>
                     <div class="ol-field">
-                        <label class="font-label ol-label">電話號碼</label>
+                        <label class="ol-label font-label"> 訂單編號 </label>
+                        <input
+                            v-model="lkOrderNum"
+                            class="ol-input font-label"
+                            placeholder="例：20260503-0001"
+                            @input="lkPhone = ''"
+                            @keyup.enter="doLookup"
+                        />
+                    </div>
+
+                    <div class="ol-field">
+                        <label class="ol-label font-label"> 電話號碼 </label>
                         <input
                             v-model="lkPhone"
                             class="ol-input font-label"
                             placeholder="請輸入完整電話"
-                            @input="(lkOrderNum = '')((lkName = ''))"
+                            @input="lkOrderNum = ''"
                             @keyup.enter="doLookup"
                         />
                     </div>
+
+                    <p v-if="error" class="ol-error font-label">{{ error }}</p>
+
+                    <div class="ol-btn-group">
+                        <button
+                            class="ol-search-btn font-label"
+                            :disabled="!canSearch || searching"
+                            @click="doLookup"
+                        >
+                            <svg
+                                v-if="!searching"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                fill="currentColor"
+                                viewBox="0 0 16 16"
+                            >
+                                <path
+                                    d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"
+                                />
+                            </svg>
+                            <span v-if="searching" class="ol-spinner"></span>
+                            {{ searching ? '查詢中…' : '搜尋' }}
+                        </button>
+                        <button class="ol-reset-btn font-label" @click="resetSearch">✖ 重置</button>
+                    </div>
+
+                    <!-- 查詢結果訂單編號列表 -->
+                    <template v-if="searched && results.length > 0">
+                        <div class="ol-card-divider" style="margin-top: 0.5rem"></div>
+                        <p class="ol-sidebar-result-label font-label">查詢結果</p>
+                        <div class="ol-sidebar-order-list">
+                            <button
+                                v-for="r in results"
+                                :key="r.orderNumber"
+                                :class="[
+                                    'ol-sidebar-order-item font-label',
+                                    {
+                                        active:
+                                            selectedOrder &&
+                                            selectedOrder.orderNumber === r.orderNumber,
+                                    },
+                                ]"
+                                @click="selectedOrder = r"
+                            >
+                                {{ r.orderNumber }}
+                            </button>
+                        </div>
+                    </template>
                 </div>
 
-                <button
-                    class="ol-search-btn font-label"
-                    :disabled="!canSearch || searching"
-                    @click="doLookup"
-                >
-                    <svg
-                        v-if="!searching"
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        fill="currentColor"
-                        viewBox="0 0 16 16"
-                    >
-                        <path
-                            d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"
-                        />
-                    </svg>
-                    {{ searching ? '查詢中…' : '查詢' }}
-                </button>
-
-                <p v-if="error" class="font-label ol-error">{{ error }}</p>
-            </div>
-
-            <!-- ══ 結果列表 ══ -->
-            <template v-if="searched && !searching">
-                <div v-if="results.length > 0" class="ol-results">
-                    <p class="font-label ol-results-hint">
-                        找到 {{ results.length }} 筆當日未完成訂單，點擊查看進度
-                    </p>
-
-                    <div
-                        v-for="r in results"
-                        :key="r.orderNumber"
-                        class="ol-result-card"
-                        :class="{ 'is-expanded': selectedOrder?.orderNumber === r.orderNumber }"
-                        @click="selectOrder(r)"
-                    >
-                        <!-- 摘要列 -->
-                        <div class="ol-rc-summary">
-                            <div class="ol-rc-left">
-                                <span class="font-label ol-rc-num">{{ r.orderNumber }}</span>
-                                <span class="font-label ol-rc-name">{{ r.customerName }}</span>
-                            </div>
-                            <div class="ol-rc-right">
-                                <span v-if="r.pickupTime" class="font-label ol-rc-pickup"
-                                    >取餐 {{ r.pickupTime }}</span
-                                >
-                                <span class="font-label ol-rc-total"
-                                    >NT$ {{ r.totalAmount.toLocaleString() }}</span
-                                >
-                                <svg
-                                    class="ol-rc-chevron"
-                                    :class="{
-                                        rotated: selectedOrder?.orderNumber === r.orderNumber,
-                                    }"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="12"
-                                    height="12"
-                                    fill="currentColor"
-                                    viewBox="0 0 16 16"
-                                >
-                                    <path
-                                        d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"
-                                    />
-                                </svg>
-                            </div>
-                        </div>
-
-                        <!-- 品項預覽（收合時） -->
-                        <div
-                            v-if="selectedOrder?.orderNumber !== r.orderNumber"
-                            class="font-label ol-rc-items-preview"
+                <!-- ══ 右卡：訂單詳情 ══ -->
+                <div class="ol-card ol-results-card">
+                    <div class="ol-card-header">
+                        <div class="ol-card-title font-headline">訂單查詢</div>
+                        <span
+                            v-if="searched && !searching && results.length > 0"
+                            class="font-label ol-count"
                         >
-                            {{
-                                r.items
-                                    .slice(0, 3)
-                                    .map((i) => i.productName + (i.qty > 1 ? ` ×${i.qty}` : ''))
-                                    .join('、')
-                            }}{{ r.items.length > 3 ? '…' : '' }}
+                            共 {{ results.length }} 項
+                        </span>
+                    </div>
+                    <div class="ol-card-divider"></div>
+
+                    <!-- 初始提示 -->
+                    <div v-if="!searched && !searching" class="ol-empty">
+                        <div class="ol-empty-icon">🔍</div>
+                        <p class="font-body ol-empty-text">請使用左側面板查詢訂單進度</p>
+                    </div>
+
+                    <!-- 搜尋中 -->
+                    <div v-else-if="searching" class="ol-empty">
+                        <div class="ol-loading-dots"><span></span><span></span><span></span></div>
+                        <p
+                            class="font-label"
+                            style="color: rgba(208, 197, 181, 0.4); margin-top: 1rem"
+                        >
+                            查詢中…
+                        </p>
+                    </div>
+
+                    <!-- 查無結果 -->
+                    <div v-else-if="searched && results.length === 0" class="ol-empty">
+                        <div class="ol-empty-icon">📭</div>
+                        <p class="font-body ol-empty-text">查無當日未完成外帶訂單</p>
+                        <p class="font-label ol-empty-hint">請確認資料是否填寫正確，或訂單已完成</p>
+                    </div>
+
+                    <!-- 有結果：直接顯示詳情 -->
+                    <template v-else-if="selectedOrder">
+                        <!-- 進度條（全寬） -->
+                        <div class="ol-progress">
+                            <div class="ol-prog-step ol-prog-done">
+                                <div class="ol-prog-dot">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="14"
+                                        height="14"
+                                        fill="currentColor"
+                                        viewBox="0 0 16 16"
+                                    >
+                                        <path
+                                            d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"
+                                        />
+                                    </svg>
+                                </div>
+                                <span class="font-label ol-prog-lbl">訂單已接收</span>
+                            </div>
+                            <div class="ol-prog-line ol-prog-line-lit"></div>
+                            <div class="ol-prog-step ol-prog-active">
+                                <div class="ol-prog-dot"><span>2</span></div>
+                                <span class="font-label ol-prog-lbl">餐點製作中</span>
+                            </div>
+                            <div class="ol-prog-line"></div>
+                            <div class="ol-prog-step">
+                                <div class="ol-prog-dot"><span>3</span></div>
+                                <span class="font-label ol-prog-lbl">餐點已完成</span>
+                            </div>
                         </div>
 
-                        <!-- 展開：完整訂單進度 -->
-                        <Transition name="ol-expand">
-                            <div
-                                v-if="selectedOrder?.orderNumber === r.orderNumber"
-                                class="ol-detail"
-                                @click.stop
-                            >
-                                <!-- 進度條 -->
-                                <div class="ol-progress">
-                                    <div :class="['ol-prog-step', 'ol-prog-done']">
-                                        <div class="ol-prog-dot">
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                width="14"
-                                                height="14"
-                                                fill="currentColor"
-                                                viewBox="0 0 16 16"
-                                            >
-                                                <path
-                                                    d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"
-                                                />
-                                            </svg>
-                                        </div>
-                                        <span class="font-label ol-prog-lbl">訂單已接收</span>
-                                    </div>
-                                    <div class="ol-prog-line ol-prog-line-lit"></div>
-                                    <div :class="['ol-prog-step', 'ol-prog-active']">
-                                        <div class="ol-prog-dot"><span>2</span></div>
-                                        <span class="font-label ol-prog-lbl">餐點製作中</span>
-                                    </div>
-                                    <div class="ol-prog-line"></div>
-                                    <div class="ol-prog-step">
-                                        <div class="ol-prog-dot"><span>3</span></div>
-                                        <span class="font-label ol-prog-lbl">餐點已完成</span>
-                                    </div>
-                                </div>
-
-                                <!-- 預計取餐時間 -->
-                                <div v-if="r.pickupTime" class="ol-pickup-banner">
-                                    <span
-                                        class="font-label"
-                                        style="color: rgba(208, 197, 181, 0.5); font-size: 0.8rem"
-                                        >預計取餐時間</span
+                        <!-- 左右兩欄 -->
+                        <div class="ol-detail-cols">
+                            <!-- 左欄：餐點明細 -->
+                            <div class="ol-detail-left">
+                                <div class="ol-section-label font-label">餐點明細</div>
+                                <div class="ol-items-detail">
+                                    <div
+                                        v-for="(item, idx) in selectedOrder.items"
+                                        :key="idx"
+                                        :class="['ol-item', { 'ol-item-gift': item.isGift }]"
                                     >
-                                    <span
-                                        class="font-headline"
-                                        style="
-                                            font-size: 1.25rem;
-                                            font-style: italic;
-                                            color: #e3c76b;
-                                        "
-                                        >今日 {{ r.pickupTime }}</span
-                                    >
-                                </div>
-
-                                <!-- 品項明細 -->
-                                <div class="ol-items">
-                                    <div v-for="(item, idx) in r.items" :key="idx" class="ol-item">
                                         <div class="ol-item-left">
                                             <div
                                                 v-if="item.isSetMeal"
@@ -208,6 +192,15 @@
                                             <span class="font-body ol-item-name">{{
                                                 item.productName
                                             }}</span>
+                                            <span
+                                                class="font-label"
+                                                style="
+                                                    color: rgba(208, 197, 181, 0.5);
+                                                    font-size: 1rem;
+                                                    padding-left: 1rem;
+                                                "
+                                                >x {{ item.qty }}</span
+                                            >
                                             <div v-if="item.subItems?.length" class="ol-subitems">
                                                 <span
                                                     v-for="s in item.subItems"
@@ -224,14 +217,12 @@
                                         </div>
                                         <div class="ol-item-right">
                                             <span
-                                                class="font-label"
-                                                style="
-                                                    color: rgba(208, 197, 181, 0.5);
-                                                    font-size: 0.82rem;
-                                                "
-                                                >× {{ item.qty }}</span
+                                                v-if="item.isGift"
+                                                class="gift-order-badge font-label"
+                                                >🎁 贈品</span
                                             >
                                             <span
+                                                v-else
                                                 class="font-label"
                                                 style="color: #d5b478; font-size: 0.9rem"
                                                 >NT$
@@ -241,95 +232,132 @@
                                             >
                                         </div>
                                     </div>
+                                    <!-- 贈品活動來源標註（贈品型活動才顯示） -->
+                                    <div
+                                        v-if="selectedOrder.eventTitle && selectedOrder.eventDiscountType === 'Gift'"
+                                        class="ol-gift-event-note font-label"
+                                    >
+                                        {{ selectedOrder.eventTitle }}：{{ selectedOrder.eventDiscountType === 'Gift' ? '贈品贈送' : '' }}
+                                    </div>
                                 </div>
 
                                 <div class="feather-divider" style="margin: 0.75rem 0"></div>
 
-                                <!-- 金額 / 付款 / 取餐 -->
+                                <!-- 活動 / 優惠券 / 合計 / 折扣 / 金額總計 -->
                                 <div class="ol-meta-rows">
-                                    <div class="ol-meta-row">
-                                        <span
-                                            class="font-label"
-                                            style="color: rgba(208, 197, 181, 0.5)"
-                                            >金額總計</span
-                                        >
-                                        <span
-                                            class="font-label"
-                                            style="color: #e3c76b; font-size: 1rem"
-                                            >NT$ {{ r.totalAmount.toLocaleString() }}</span
-                                        >
+                                    <!-- 活動（非贈品型才顯示折抵金額） -->
+                                    <div
+                                        v-if="selectedOrder.eventTitle && selectedOrder.eventDiscountType !== 'Gift'"
+                                        class="ol-meta-row-3"
+                                    >
+                                        <span class="font-label ol-meta-label">活動</span>
+                                        <span class="font-label ol-meta-val-mid">{{ selectedOrder.eventTitle }}</span>
+                                        <span class="font-label ol-meta-discount">折抵 NT$ {{ selectedOrder.eventDiscount.toLocaleString() }}</span>
                                     </div>
-                                    <div class="ol-meta-row">
-                                        <span
-                                            class="font-label"
-                                            style="color: rgba(208, 197, 181, 0.5)"
-                                            >付款方式</span
-                                        >
-                                        <span class="font-label" style="color: #f9ddd3"
-                                            >現場付款</span
-                                        >
+                                    <!-- 優惠券 -->
+                                    <div v-if="selectedOrder.couponCode" class="ol-meta-row-3">
+                                        <span class="font-label ol-meta-label">優惠券</span>
+                                        <span class="font-label ol-meta-val-mid">{{ selectedOrder.couponCode }}</span>
+                                        <span class="font-label ol-meta-discount">折抵 NT$ {{ selectedOrder.couponDiscount.toLocaleString() }}</span>
                                     </div>
-                                    <div class="ol-meta-row">
-                                        <span
-                                            class="font-label"
-                                            style="color: rgba(208, 197, 181, 0.5)"
-                                            >取餐方式</span
-                                        >
-                                        <span class="font-label" style="color: #f9ddd3"
-                                            >臨櫃自取</span
-                                        >
+                                    <!-- 備註 -->
+                                    <div v-if="selectedOrder.note" class="ol-meta-row">
+                                        <span class="font-label ol-meta-label-dim">備註</span>
+                                        <span class="font-label ol-meta-val">{{ selectedOrder.note }}</span>
                                     </div>
-                                    <div v-if="r.note" class="ol-meta-row">
-                                        <span
-                                            class="font-label"
-                                            style="color: rgba(208, 197, 181, 0.5)"
-                                            >備註</span
-                                        >
-                                        <span class="font-label" style="color: #f9ddd3">{{
-                                            r.note
-                                        }}</span>
+                                    <!-- 合計（原價） -->
+                                    <div class="ol-meta-row">
+                                        <span class="font-label ol-meta-label-dim">合計</span>
+                                        <span class="font-label ol-meta-val">NT$ {{ selectedOrder.subtotal.toLocaleString() }}</span>
+                                    </div>
+                                    <!-- 折扣 -->
+                                    <div v-if="selectedOrder.discountAmount > 0" class="ol-meta-row">
+                                        <span class="font-label ol-meta-label-dim">折扣</span>
+                                        <span class="font-label" style="color: #7ec87e">－ NT$ {{ selectedOrder.discountAmount.toLocaleString() }}</span>
                                     </div>
                                 </div>
 
-                                <!-- 店家資訊 -->
-                                <div class="ol-store-row">
-                                    <span
-                                        class="font-label"
-                                        style="color: rgba(208, 197, 181, 0.45); font-size: 0.8rem"
-                                        >台北市大安區慢食街 88 號</span
-                                    >
-                                    <a
-                                        href="tel:0223456789"
-                                        class="font-label ol-store-tel"
-                                        @click.stop
-                                        >Tel: (02) 2345-6789</a
+                                <div class="feather-divider" style="margin: 0.5rem 0 0.6rem"></div>
+                                <div class="ol-meta-row">
+                                    <span class="font-label ol-meta-label-dim" style="font-size: 0.95rem">金額總計</span>
+                                    <span class="font-label" style="color: #e3c76b; font-size: 1rem"
+                                        >NT$ {{ selectedOrder.totalAmount.toLocaleString() }}</span
                                     >
                                 </div>
                             </div>
-                        </Transition>
-                    </div>
-                </div>
 
-                <!-- 查無結果 -->
-                <div v-else class="ol-empty">
-                    <div class="ol-empty-icon">🔍</div>
-                    <p class="font-body ol-empty-text">查無當日未完成外帶訂單</p>
-                    <p class="font-label ol-empty-hint">請確認資料是否填寫完整，或訂單已完成</p>
-                    <RouterLink to="/takeout" class="font-label ol-back-link"
-                        >前往外帶點餐 →</RouterLink
-                    >
+                            <!-- 右欄：提示 + 顧客資訊 -->
+                            <div class="ol-detail-right">
+                                <div class="ol-tips">
+                                    <div class="ol-tip font-label">
+                                        <span class="ol-tip-icon">⏱</span>餐點現點現做，請耐心等候
+                                    </div>
+                                    <div class="ol-tip font-label">
+                                        <span class="ol-tip-icon">🥡</span>請於完成後 15
+                                        分鐘內取餐，以確保最佳風味
+                                    </div>
+                                    <div class="ol-tip font-label">
+                                        <span class="ol-tip-icon">🪙</span
+                                        >取餐時請告知訂單編號或出示本頁面
+                                    </div>
+                                </div>
+
+                                <div v-if="selectedOrder.pickupTime" class="ol-pickup-banner">
+                                    <span
+                                        class="font-label"
+                                        style="color: rgba(208, 197, 181, 0.5); font-size: 0.78rem"
+                                        >預計取餐時間</span
+                                    >
+                                    <span
+                                        class="font-headline"
+                                        style="
+                                            font-size: 1.25rem;
+                                            font-style: italic;
+                                            color: #e3c76b;
+                                        "
+                                        >今日 {{ selectedOrder.pickupTime }}</span
+                                    >
+                                </div>
+
+                                <div class="ol-info-rows">
+                                    <div v-if="selectedOrder.customerName" class="ol-info-row">
+                                        <span class="font-label ol-info-label">取餐人</span>
+                                        <span class="font-label ol-info-val">{{
+                                            selectedOrder.customerName
+                                        }}</span>
+                                    </div>
+                                    <div v-if="selectedOrder.customerPhone" class="ol-info-row">
+                                        <span class="font-label ol-info-label">聯絡電話</span>
+                                        <span class="font-label ol-info-val">{{
+                                            selectedOrder.customerPhone
+                                        }}</span>
+                                    </div>
+                                    <div class="ol-info-row">
+                                        <span class="font-label ol-info-label">付款方式</span>
+                                        <span class="font-label ol-info-val">現場付款</span>
+                                    </div>
+                                    <div class="ol-info-row">
+                                        <span class="font-label ol-info-label">取餐方式</span>
+                                        <span class="font-label ol-info-val">臨櫃自取</span>
+                                    </div>
+                                </div>
+
+                                <button class="ol-edit-btn font-label" @click="openEditModal">
+                                    編輯取餐資料
+                                </button>
+                            </div>
+                        </div>
+                    </template>
                 </div>
-            </template>
+            </div>
         </div>
     </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { RouterLink } from 'vue-router'
 import apiFetch from '@/utils/apiFetch'
 
-// ── 查詢欄位 ────────────────────────────────────────
 const lkOrderNum = ref('')
 const lkName = ref('')
 const lkPhone = ref('')
@@ -339,11 +367,12 @@ const error = ref('')
 const results = ref([])
 const selectedOrder = ref(null)
 
+// 姓名必填 + 訂單編號/電話擇一必填
 const canSearch = computed(() => {
-    const filled = [lkOrderNum.value.trim(), lkName.value.trim(), lkPhone.value.trim()].filter(
-        Boolean
-    )
-    return filled.length === 1
+    const name = lkName.value.trim()
+    const num = lkOrderNum.value.trim()
+    const phone = lkPhone.value.trim()
+    return name.length > 0 && (num.length > 0 || phone.length > 0)
 })
 
 async function doLookup() {
@@ -355,24 +384,21 @@ async function doLookup() {
     searched.value = false
 
     try {
-        let type, q
-        if (lkOrderNum.value.trim()) {
-            type = 'orderNumber'
-            q = lkOrderNum.value.trim()
-        } else if (lkName.value.trim()) {
-            type = 'name'
-            q = lkName.value.trim()
-        } else {
-            type = 'phone'
-            q = lkPhone.value.trim()
-        }
+        // 優先用訂單編號或電話查詢
+        const type = lkOrderNum.value.trim() ? 'orderNumber' : 'phone'
+        const q = lkOrderNum.value.trim() || lkPhone.value.trim()
 
         const res = await apiFetch(
             `/Orders/Lookup?type=${encodeURIComponent(type)}&q=${encodeURIComponent(q)}`
         )
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        results.value = await res.json()
-    } catch (e) {
+        const all = await res.json()
+
+        // 核對姓名（至少兩欄位都符合才顯示）
+        const inputName = lkName.value.trim().toLowerCase()
+        results.value = all.filter((r) => (r.customerName ?? '').toLowerCase() === inputName)
+        selectedOrder.value = results.value.length > 0 ? results.value[0] : null
+    } catch {
         error.value = '查詢失敗，請稍後再試'
     } finally {
         searching.value = false
@@ -380,128 +406,199 @@ async function doLookup() {
     }
 }
 
-function selectOrder(r) {
-    if (selectedOrder.value?.orderNumber === r.orderNumber) {
-        selectedOrder.value = null // 再次點擊收合
-    } else {
-        selectedOrder.value = r
-    }
+function resetSearch() {
+    lkOrderNum.value = ''
+    lkName.value = ''
+    lkPhone.value = ''
+    error.value = ''
+    results.value = []
+    searched.value = false
+    selectedOrder.value = null
+}
+
+function openEditModal() {
+    // TODO：開啟編輯取餐資料 Modal
 }
 </script>
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Newsreader:ital,wght@0,400;0,600;1,400&family=Work+Sans:wght@300;400&display=swap');
 
-/* ── 頁面容器 ── */
+/* ── 頁面 ── */
 .ol-page {
-    min-height: 100vh;
+    min-height: 88vh;
     background: #1e100b;
     color: #f9ddd3;
     font-family: 'Newsreader', serif;
-    padding-top: 90px; /* navbar 高度 */
-    padding-bottom: 4rem;
-}
-.ol-container {
-    max-width: 640px;
-    margin: 0 auto;
-    padding: 2.5rem 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.75rem;
 }
 
-/* ── Hero ── */
-.ol-hero {
+.ol-container {
+    padding: 2rem 1.5rem;
+    height: calc(100vh - 72px);
+    box-sizing: border-box;
     display: flex;
-    align-items: center;
-    gap: 1rem;
+    flex-direction: column;
 }
-.ol-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #e3c76b, #c6ab53);
+
+/* ── 兩卡並排 ── */
+.ol-cards-wrap {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #3b2f00;
-    flex-shrink: 0;
+    gap: 1.25rem;
+    flex: 1;
+    min-height: 0;
 }
-.ol-title {
-    font-size: 1.9rem;
+
+/* ── 卡片基礎 ── */
+.ol-card {
+    background: #271813;
+    border: 1px solid rgba(77, 70, 58, 0.4);
+    border-radius: 0.85rem;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.ol-card-title {
+    font-size: 1.2rem;
     font-style: italic;
     color: #e3c76b;
     margin: 0;
-}
-.ol-subtitle {
-    font-size: 0.78rem;
-    letter-spacing: 0.12em;
-    color: rgba(208, 197, 181, 0.45);
-    margin: 0.2rem 0 0;
+    flex-shrink: 0;
 }
 
-/* ── 表單卡片 ── */
-.ol-form-card {
-    background: #271813;
-    border: 1px solid rgba(77, 70, 58, 0.45);
-    border-radius: 0.65rem;
-    padding: 1.75rem 1.75rem 1.5rem;
+.ol-card-header {
     display: flex;
-    flex-direction: column;
-    gap: 1rem;
+    align-items: baseline;
+    gap: 0.75rem;
+    flex-shrink: 0;
 }
-.ol-fields {
-    display: flex;
-    flex-direction: column;
+
+.ol-count {
+    font-size: 0.75rem;
+    color: rgba(208, 197, 181, 0.4);
+    letter-spacing: 0.06em;
+}
+
+.ol-card-divider {
+    height: 1px;
+    background: rgba(77, 70, 58, 0.4);
+    margin: 0.85rem 0;
+    flex-shrink: 0;
+}
+
+/* ══ 左卡：搜尋 ══ */
+.ol-search-card {
+    width: 450px;
+    flex-shrink: 0;
     gap: 0;
 }
+
 .ol-field {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.3rem;
+    margin-bottom: 0.85rem;
 }
+
 .ol-label {
-    font-size: 0.8rem;
-    letter-spacing: 0.12em;
-    color: rgba(208, 197, 181, 0.55);
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    color: rgba(201, 188, 168, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
 }
+
 .ol-input {
-    background: rgba(24, 11, 6, 0.6);
+    background: rgba(24, 11, 6, 0.7);
     border: 1px solid rgba(77, 70, 58, 0.45);
     border-radius: 0.3rem;
-    padding: 0.7rem 1rem;
+    padding: 0.55rem 0.75rem;
     color: #f9ddd3;
-    font-size: 0.95rem;
+    font-size: 1rem;
     outline: none;
+    width: 100%;
+    box-sizing: border-box;
     transition: border-color 0.2s;
 }
 .ol-input:focus {
     border-color: rgba(227, 199, 107, 0.5);
 }
 .ol-input::placeholder {
-    color: rgba(208, 197, 181, 0.28);
+    color: rgba(208, 197, 181, 0.25);
+    font-size: 0.78rem;
 }
-.ol-divider-or {
+
+.ol-error {
+    font-size: 0.78rem;
+    color: #e07070;
+    margin: 0 0 0.75rem;
     text-align: center;
-    padding: 0.5rem 0;
-    font-size: 0.72rem;
-    color: rgba(208, 197, 181, 0.3);
-    letter-spacing: 0.2em;
 }
-.ol-search-btn {
+
+.ol-btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+}
+.ol-sidebar-result-label {
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+    color: rgba(208, 197, 181, 0.45);
+    margin: 0.25rem 0 0.4rem;
+}
+.ol-sidebar-order-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-height: 260px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+.ol-sidebar-order-item {
     width: 100%;
-    padding: 0.85rem;
+    text-align: left;
+    padding: 0.55rem 0.8rem;
+    background: rgba(10, 4, 2, 0.35);
+    border: 1px solid rgba(77, 70, 58, 0.35);
+    border-radius: 0.3rem;
+    color: rgba(208, 197, 181, 0.75);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition:
+        border-color 0.2s,
+        color 0.2s,
+        background 0.2s;
+    letter-spacing: 0.03em;
+}
+.ol-sidebar-order-item:hover {
+    border-color: rgba(227, 199, 107, 0.5);
+    color: #e3c76b;
+    background: rgba(227, 199, 107, 0.06);
+}
+.ol-sidebar-order-item.active {
+    border-color: #e3c76b;
+    color: #e3c76b;
+    background: rgba(227, 199, 107, 0.1);
+}
+
+.ol-search-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    padding: 0.7rem;
     background: linear-gradient(135deg, #e3c76b, #c6ab53);
     color: #3b2f00;
     border: none;
     border-radius: 0.3rem;
-    font-size: 0.92rem;
-    letter-spacing: 0.2em;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
     transition:
         filter 0.2s,
         opacity 0.2s;
@@ -513,93 +610,175 @@ function selectOrder(r) {
 .ol-search-btn:not(:disabled):hover {
     filter: brightness(1.08);
 }
-.ol-error {
-    color: #e07070;
-    font-size: 0.85rem;
+
+.ol-reset-btn {
+    width: 100%;
+    padding: 0.6rem;
+    background: transparent;
+    border: 1px solid rgba(77, 70, 58, 0.4);
+    border-radius: 0.3rem;
+    color: rgba(208, 197, 181, 0.5);
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition:
+        border-color 0.2s,
+        color 0.2s;
+}
+.ol-reset-btn:hover {
+    border-color: rgba(208, 197, 181, 0.35);
+    color: rgba(208, 197, 181, 0.75);
+}
+
+.ol-spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(59, 47, 0, 0.3);
+    border-top-color: #3b2f00;
+    border-radius: 50%;
+    animation: ol-spin 0.6s linear infinite;
+    display: inline-block;
+}
+@keyframes ol-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ══ 右卡：結果 ══ */
+.ol-results-card {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+}
+
+/* 空狀態 */
+.ol-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 4rem 2rem;
     text-align: center;
+    flex: 1;
+}
+.ol-empty-icon {
+    font-size: 2.2rem;
+}
+.ol-empty-text {
+    font-size: 0.95rem;
+    color: rgba(208, 197, 181, 0.5);
     margin: 0;
 }
 
-/* ── 結果區 ── */
-.ol-results {
+/* loading dots */
+.ol-loading-dots {
     display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
+    gap: 6px;
 }
-.ol-results-hint {
-    font-size: 0.78rem;
-    color: rgba(208, 197, 181, 0.4);
-    margin: 0 0 0.65rem;
-    letter-spacing: 0.06em;
+.ol-loading-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(227, 199, 107, 0.5);
+    animation: ol-dot 1.2s ease-in-out infinite;
+}
+.ol-loading-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+.ol-loading-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+@keyframes ol-dot {
+    0%,
+    80%,
+    100% {
+        transform: scale(0.7);
+        opacity: 0.4;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
-/* 結果卡片 */
-.ol-result-card {
-    background: #271813;
-    border: 1px solid rgba(77, 70, 58, 0.4);
-    border-radius: 0.55rem;
-    overflow: hidden;
-    cursor: pointer;
-    transition: border-color 0.2s;
-}
-.ol-result-card:hover,
-.ol-result-card.is-expanded {
-    border-color: rgba(227, 199, 107, 0.4);
-}
-.ol-rc-summary {
-    display: flex;
-    justify-content: space-between;
+/* ── 表格 ── */
+.ol-table-head,
+.ol-table-row {
+    display: grid;
+    grid-template-columns: 1fr 160px 110px 100px 90px 60px;
     align-items: center;
-    padding: 0.9rem 1.1rem;
-    gap: 1rem;
+    gap: 0.75rem;
+    padding: 0 0.5rem;
 }
-.ol-rc-left {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-}
-.ol-rc-right {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.15rem;
+
+.ol-table-head {
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: rgba(208, 197, 181, 0.4);
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid rgba(77, 70, 58, 0.3);
+    margin-bottom: 0.15rem;
     flex-shrink: 0;
 }
-.ol-rc-num {
-    font-size: 0.92rem;
+
+.ol-row-wrap {
+    border-bottom: 1px solid rgba(77, 70, 58, 0.15);
+}
+.ol-row-wrap:last-child {
+    border-bottom: none;
+}
+
+.ol-table-row {
+    padding-top: 0.7rem;
+    padding-bottom: 0.7rem;
+    cursor: pointer;
+    border-radius: 0.35rem;
+    transition: background 0.15s;
+}
+.ol-table-row:hover {
+    background: rgba(77, 70, 58, 0.12);
+}
+.ol-table-row.is-expanded {
+    background: rgba(77, 70, 58, 0.18);
+}
+
+.ol-order-num {
+    font-size: 0.85rem;
     color: #e3c76b;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.04em;
     font-family: 'Work Sans', sans-serif;
 }
-.ol-rc-name {
+
+.ol-cell-muted {
     font-size: 0.82rem;
-    color: rgba(208, 197, 181, 0.7);
-}
-.ol-rc-pickup {
-    font-size: 0.75rem;
     color: rgba(208, 197, 181, 0.5);
 }
-.ol-rc-total {
-    font-size: 0.88rem;
+
+.ol-amount {
+    font-size: 0.9rem;
     color: #d5b478;
 }
-.ol-rc-chevron {
-    color: rgba(208, 197, 181, 0.4);
-    transition: transform 0.25s;
-    flex-shrink: 0;
-    margin-top: 0.2rem;
+
+.ol-detail-btn {
+    background: transparent;
+    border: 1px solid rgba(77, 70, 58, 0.5);
+    border-radius: 0.25rem;
+    color: rgba(208, 197, 181, 0.6);
+    font-size: 0.75rem;
+    padding: 0.28rem 0.55rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
 }
-.ol-rc-chevron.rotated {
-    transform: rotate(180deg);
-}
-.ol-rc-items-preview {
-    padding: 0 1.1rem 0.85rem;
-    font-size: 0.78rem;
-    color: rgba(208, 197, 181, 0.4);
-    line-height: 1.4;
+.ol-detail-btn:hover,
+.ol-detail-btn.active {
+    border-color: rgba(227, 199, 107, 0.5);
+    color: #e3c76b;
 }
 
-/* 展開詳情 */
+/* ── 展開詳情 ── */
 .ol-expand-enter-active {
     transition: all 0.28s ease;
 }
@@ -613,40 +792,143 @@ function selectOrder(r) {
 }
 
 .ol-detail {
-    padding: 0 1.1rem 1.1rem;
-    border-top: 1px solid rgba(77, 70, 58, 0.3);
+    background: rgba(24, 11, 6, 0.35);
+    border-top: 1px solid rgba(77, 70, 58, 0.2);
+    border-radius: 0 0 0.4rem 0.4rem;
+    padding: 1.25rem 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
-    padding-top: 1rem;
+    gap: 1rem;
+}
+
+/* 左右兩欄 */
+.ol-detail-cols {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+}
+.ol-detail-left {
+    flex: 1;
+    min-width: 0;
+    background: rgba(10, 4, 2, 0.4);
+    border: 1px solid rgba(77, 70, 58, 0.3);
+    border-radius: 0.5rem;
+    padding: 1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    height: 66vh;
+}
+.ol-detail-right {
+    width: 480px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.ol-section-label {
+    font-size: 0.9rem;
+    letter-spacing: 0.12em;
+    color: rgba(208, 197, 181, 0.4);
+    margin-bottom: 0.65rem;
+    text-transform: uppercase;
+}
+
+/* 提示訊息 */
+.ol-tips {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+.ol-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    font-size: 1rem;
+    color: rgba(208, 197, 181, 0.7);
+    line-height: 1.4;
+}
+.ol-tip-icon {
+    flex-shrink: 0;
+    font-size: 0.9rem;
+    margin-top: 0.05rem;
+}
+
+/* 顧客資訊 */
+.ol-info-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+.ol-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.86rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid rgba(77, 70, 58, 0.15);
+}
+.ol-info-row:last-child {
+    border-bottom: none;
+}
+.ol-info-label {
+    color: rgba(208, 197, 181, 0.5);
+    font-size: 0.82rem;
+}
+.ol-info-val {
+    color: #f9ddd3;
+    font-size: 0.88rem;
+    text-align: right;
+}
+
+/* 編輯取餐資料按鈕 */
+.ol-edit-btn {
+    width: 100%;
+    padding: 0.65rem;
+    background: transparent;
+    border: 1px solid rgba(227, 199, 107, 0.45);
+    border-radius: 0.3rem;
+    color: #e3c76b;
+    font-size: 0.85rem;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition:
+        background 0.2s,
+        border-color 0.2s;
+    margin-top: 0.25rem;
+}
+.ol-edit-btn:hover {
+    background: rgba(227, 199, 107, 0.08);
+    border-color: rgba(227, 199, 107, 0.7);
 }
 
 /* 進度條 */
 .ol-progress {
+    margin: 1rem 0;
+    width: 100%;
     display: flex;
     align-items: center;
-    width: 100%;
 }
 .ol-prog-step {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.55rem;
     flex: 0 0 auto;
-    min-width: 80px;
 }
 .ol-prog-dot {
-    width: 38px;
-    height: 38px;
+    width: 35px;
+    height: 35px;
     border-radius: 50%;
     border: 2px solid rgba(77, 70, 58, 0.4);
     background: #1e100b;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.88rem;
+    font-size: 1rem;
     color: rgba(208, 197, 181, 0.4);
     transition: all 0.4s;
+    flex-shrink: 0;
 }
 .ol-prog-done .ol-prog-dot {
     background: linear-gradient(135deg, #e3c76b, #c6ab53);
@@ -669,8 +951,8 @@ function selectOrder(r) {
     }
 }
 .ol-prog-lbl {
-    font-size: 0.7rem;
-    letter-spacing: 0.06em;
+    font-size: 1rem;
+    letter-spacing: 0.05em;
     color: rgba(208, 197, 181, 0.4);
     white-space: nowrap;
 }
@@ -679,17 +961,16 @@ function selectOrder(r) {
     color: #e3c76b;
 }
 .ol-prog-line {
+    margin: 0 1rem;
     flex: 1;
     height: 2px;
     background: rgba(77, 70, 58, 0.4);
-    margin-bottom: 1.4rem;
-    transition: background 0.4s;
 }
 .ol-prog-line-lit {
     background: linear-gradient(90deg, #e3c76b, #c6ab53);
 }
 
-/* 預計取餐時間 */
+/* 預計取餐 */
 .ol-pickup-banner {
     background: rgba(24, 11, 6, 0.5);
     border: 1px solid rgba(227, 199, 107, 0.2);
@@ -698,21 +979,21 @@ function selectOrder(r) {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    width: 100%;
 }
 
 /* 品項 */
-.ol-items {
+.ol-items-detail {
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
 }
 .ol-item {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: 1rem;
-    padding: 0.55rem 0;
-    border-bottom: 1px solid rgba(77, 70, 58, 0.18);
+    padding: 0.48rem 0;
+    border-bottom: 1px solid rgba(77, 70, 58, 0.12);
 }
 .ol-item:last-child {
     border-bottom: none;
@@ -722,108 +1003,99 @@ function selectOrder(r) {
 }
 .ol-item-right {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: flex-end;
-    gap: 0.15rem;
+    gap: 0.1rem;
     flex-shrink: 0;
 }
 .ol-item-name {
-    font-size: 0.95rem;
+    font-size: 1rem;
     color: #f9ddd3;
 }
 .ol-item-note {
-    font-size: 0.78rem;
+    font-size: 0.73rem;
     color: rgba(208, 197, 181, 0.4);
-    margin-top: 0.1rem;
     display: block;
+    margin-top: 0.1rem;
 }
 .ol-subitems {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.3rem;
-    margin-top: 0.25rem;
+    gap: 0.25rem;
+    margin-top: 0.2rem;
 }
 .ol-subitem {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     color: rgba(208, 197, 181, 0.5);
     background: rgba(77, 70, 58, 0.25);
-    padding: 0.1rem 0.45rem;
+    padding: 0.08rem 0.38rem;
     border-radius: 999px;
 }
 .setmeal-badge-sm {
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     color: #e3c76b;
-    margin-bottom: 0.1rem;
+    margin-bottom: 0.08rem;
 }
 
 /* 金額 Meta */
 .ol-meta-rows {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.42rem;
 }
 .ol-meta-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.88rem;
+    font-size: 0.86rem;
 }
-
-/* 店家資訊 */
-.ol-store-row {
+/* 三欄列：標籤 | 名稱（彈性） | 金額 */
+.ol-meta-row-3 {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    padding-top: 0.25rem;
+    gap: 0.45rem;
+    font-size: 0.86rem;
 }
-.ol-store-tel {
-    font-size: 0.82rem;
-    color: #e3c76b;
-    text-decoration: none;
+.ol-meta-row-3 .ol-meta-label {
+    flex-shrink: 0;
+    min-width: 2.8rem;
+    color: rgba(208, 197, 181, 0.5);
 }
-.ol-store-tel:hover {
-    text-decoration: underline;
+.ol-meta-val-mid {
+    flex: 1;
+    color: #f9ddd3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ol-meta-discount {
+    flex-shrink: 0;
+    color: #7ec87e;
+}
+.ol-meta-label-dim {
+    color: rgba(208, 197, 181, 0.5);
+}
+.ol-meta-val {
+    color: #f9ddd3;
+}
+/* 贈品背景 */
+.ol-item-gift {
+    background: rgba(163, 217, 119, 0.04);
+}
+/* 贈品活動來源標註 */
+.ol-gift-event-note {
+    font-size: 0.76rem;
+    color: rgba(126, 200, 126, 0.75);
+    padding: 0.2rem 0.4rem;
+    letter-spacing: 0.03em;
 }
 
-/* ── 查無結果 ── */
-.ol-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.55rem;
-    padding: 3rem 1rem;
-    text-align: center;
-}
-.ol-empty-icon {
-    font-size: 2.5rem;
-}
-.ol-empty-text {
-    font-size: 1.1rem;
-    color: rgba(208, 197, 181, 0.6);
-    margin: 0;
-}
-.ol-empty-hint {
-    font-size: 0.8rem;
-    color: rgba(208, 197, 181, 0.38);
-    margin: 0;
-}
-.ol-back-link {
-    font-size: 0.82rem;
-    color: #e3c76b;
-    text-decoration: none;
-    margin-top: 0.5rem;
-}
-.ol-back-link:hover {
-    text-decoration: underline;
-}
-
-/* feather-divider（共用） */
+/* feather-divider */
 .feather-divider {
     height: 1px;
     background: linear-gradient(90deg, transparent, #e4c285 50%, transparent);
     position: relative;
+    max-width: 460px;
 }
 .feather-divider::after {
     content: '◈';
@@ -832,29 +1104,73 @@ function selectOrder(r) {
     top: 50%;
     transform: translate(-50%, -50%);
     color: #e4c285;
-    background: #271813;
-    padding: 0 0.35rem;
-    font-size: 0.7rem;
+    background: #1e100b;
+    padding: 0 0.3rem;
+    font-size: 0.65rem;
+}
+
+/* 多筆切換 tab */
+.ol-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.25rem;
+    flex-shrink: 0;
+}
+.ol-tab {
+    background: transparent;
+    border: 1px solid rgba(77, 70, 58, 0.5);
+    border-radius: 0.25rem;
+    color: rgba(208, 197, 181, 0.55);
+    font-size: 1rem;
+    padding: 0.3rem 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Work Sans', sans-serif;
+    letter-spacing: 0.04em;
+}
+.ol-tab:hover {
+    border-color: rgba(227, 199, 107, 0.4);
+    color: rgba(208, 197, 181, 0.85);
+}
+.ol-tab.active {
+    border-color: #e3c76b;
+    color: #e3c76b;
+    background: rgba(227, 199, 107, 0.08);
 }
 
 /* ── 手機版 ── */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     .ol-container {
-        padding: 1.5rem 1rem;
-        gap: 1.25rem;
+        padding: 1rem;
+        height: auto;
     }
-    .ol-title {
-        font-size: 1.5rem;
+    .ol-cards-wrap {
+        flex-direction: column;
     }
-    .ol-prog-step {
-        min-width: 62px;
+    .ol-search-card {
+        width: 100%;
     }
-    .ol-prog-dot {
-        width: 32px;
-        height: 32px;
+    .ol-results-card {
+        overflow-y: visible;
     }
-    .ol-prog-lbl {
-        font-size: 0.62rem;
+    .ol-table-head {
+        display: none;
+    }
+    .ol-table-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem 0.75rem;
+        align-items: center;
+    }
+    .col-phone {
+        display: none;
+    }
+    .ol-detail-cols {
+        flex-direction: column;
+    }
+    .ol-detail-right {
+        width: 100%;
     }
 }
 </style>

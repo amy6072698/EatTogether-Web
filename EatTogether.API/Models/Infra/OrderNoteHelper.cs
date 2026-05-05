@@ -38,20 +38,23 @@ namespace EatTogether.Models.Infra
         }
 
         /// <summary>
-        /// 將整筆備註＋個別餐點備註組成 JSON 字串。
-        /// 若兩者皆空則回傳 null（不存空 JSON）。
+        /// 將整筆備註＋個別餐點備註＋外帶顧客資訊組成 JSON 字串。
         /// </summary>
-        public static string? Build(string? orderNote, Dictionary<string, string>? itemNotes)
+        public static string Build(
+            string?                     orderNote,
+            Dictionary<string, string>? itemNotes,
+            string?                     customerName  = null,
+            string?                     customerPhone = null,
+            string?                     pickupTime    = null)
         {
             var dto = new OrderNoteDto
             {
-                Order = string.IsNullOrWhiteSpace(orderNote) ? null : orderNote.Trim(),
-                Items = itemNotes ?? new()
+                Order         = string.IsNullOrWhiteSpace(orderNote) ? null : orderNote.Trim(),
+                Items         = itemNotes ?? new(),
+                CustomerName  = string.IsNullOrWhiteSpace(customerName)  ? null : customerName.Trim(),
+                CustomerPhone = string.IsNullOrWhiteSpace(customerPhone) ? null : customerPhone.Trim(),
+                PickupTime    = string.IsNullOrWhiteSpace(pickupTime)    ? null : pickupTime.Trim(),
             };
-
-            // 兩者都空時不存任何資料
-            if (dto.Order == null && dto.Items.Count == 0)
-                return null;
 
             return JsonSerializer.Serialize(dto, _opts);
         }

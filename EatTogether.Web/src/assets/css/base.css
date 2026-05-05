@@ -13,7 +13,7 @@
 
 /* ── Body ───────────────────────────────────────────── */
 body {
-    padding-top: 80px; /* 配合 navbar 高度 */
+    padding-top: 67px; /* 配合 navbar 高度 */
     background-color: var(--eat-surface);
     color: var(--eat-on-surface);
     font-family: var(--font-body);

@@ -42,21 +42,25 @@
                 <div :class="['step-dot', step === 3 ? 'active' : '']">3</div>
                 <span :class="['step-lbl', step === 3 ? 'active' : '']">確認送出</span>
             </div>
-            <!-- 取餐時段顯示 + 訂單查詢按鈕 -->
+            <!-- 取餐時段顯示 -->
             <div class="banner-right">
                 <div v-if="pickupTime" class="pickup-pill">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
-                        <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        fill="currentColor"
+                        viewBox="0 0 16 16"
+                    >
+                        <path
+                            d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"
+                        />
+                        <path
+                            d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"
+                        />
                     </svg>
                     取餐時段：<strong>{{ pickupTime }}</strong>
                 </div>
-                <RouterLink to="/order-lookup" class="lookup-trigger-btn font-label">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
-                    </svg>
-                    訂單查詢
-                </RouterLink>
             </div>
         </div>
 
@@ -600,55 +604,6 @@
                             placeholder="備註：過敏食材、特殊需求…"
                         ></textarea>
 
-                        <!-- 訪客：已符合門檻活動提示 -->
-                        <div
-                            v-if="total > 0 && !isLoggedIn && autoEvents.length"
-                            class="notify-events"
-                        >
-                            <div
-                                v-for="ev in autoEvents"
-                                :key="'guest-auto-' + ev.id"
-                                class="notify-event-card eligible guest-login-hint"
-                            >
-                                <div class="notify-event-top">
-                                    <span class="notify-event-icon">⭐</span>
-                                    <span class="font-label notify-event-title">{{
-                                        ev.title
-                                    }}</span>
-                                    <span class="notify-event-badge font-label eligible-badge"
-                                        >已符合門檻</span
-                                    >
-                                </div>
-                                <p class="font-body notify-event-desc">
-                                    登入即享限時優惠：{{ ev.discountDescription }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- 差額提示 -->
-                        <div v-if="total > 0 && nearAutoEvents.length" class="notify-events">
-                            <div
-                                v-for="ev in nearAutoEvents"
-                                :key="'near-' + ev.id"
-                                class="notify-event-card near-threshold"
-                            >
-                                <div class="notify-event-top">
-                                    <span class="notify-event-icon">🔥</span>
-                                    <span class="font-label notify-event-title">{{
-                                        ev.title
-                                    }}</span>
-                                    <span class="notify-event-badge font-label near-badge"
-                                        >差 NT${{ ev.minSpend - total }}</span
-                                    >
-                                </div>
-                                <p class="font-body notify-event-desc">
-                                    再消費 NT${{ ev.minSpend - total }} 即可享{{
-                                        isLoggedIn ? '' : '（登入後）'
-                                    }}限時優惠：{{ ev.discountDescription }}
-                                </p>
-                            </div>
-                        </div>
-
                         <!-- 優惠券：已登入顯示下拉，未登入顯示文字輸入 -->
                         <div style="margin-top: 0.5rem">
                             <!-- 已登入：下拉選已領優惠券 -->
@@ -1104,30 +1059,47 @@
 
                 <!-- 金額明細 -->
                 <div class="confirm-totals">
-                    <div class="confirm-total-row">
-                        <span class="font-label" style="color: rgba(208, 197, 181, 0.6)">小計</span>
-                        <span class="font-label">NT$ {{ total.toLocaleString() }}</span>
+                    <!-- 活動（非贈品型才顯示折抵行） -->
+                    <div
+                        v-if="isLoggedIn && bestAutoEvent && bestAutoEvent.discountType !== 'Gift'"
+                        class="confirm-total-row-3"
+                    >
+                        <span class="font-label confirm-dim">活動</span>
+                        <span class="font-label confirm-mid">{{ bestAutoEvent.title }}</span>
+                        <span class="font-label confirm-green">折抵 NT$ {{ autoEventDiscount.toLocaleString() }}</span>
                     </div>
-                    <div v-if="isLoggedIn && bestAutoEvent" class="confirm-total-row">
-                        <span
-                            class="font-label"
-                            style="color: rgba(208, 197, 181, 0.6); font-size: 0.78rem"
+                    <!-- 贈品型活動：只顯示參加提示 -->
+                    <div
+                        v-if="isLoggedIn && bestAutoEvent && bestAutoEvent.discountType === 'Gift'"
+                        class="confirm-total-row"
+                    >
+                        <span class="font-label confirm-dim" style="font-size: 0.8rem"
                             >已參加「{{ bestAutoEvent.title }}」</span
                         >
                         <span></span>
                     </div>
-                    <div v-if="isLoggedIn && autoEventDiscount > 0" class="confirm-total-row">
-                        <span class="font-label" style="color: #a3d977">活動折扣</span>
-                        <span class="font-label" style="color: #a3d977"
-                            >－ NT$ {{ autoEventDiscount.toLocaleString() }}</span
+                    <!-- 優惠券 -->
+                    <div v-if="couponOk && couponDiscount > 0" class="confirm-total-row-3">
+                        <span class="font-label confirm-dim">優惠券</span>
+                        <span class="font-label confirm-mid">{{ couponCode }}</span>
+                        <span class="font-label confirm-green">折抵 NT$ {{ couponDiscount.toLocaleString() }}</span>
+                    </div>
+                    <!-- 合計（原價） -->
+                    <div class="confirm-total-row">
+                        <span class="font-label confirm-dim">合計</span>
+                        <span class="font-label">NT$ {{ total.toLocaleString() }}</span>
+                    </div>
+                    <!-- 折扣（有折扣才顯示） -->
+                    <div
+                        v-if="autoEventDiscount + (couponOk ? couponDiscount : 0) > 0"
+                        class="confirm-total-row"
+                    >
+                        <span class="font-label confirm-dim">折扣</span>
+                        <span class="font-label confirm-green"
+                            >－ NT$ {{ (autoEventDiscount + (couponOk ? couponDiscount : 0)).toLocaleString() }}</span
                         >
                     </div>
-                    <div v-if="couponOk && couponDiscount > 0" class="confirm-total-row">
-                        <span class="font-label" style="color: #a3d977">優惠券折扣</span>
-                        <span class="font-label" style="color: #a3d977"
-                            >－ NT$ {{ couponDiscount.toLocaleString() }}</span
-                        >
-                    </div>
+                    <!-- 應付金額 -->
                     <div class="confirm-total-row confirm-grand">
                         <span class="font-headline" style="color: #e3c76b; font-size: 1.15rem"
                             >應付金額</span
@@ -1289,55 +1261,68 @@
                                 }}</span>
                                 <span class="gift-order-badge font-label">🎁 贈品</span>
                             </div>
+                            <!-- 贈品活動來源（贈品型活動才顯示） -->
+                            <div
+                                v-if="confirmedGift && confirmedEventTitle && confirmedEventDiscountType === 'Gift'"
+                                class="sp-gift-event-note font-label"
+                            >
+                                {{ confirmedEventTitle }}：{{ confirmedEventDesc }}
+                            </div>
                         </div>
 
                         <div class="feather-divider" style="margin: 1rem 0 0.85rem"></div>
 
                         <div class="sp-meta-rows">
+                            <!-- 活動（非贈品型才顯示折抵行） -->
+                            <div
+                                v-if="confirmedEventTitle && confirmedEventDiscountType !== 'Gift'"
+                                class="sp-meta-row-3"
+                            >
+                                <span class="font-label sp-meta-label">活動</span>
+                                <span class="font-label sp-meta-val-mid">{{ confirmedEventTitle }}</span>
+                                <span class="font-label sp-meta-discount">折抵 NT$ {{ confirmedAutoEventDiscount.toLocaleString() }}</span>
+                            </div>
+                            <!-- 優惠券 -->
+                            <div v-if="confirmedCouponCode" class="sp-meta-row-3">
+                                <span class="font-label sp-meta-label">優惠券</span>
+                                <span class="font-label sp-meta-val-mid">{{ confirmedCouponCode }}</span>
+                                <span class="font-label sp-meta-discount">折抵 NT$ {{ confirmedCouponDiscount.toLocaleString() }}</span>
+                            </div>
+                            <!-- 合計（原價） -->
                             <div class="sp-meta-row">
-                                <span class="font-label sp-meta-label">金額總計</span>
-                                <span class="font-label sp-meta-val sp-meta-gold"
-                                    >NT$ {{ confirmedTotal.toLocaleString() }}</span
+                                <span class="font-label sp-meta-label">合計</span>
+                                <span class="font-label sp-meta-val">NT$ {{ confirmedSubtotal.toLocaleString() }}</span>
+                            </div>
+                            <!-- 折扣（有折扣才顯示） -->
+                            <div
+                                v-if="confirmedAutoEventDiscount + confirmedCouponDiscount > 0"
+                                class="sp-meta-row"
+                            >
+                                <span class="font-label sp-meta-label">折扣</span>
+                                <span class="font-label sp-meta-val" style="color: #7ec87e"
+                                    >－ NT$ {{ (confirmedAutoEventDiscount + confirmedCouponDiscount).toLocaleString() }}</span
                                 >
                             </div>
-                            <div class="sp-meta-row">
-                                <span class="font-label sp-meta-label">付款方式</span>
-                                <span class="font-label sp-meta-val">現場付款</span>
-                            </div>
-                            <div class="sp-meta-row">
-                                <span class="font-label sp-meta-label">取餐方式</span>
-                                <span class="font-label sp-meta-val">臨櫃自取</span>
-                            </div>
-                            <div v-if="confirmedNote" class="sp-meta-row">
-                                <span class="font-label sp-meta-label">備註</span>
-                                <span class="font-label sp-meta-val">{{ confirmedNote }}</span>
-                            </div>
+                        </div>
+
+                        <!-- 金額總計（突出顯示） -->
+                        <div class="feather-divider" style="margin: 0.75rem 0 0.65rem"></div>
+                        <div class="sp-meta-row">
+                            <span class="font-label sp-meta-label" style="font-size: 1rem">金額總計</span>
+                            <span class="font-label sp-meta-gold">NT$ {{ confirmedTotal.toLocaleString() }}</span>
+                        </div>
+
+                        <!-- 備註（金額總計下方） -->
+                        <div v-if="confirmedNote" class="sp-meta-row" style="margin-top: 0.5rem">
+                            <span class="font-label sp-meta-label">備註</span>
+                            <span class="font-label sp-meta-val">{{ confirmedNote }}</span>
                         </div>
                     </section>
                 </div>
 
-                <!-- 右欄：預計取餐 + 聯絡 + 提醒 + 返回 -->
+                <!-- 右欄：提醒 + 取餐 + 聯絡 + 返回 -->
                 <div class="sp-col-right">
-                    <!-- 預計取餐時間 -->
-                    <div class="sp-pickup-banner">
-                        <span class="font-label sp-pickup-label">預計取餐時間</span>
-                        <span class="font-headline sp-pickup-time"
-                            >今日 {{ confirmedPickupTime }}</span
-                        >
-                    </div>
-
-                    <!-- 聯絡資訊 -->
-                    <section class="sp-section">
-                        <h3 class="font-label sp-section-title">餐廳聯絡資訊</h3>
-                        <div class="sp-store-info">
-                            <p class="font-body sp-store-addr">台北市大安區慢食街 88 號</p>
-                            <a href="tel:0223456789" class="font-body sp-store-tel"
-                                >Tel: (02) 2345-6789</a
-                            >
-                        </div>
-                    </section>
-
-                    <!-- 防呆提醒 -->
+                    <!-- 防呆提醒（最上方）-->
                     <div class="sp-reminders">
                         <div class="sp-reminder-item">
                             <span class="sp-reminder-icon">⏱</span>
@@ -1352,6 +1337,47 @@
                             <span class="font-label">取餐時請告知訂單編號或出示本頁面</span>
                         </div>
                     </div>
+
+                    <!-- 預計取餐時間 -->
+                    <div class="sp-pickup-banner">
+                        <!-- 上排：標籤 + 時間 -->
+                        <div class="sp-pickup-top">
+                            <span class="font-label sp-pickup-label">預計取餐時間</span>
+                            <span class="font-headline sp-pickup-time"
+                                >今日 {{ confirmedPickupTime }}</span
+                            >
+                        </div>
+                        <!-- 下排：取餐人資訊 + 付款 / 取餐方式 -->
+                        <div class="sp-pickup-meta">
+                            <div v-if="confirmedName" class="sp-meta-row">
+                                <span class="font-label sp-meta-label">取餐人</span>
+                                <span class="font-label sp-meta-val">{{ confirmedName }}</span>
+                            </div>
+                            <div v-if="confirmedPhone" class="sp-meta-row">
+                                <span class="font-label sp-meta-label">聯絡電話</span>
+                                <span class="font-label sp-meta-val">{{ confirmedPhone }}</span>
+                            </div>
+                            <div class="sp-meta-row">
+                                <span class="font-label sp-meta-label">付款方式</span>
+                                <span class="font-label sp-meta-val">現場付款</span>
+                            </div>
+                            <div class="sp-meta-row">
+                                <span class="font-label sp-meta-label">取餐方式</span>
+                                <span class="font-label sp-meta-val">臨櫃自取</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 聯絡資訊 -->
+                    <section class="sp-section">
+                        <h3 class="font-label sp-section-title">餐廳聯絡資訊</h3>
+                        <div class="sp-store-info">
+                            <p class="font-body sp-store-addr">台北市大安區慢食街 88 號</p>
+                            <a href="tel:0223456789" class="font-body sp-store-tel"
+                                >Tel: (02) 2345-6789</a
+                            >
+                        </div>
+                    </section>
 
                     <!-- 返回菜單 -->
                     <button @click="onSuccessClose" class="sp-back-btn font-label">返回菜單</button>
@@ -1431,15 +1457,17 @@
                         :key="toast.key"
                         :class="[
                             'notify-toast-card',
-                            toast.type === 'near'
-                                ? 'near'
-                                : toast.type === 'eligible-notify'
-                                  ? 'eligible'
-                                  : toast.type === 'one-event-note'
-                                    ? 'info'
-                                    : toast.type === 'applied-event'
-                                      ? 'applied'
-                                      : 'eligible',
+                            !isLoggedIn
+                                ? 'eligible'
+                                : toast.type === 'near'
+                                  ? 'near'
+                                  : toast.type === 'eligible-notify'
+                                    ? 'eligible'
+                                    : toast.type === 'one-event-note'
+                                      ? 'info'
+                                      : toast.type === 'applied-event'
+                                        ? 'applied'
+                                        : 'eligible',
                         ]"
                     >
                         <button class="notify-toast-close" @click="dismissToast(toast.key)">
@@ -1462,11 +1490,27 @@
                                     toast.ev.title
                                 }}」活動，享 {{ toast.ev.discountDescription }} 優惠！</template
                             >
-                            <template v-else-if="toast.type === 'eligible-notify'"
-                                >恭喜！金額已達門檻，可參加「{{ toast.ev.title }}」活動{{
-                                    toast.ev.summary ? `(${toast.ev.summary})` : ''
-                                }}！（請洽現場服務人員）</template
-                            >
+                            <template v-else-if="toast.type === 'eligible-notify'">
+                                <template v-if="!isLoggedIn">
+                                    恭喜！金額已達活動門檻，<span
+                                        @click="openAuthModal"
+                                        style="
+                                            color: #e3c76b;
+                                            font-weight: 700;
+                                            text-decoration: underline;
+                                            cursor: pointer;
+                                        "
+                                        >登入會員</span
+                                    >即可參加「{{ toast.ev.title }}」活動{{
+                                        toast.ev.summary ? `(${toast.ev.summary})` : ''
+                                    }}！
+                                </template>
+                                <template v-else>
+                                    恭喜！金額已達門檻，可參加「{{ toast.ev.title }}」活動{{
+                                        toast.ev.summary ? `(${toast.ev.summary})` : ''
+                                    }}！（請洽現場服務人員）
+                                </template>
+                            </template>
                             <template v-else-if="toast.type === 'one-event-note'"
                                 >每次用餐能參加一個活動，不得與其他優惠活動合併使用</template
                             >
@@ -1552,10 +1596,19 @@ watch(
 // ── 訂單完成後儲存（成功頁顯示用）─────────────────
 const confirmedPickupTime = ref('')
 const confirmedName = ref('')
+const confirmedPhone = ref('')
 const confirmedTotal = ref(0)
 const confirmedItems = ref([]) // 快照購物車（store.clearOrder 前存入）
 const confirmedNote = ref('')
 const confirmedGift = ref(null)
+const confirmedEventTitle = ref('')
+const confirmedEventDesc = ref('')
+const confirmedEventDiscountType = ref('')   // 'FixedAmount' | 'Percent' | 'Gift' | ''
+const confirmedAutoEventDiscount = ref(0)
+const confirmedCouponCode = ref('')
+const confirmedCouponDiscount = ref(0)
+const confirmedCouponMsg = ref('')
+const confirmedSubtotal = ref(0)             // 餐點原價合計（未含折扣）
 const orderProgress = ref(1) // 動態進度條：1=接收 2=製作中 3=完成
 
 // ── Modal 狀態 ───────────────────────────────────────
@@ -1621,6 +1674,7 @@ const notifyToasts = ref([])
 let _toastKeySeq = 0
 const _nearToastKeys = new Map()
 const _eligibleNotifyKeys = new Map()
+const _guestAutoKeys = new Map()
 let _oneEventNoteKey = null
 let _lastBestEventId = null
 let _appliedEventToastTimer = null
@@ -1654,16 +1708,31 @@ function openAuthModal() {
 }
 
 function reorder(order) {
+    let hasSetMeal = false
     order.items.forEach((item) => {
         const matched = products.value.find((p) => p.productName === item.productName)
-        if (matched) {
+        if (!matched) return
+
+        if (item.isSetMeal && matched.isSetMeal && matched.setMealId) {
+            // 套餐：加入購物車並帶入基本 setMealData（id 必須有值，讓點擊後可開啟編輯選單）
+            // fixedItems / selectedOptions 留空，提示使用者點擊確認內容
+            hasSetMeal = true
+            for (let i = 0; i < item.qty; i++) {
+                store.addSetMeal(matched.productId, matched.unitPrice, item.note || '', {
+                    id: matched.setMealId,
+                    name: matched.productName,
+                    fixedItems: [],
+                    selectedOptions: [],
+                })
+            }
+        } else {
             for (let i = 0; i < item.qty; i++) {
                 store.addItem(matched.productId, item.note || '')
             }
         }
     })
     activeSidebarCat.value = '全部'
-    showToast('已加入購物車')
+    showToast(hasSetMeal ? '已加入購物車（套餐請點擊確認內容）' : '已加入購物車')
 }
 
 // ── Toast ────────────────────────────────────────────
@@ -1828,9 +1897,19 @@ async function fetchActiveEvents() {
         notifyEvents.value = data.notifyEvents ?? []
         nearAutoEvents.value = data.nearAutoEvents ?? []
 
+        const autoIdSet = new Set(autoEvents.value.map((e) => e.id))
         const nearAutoIdSet = new Set(nearAutoEvents.value.map((e) => e.id))
         const hasBest = !!bestAutoEvent.value
 
+        // ── 清除失效的訪客 autoEvent toast（已登入 or 事件已失效）──
+        for (const [id, key] of _guestAutoKeys) {
+            if (!autoIdSet.has(id) || isLoggedIn.value) {
+                dismissToast(key)
+                _guestAutoKeys.delete(id)
+            }
+        }
+
+        // ── 清除失效的差額 toast（事件不再差額≤100）──
         for (const [id, key] of _nearToastKeys) {
             const stillNearAuto = nearAutoIdSet.has(id)
             const stillNearNotify = notifyEvents.value.some(
@@ -1841,6 +1920,8 @@ async function fetchActiveEvents() {
                 _nearToastKeys.delete(id)
             }
         }
+
+        // ── 清除失效的 eligible-notify toast ──
         for (const [id, key] of _eligibleNotifyKeys) {
             const stillEligible = notifyEvents.value.some((e) => e.id === id && e.isEligible)
             if (!stillEligible || hasBest) {
@@ -1848,16 +1929,30 @@ async function fetchActiveEvents() {
                 _eligibleNotifyKeys.delete(id)
             }
         }
+
         if (!hasBest && _oneEventNoteKey !== null) {
             dismissToast(_oneEventNoteKey)
             _oneEventNoteKey = null
         }
 
+        // ── 0. 訪客：autoEvents 達門檻 → eligible-notify toast（含登入連結）──
+        if (!isLoggedIn.value) {
+            autoEvents.value.forEach((ev) => {
+                if (!_guestAutoKeys.has(ev.id)) {
+                    const key = pushToast(ev, { persistent: true, type: 'eligible-notify' })
+                    _guestAutoKeys.set(ev.id, key)
+                }
+            })
+        }
+
+        // ── 1. nearAutoEvents（差額≤100）→ 差額 toast ──
         nearAutoEvents.value.forEach((ev) => {
             if (!_nearToastKeys.has(ev.id)) {
                 _nearToastKeys.set(ev.id, pushToast(ev, { persistent: true, type: 'near' }))
             }
         })
+
+        // ── 2. notifyEvents（IsAutoDiscount=0）──
         notifyEvents.value.forEach((ev) => {
             const gap = ev.minSpend - total.value
             if (ev.isEligible) {
@@ -1866,7 +1961,7 @@ async function fetchActiveEvents() {
                     dismissToast(nearKey)
                     _nearToastKeys.delete(ev.id)
                 }
-                if (!hasBest && !_eligibleNotifyKeys.has(ev.id)) {
+                if ((!hasBest || !isLoggedIn.value) && !_eligibleNotifyKeys.has(ev.id)) {
                     _eligibleNotifyKeys.set(
                         ev.id,
                         pushToast(ev, { persistent: true, type: 'eligible-notify' })
@@ -1876,6 +1971,8 @@ async function fetchActiveEvents() {
                 _nearToastKeys.set(ev.id, pushToast(ev, { persistent: true, type: 'near' }))
             }
         })
+
+        // ── 3. bestAutoEvent 存在且有其他符合活動 → 「一個活動限制」提示 ──
         const hasOtherEligible =
             notifyEvents.value.some((e) => e.isEligible) || autoEvents.value.length > 1
         if (hasBest && hasOtherEligible && _oneEventNoteKey === null) {
@@ -1899,6 +1996,7 @@ watch(total, (val) => {
         notifyToasts.value = []
         _nearToastKeys.clear()
         _eligibleNotifyKeys.clear()
+        _guestAutoKeys.clear()
         _oneEventNoteKey = null
         giftCartItem.value = null
         _lastBestEventId = null
@@ -1920,10 +2018,10 @@ watch(bestAutoEvent, (newEv) => {
     const newId = newEv?.id ?? null
     if (newId !== _lastBestEventId) {
         _lastBestEventId = newId
-        if (newEv) {
+        if (newEv && isLoggedIn.value) {
             clearTimeout(_appliedEventToastTimer)
             const key = pushToast(newEv, { persistent: false, type: 'applied-event' })
-            _appliedEventToastTimer = setTimeout(() => dismissToast(key), 3000)
+            _appliedEventToastTimer = setTimeout(() => dismissToast(key), 2000)
         }
     }
 })
@@ -2175,6 +2273,7 @@ async function submitOrder() {
         orderNumber.value = data.orderNumber
         confirmedPickupTime.value = pickupTime.value
         confirmedName.value = customerName.value
+        confirmedPhone.value = customerPhone.value
         confirmedTotal.value = finalTotal.value
         confirmedNote.value = store.specialRequest || ''
         // 快照購物車（store.clearOrder 前存入，否則資料消失）
@@ -2183,6 +2282,29 @@ async function submitOrder() {
             setMealData: item.setMealData ? JSON.parse(JSON.stringify(item.setMealData)) : null,
         }))
         confirmedGift.value = giftCartItem.value ? { ...giftCartItem.value } : null
+
+        // 快照活動 / 優惠券（store.clearOrder & resetCoupon 前存入）
+        confirmedSubtotal.value = total.value
+        if (isLoggedIn.value && bestAutoEvent.value) {
+            confirmedEventTitle.value = bestAutoEvent.value.title
+            confirmedEventDesc.value = bestAutoEvent.value.discountDescription
+            confirmedEventDiscountType.value = bestAutoEvent.value.discountType ?? ''
+            confirmedAutoEventDiscount.value = autoEventDiscount.value
+        } else {
+            confirmedEventTitle.value = ''
+            confirmedEventDesc.value = ''
+            confirmedEventDiscountType.value = ''
+            confirmedAutoEventDiscount.value = 0
+        }
+        if (couponOk.value && couponDiscount.value > 0) {
+            confirmedCouponCode.value = couponCode.value
+            confirmedCouponDiscount.value = couponDiscount.value
+            confirmedCouponMsg.value = couponMsg.value
+        } else {
+            confirmedCouponCode.value = ''
+            confirmedCouponDiscount.value = 0
+            confirmedCouponMsg.value = ''
+        }
 
         store.clearOrder()
         resetCoupon()
@@ -2211,6 +2333,14 @@ function onSuccessClose() {
     customerPhone.value = ''
     confirmedItems.value = []
     confirmedGift.value = null
+    confirmedEventTitle.value = ''
+    confirmedEventDesc.value = ''
+    confirmedEventDiscountType.value = ''
+    confirmedAutoEventDiscount.value = 0
+    confirmedCouponCode.value = ''
+    confirmedCouponDiscount.value = 0
+    confirmedCouponMsg.value = ''
+    confirmedSubtotal.value = 0
     orderProgress.value = 1
     window.scrollTo({ top: 0 })
 }
@@ -2242,6 +2372,8 @@ watch(isLoggedIn, (loggedIn) => {
         loadFavorites()
         loadOrderHistory()
         loadMyCoupons()
+        // 登入後重新 fetch：清掉訪客 toast、改以會員身分計算活動
+        if (total.value > 0) fetchActiveEvents()
     } else {
         favoriteProducts.value = []
         orderHistory.value = []
@@ -2426,7 +2558,10 @@ onMounted(async () => {
     letter-spacing: 0.1em;
     text-decoration: none;
     cursor: pointer;
-    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    transition:
+        background 0.2s,
+        color 0.2s,
+        border-color 0.2s;
     white-space: nowrap;
 }
 .lookup-trigger-btn:hover {
@@ -3016,6 +3151,31 @@ onMounted(async () => {
     align-items: center;
     font-size: 0.9rem;
 }
+/* 三欄列：標籤 | 名稱（彈性） | 金額 */
+.confirm-total-row-3 {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.9rem;
+}
+.confirm-total-row-3 .confirm-dim {
+    flex-shrink: 0;
+    min-width: 3rem;
+}
+.confirm-mid {
+    flex: 1;
+    color: #f9ddd3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.confirm-green {
+    flex-shrink: 0;
+    color: #7ec87e;
+}
+.confirm-dim {
+    color: rgba(208, 197, 181, 0.6);
+}
 .confirm-grand {
     border-top: 1px solid rgba(77, 70, 58, 0.3);
     padding-top: 0.6rem;
@@ -3079,13 +3239,13 @@ onMounted(async () => {
     gap: 0.15rem;
 }
 .sp-order-num-label {
-    font-size: 0.72rem;
+    font-size: 0.9rem;
     letter-spacing: 0.18em;
     color: rgba(208, 197, 181, 0.45);
 }
 .sp-order-num-val {
     font-family: 'Work Sans', sans-serif;
-    font-size: 1.1rem;
+    font-size: 1.5rem;
     letter-spacing: 0.15em;
     color: #f9ddd3;
     font-weight: 600;
@@ -3167,12 +3327,12 @@ onMounted(async () => {
     display: grid;
     grid-template-columns: 1fr 0.72fr;
     gap: 1.25rem;
-    align-items: start;
+    align-items: stretch; /* 兩欄等高 */
 }
 .sp-col-left {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    min-height: 0; /* 讓 flex 子元素可以收縮 */
 }
 .sp-col-right {
     display: flex;
@@ -3186,6 +3346,33 @@ onMounted(async () => {
     border: 1px solid rgba(77, 70, 58, 0.45);
     border-radius: 0.6rem;
     padding: 1.4rem 1.4rem 1.1rem;
+}
+
+/* 左欄的 section 撐滿整欄高度，items 區域可捲動 */
+.sp-col-left .sp-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+.sp-col-left .sp-items {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    /* 細緻捲軸 */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(180, 120, 30, 0.35) transparent;
+}
+.sp-col-left .sp-items::-webkit-scrollbar {
+    width: 4px;
+}
+.sp-col-left .sp-items::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sp-col-left .sp-items::-webkit-scrollbar-thumb {
+    background: rgba(180, 120, 30, 0.35);
+    border-radius: 2px;
 }
 .sp-section-title {
     font-size: 0.75rem;
@@ -3253,6 +3440,35 @@ onMounted(async () => {
     align-items: center;
     font-size: 0.95rem;
 }
+/* 三欄列：標籤 | 名稱（彈性） | 金額 */
+.sp-meta-row-3 {
+    display: flex;
+    align-items: center;
+    font-size: 0.95rem;
+    gap: 0.5rem;
+}
+.sp-meta-row-3 .sp-meta-label {
+    flex-shrink: 0;
+    min-width: 3.2rem;
+}
+.sp-meta-val-mid {
+    flex: 1;
+    color: #f9ddd3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.sp-meta-discount {
+    flex-shrink: 0;
+    color: #7ec87e;
+}
+/* 贈品活動來源標註 */
+.sp-gift-event-note {
+    font-size: 0.78rem;
+    color: rgba(126, 200, 126, 0.75);
+    padding: 0.25rem 0.5rem;
+    letter-spacing: 0.03em;
+}
 .sp-meta-label {
     color: rgba(208, 197, 181, 0.5);
 }
@@ -3271,8 +3487,23 @@ onMounted(async () => {
     border-radius: 0.5rem;
     padding: 1rem 1.25rem;
     display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+/* 上排：標籤左、時間右 */
+.sp-pickup-top {
+    display: flex;
     align-items: center;
     justify-content: space-between;
+}
+/* 下排：付款方式 / 取餐方式 */
+.sp-pickup-meta {
+    border-top: 1px solid rgba(227, 199, 107, 0.12);
+    margin-top: 0.7rem;
+    padding-top: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
 }
 .sp-pickup-label {
     font-size: 0.82rem;
@@ -3366,6 +3597,15 @@ onMounted(async () => {
     }
     .sp-body {
         grid-template-columns: 1fr;
+        align-items: start; /* 手機單欄時還原自然高度 */
+    }
+    /* 手機版：左欄 section 改回自動高度，items 不捲動 */
+    .sp-col-left .sp-section {
+        flex: unset;
+        overflow: visible;
+    }
+    .sp-col-left .sp-items {
+        overflow-y: visible;
     }
     .sp-prog-step {
         min-width: 72px;

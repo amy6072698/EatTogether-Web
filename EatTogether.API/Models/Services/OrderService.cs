@@ -6,6 +6,7 @@ using EatTogether.Models.Repositories;
 using EatTogether.Models.ViewModels;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace EatTogether.Models.Services
 {
@@ -224,19 +225,19 @@ namespace EatTogether.Models.Services
                 DoneOrCancel = 0
             }).ToList();
 
-            // 組備註 JSON
+            // 組備註 JSON（同名品項備註以第一筆為準，避免 ToDictionary 重複鍵例外）
             var itemNotes = dto.Items
                 .Where(i => !string.IsNullOrWhiteSpace(i.Note) && !i.ParentIndex.HasValue)
-                .ToDictionary(i => i.ProductName, i => i.Note!);
+                .GroupBy(i => i.ProductName)
+                .ToDictionary(g => g.Key, g => g.First().Note!);
 
-            var noteJson = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                order        = dto.Note ?? "",
-                items        = itemNotes,
-                customerName  = dto.CustomerName,
-                customerPhone = dto.CustomerPhone,
-                pickupTime    = dto.PickupTime
-            });
+            var noteJson = OrderNoteHelper.Build(
+                orderNote:    dto.Note,
+                itemNotes:    itemNotes,
+                customerName:  dto.CustomerName,
+                customerPhone: dto.CustomerPhone,
+                pickupTime:    dto.PickupTime
+            );
 
             var preOrder = new PreOrder
             {
@@ -1698,32 +1699,27 @@ namespace EatTogether.Models.Services
             var orders = await _orderRepo.GetRecentByMemberIdAsync(memberId);
             return orders.Select(o =>
             {
-                // 解析備註 JSON
-                var itemNotes = new Dictionary<string, string>();
-                var orderNote = "";
-                if (!string.IsNullOrEmpty(o.PreOrder?.Note))
-                {
-                    try
-                    {
-                        var json = JsonSerializer.Deserialize<JsonElement>(o.PreOrder.Note);
-                        orderNote = json.TryGetProperty("order", out var on) ? on.GetString() ?? "" : "";
-                        if (json.TryGetProperty("items", out var items))
-                            foreach (var kv in items.EnumerateObject())
-                                itemNotes[kv.Name] = kv.Value.GetString() ?? "";
-                    }
-                    catch { }
-                }
+                // 解析備註 JSON（使用 OrderNoteHelper 統一處理）
+                var noteDto = OrderNoteHelper.Parse(o.PreOrder?.Note);
+
+                // 統一使用 PreOrderDetails 作為品項來源（含 IsSetMeal / ParentDetailId 等完整欄位）
+                // 只取父項目（ParentDetailId == null）且未取消（DoneOrCancel != 2）
+                var itemSource = (o.PreOrder?.PreOrderDetails ?? Enumerable.Empty<PreOrderDetail>())
+                    .Where(d => d.DoneOrCancel != 2 && !d.ParentDetailId.HasValue)
+                    .OrderBy(d => d.Id)
+                    .ToList();
 
                 return new MemberOrderHistoryDto
                 {
                     OrderNumber = o.OrderNumber,
                     OrderAt = o.OrderAt,
-                    OrderNote = orderNote,
-                    Items = o.OrderDetails.Select(d => new MemberOrderItemDto
+                    OrderNote = noteDto.Order ?? "",
+                    Items = itemSource.Select(d => new MemberOrderItemDto
                     {
                         ProductName = d.ProductName,
                         Qty = d.Qty,
-                        Note = itemNotes.TryGetValue(d.ProductName, out var n) ? n : null,
+                        IsSetMeal = d.IsSetMeal,
+                        Note = noteDto.Items?.GetValueOrDefault(d.ProductName),
                     }).ToList()
                 };
             }).ToList();
@@ -1746,6 +1742,17 @@ namespace EatTogether.Models.Services
             foreach (var p in todayTakeout)
             {
                 var note = OrderNoteHelper.Parse(p.Note);
+
+                // 舊格式備註（純文字）fallback：從 Order 欄位解析取餐人/電話/時間
+                if (string.IsNullOrEmpty(note.CustomerName) && !string.IsNullOrEmpty(note.Order))
+                {
+                    var nameM  = Regex.Match(note.Order, @"取餐人[：:]\s*(\S+)");
+                    var phoneM = Regex.Match(note.Order, @"聯絡電話[：:]\s*(\S+)");
+                    var timeM  = Regex.Match(note.Order, @"取餐時間[：:]\s*(\S+)");
+                    if (nameM.Success)  note.CustomerName  = nameM.Groups[1].Value;
+                    if (phoneM.Success) note.CustomerPhone = phoneM.Groups[1].Value;
+                    if (timeM.Success)  note.PickupTime    = timeM.Groups[1].Value;
+                }
 
                 bool match = type switch
                 {
@@ -1777,6 +1784,7 @@ namespace EatTogether.Models.Services
                         Qty         = g.Count(),
                         UnitPrice   = g.Key.SubTotal,
                         IsSetMeal   = g.Key.IsSetMeal,
+                        IsGift      = g.Key.SubTotal == 0 && !g.Key.IsSetMeal,
                         ItemNote    = note.Items?.GetValueOrDefault(g.Key.ProductName),
                         SubItems    = g.Key.IsSetMeal
                             ? g.SelectMany(d => childrenByParent.TryGetValue(d.Id, out var ch) ? ch : new())
@@ -1785,15 +1793,36 @@ namespace EatTogether.Models.Services
                     })
                     .ToList();
 
+                // 計算活動折扣金額
+                int eventDiscount = 0;
+                if (p.Event != null)
+                {
+                    if (p.Event.DiscountType == "FixedAmount")
+                        eventDiscount = (int)p.Event.DiscountValue;
+                    else if (p.Event.DiscountType == "Percent")
+                        eventDiscount = (int)Math.Floor(p.OriginalAmount * (1.0 - (double)p.Event.DiscountValue));
+                    // Gift → 0
+                }
+
+                // 優惠券折扣 = 總折扣 − 活動折扣
+                int couponDiscount = Math.Max(0, p.DiscountAmount - eventDiscount);
+
                 results.Add(new OrderLookupResultDto
                 {
-                    OrderNumber   = p.OrderNumber,
-                    CustomerName  = note.CustomerName  ?? "",
-                    CustomerPhone = note.CustomerPhone ?? "",
-                    PickupTime    = note.PickupTime    ?? "",
-                    TotalAmount   = p.TotalAmount,
-                    Note          = note.Order         ?? "",
-                    Items         = grouped
+                    OrderNumber      = p.OrderNumber,
+                    CustomerName     = note.CustomerName  ?? "",
+                    CustomerPhone    = note.CustomerPhone ?? "",
+                    PickupTime       = note.PickupTime    ?? "",
+                    Subtotal         = p.OriginalAmount,
+                    DiscountAmount   = p.DiscountAmount,
+                    TotalAmount      = p.TotalAmount,
+                    Note             = note.Order         ?? "",
+                    EventTitle       = p.Event?.Title,
+                    EventDiscountType= p.Event?.DiscountType,
+                    EventDiscount    = eventDiscount,
+                    CouponCode       = p.Coupon?.Code,
+                    CouponDiscount   = p.CouponId != null ? couponDiscount : 0,
+                    Items            = grouped
                 });
             }
 
