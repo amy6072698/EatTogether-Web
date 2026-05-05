@@ -21,6 +21,11 @@ namespace EatTogether.API.Models.Infra
 		// ── 優惠券相關 ──
 		Task SendCouponExpiryNotifyAsync(string toEmail, string name,
 			string couponName, string code, DateTime endDate);
+
+		// ── 限定餐點提醒 ──
+		Task SendLimitedReminderAsync(string toEmail, string memberName,
+			string dishName, DateOnly endDate,
+			string imageUrl = null, string description = null, decimal? price = null);
 	}
 
 	public class EmailService : IEmailService
@@ -237,6 +242,43 @@ namespace EatTogether.API.Models.Infra
         </tr>
     </table>
     <p>期待您的光臨，義起吃全體員工敬上。</p>
+    <p style=""color:#888;font-size:13px;"">義起吃 | 義式料理</p>
+</div>";
+
+			using var smtp = BuildSmtpClient();
+			using var message = BuildMailMessage(toEmail, subject, body);
+			await smtp.SendMailAsync(message);
+		}
+
+		// 寄出限定餐點到期提醒信
+		public async Task SendLimitedReminderAsync(string toEmail, string memberName,
+			string dishName, DateOnly endDate,
+			string imageUrl = null, string description = null, decimal? price = null)
+		{
+			const string subject = "【義起吃】您關注的限定餐點即將到期";
+
+			var imageSection = !string.IsNullOrWhiteSpace(imageUrl)
+				? $@"<img src=""{imageUrl}"" alt=""{dishName}""
+                     style=""width:100%;max-width:500px;border-radius:8px;margin:12px 0;display:block;"" />"
+				: string.Empty;
+
+			var descSection = !string.IsNullOrWhiteSpace(description)
+				? $@"<p style=""color:#555;font-size:14px;line-height:1.6;margin:8px 0;"">{description}</p>"
+				: string.Empty;
+
+			var priceSection = price.HasValue
+				? $@"<p style=""font-size:18px;font-weight:bold;color:#c0392b;margin:8px 0;"">NT$ {price.Value:N0}</p>"
+				: string.Empty;
+
+			var body = $@"
+<div style=""font-family:sans-serif;max-width:600px;margin:auto;"">
+    <h2 style=""color:#c0392b;"">義起吃 | 義式料理</h2>
+    <p>親愛的 {memberName}，</p>
+    <p>您訂閱提醒的限定餐點「<strong>{dishName}</strong>」<br>
+       將於明天（<strong>{endDate:yyyy/MM/dd}</strong>）到期，把握最後機會！</p>
+    {imageSection}
+    {descSection}
+    {priceSection}
     <p style=""color:#888;font-size:13px;"">義起吃 | 義式料理</p>
 </div>";
 

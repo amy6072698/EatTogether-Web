@@ -1,7 +1,7 @@
 ﻿using EatTogether.API.Models.Repositories;
 using EatTogether.Models.DTOs;
 
-namespace EatTogether.Models.Services
+namespace EatTogether.API.Models.Services
 {
 	public class CategoryService
 	{
