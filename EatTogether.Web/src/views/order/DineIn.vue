@@ -590,7 +590,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="feather-divider my-5"></div>
+                            <div class="feather-divider"></div>
                         </div>
                     </template>
 
@@ -833,92 +833,56 @@
                                 placeholder="備註：過敏食材、特殊需求…"
                             ></textarea>
 
-                            <!-- 訪客：已符合門檻的自動活動 → 登入即享提示 -->
-                            <div
-                                v-if="total > 0 && !isLoggedIn && autoEvents.length"
-                                class="notify-events"
-                            >
-                                <div
-                                    v-for="ev in autoEvents"
-                                    :key="'guest-auto-' + ev.id"
-                                    class="notify-event-card eligible guest-login-hint"
-                                >
-                                    <div class="notify-event-top">
-                                        <span class="notify-event-icon">⭐</span>
-                                        <span class="font-label notify-event-title">{{
-                                            ev.title
-                                        }}</span>
-                                        <span class="notify-event-badge font-label eligible-badge"
-                                            >已符合門檻</span
+                            <!-- 通知型活動（IsAutoDiscount=0）→ 改用 Toast 通知，見下方 Teleport -->
+
+                            <!-- 優惠券：已登入顯示下拉，未登入顯示文字輸入 -->
+                            <div style="margin-top: 0.5rem">
+                                <!-- 已登入：下拉選已領優惠券 -->
+                                <template v-if="isLoggedIn">
+                                    <select
+                                        v-model="selectedCouponCode"
+                                        @change="onCouponSelect"
+                                        class="coupon-select font-body"
+                                    >
+                                        <option value="">— 選擇優惠券 —</option>
+                                        <option
+                                            v-for="c in availableCoupons"
+                                            :key="c.id"
+                                            :value="c.code"
                                         >
-                                    </div>
-                                    <p class="font-body notify-event-desc">
-                                        登入即享限時優惠：{{ ev.discountDescription }}
+                                            {{ c.couponName }}｜{{ c.discountDescription }}
+                                            <template v-if="c.endDate">
+                                                （{{
+                                                    new Date(c.endDate).toLocaleDateString('zh-TW')
+                                                }}
+                                                到期）
+                                            </template>
+                                        </option>
+                                        <!-- 最後一項：導到優惠券專區 -->
+                                        <option value="__coupons__" class="coupon-goto-option">
+                                            ✦ 查看更多優惠券 →
+                                        </option>
+                                    </select>
+                                    <p
+                                        v-if="couponMsg"
+                                        class="font-label mb-0"
+                                        style="font-size: 0.7rem; margin-top: 0.25rem"
+                                        :style="{ color: couponOk ? '#a3d977' : '#ffb4ab' }"
+                                    >
+                                        {{ couponMsg }}
                                     </p>
-                                </div>
-                            </div>
+                                </template>
 
-                            <!-- 快到門檻提示（差額 ≤ 100 的自動活動） -->
-                            <div v-if="total > 0 && nearAutoEvents.length" class="notify-events">
-                                <div
-                                    v-for="ev in nearAutoEvents"
-                                    :key="'near-' + ev.id"
-                                    class="notify-event-card near-threshold"
-                                >
-                                    <div class="notify-event-top">
-                                        <span class="notify-event-icon">🔥</span>
-                                        <span class="font-label notify-event-title">{{
-                                            ev.title
-                                        }}</span>
-                                        <span class="notify-event-badge font-label near-badge">
-                                            差 NT${{ ev.minSpend - total }}
-                                        </span>
-                                    </div>
-                                    <p class="font-body notify-event-desc">
-                                        再消費 NT${{ ev.minSpend - total }} 即可享{{
-                                            isLoggedIn ? '' : '（登入後）'
-                                        }}限時優惠：{{ ev.discountDescription }}
-                                    </p>
-                                </div>
+                                <!-- 未登入：提示登入才能使用優惠券 -->
+                                <template v-else>
+                                    <button
+                                        @click="openAuthModal"
+                                        class="font-label coupon-login-btn"
+                                    >
+                                        立即登入會員享優惠
+                                    </button>
+                                </template>
                             </div>
-
-                            <!-- 通知型活動（IsAutoDiscount=0）→ 改用 Modal 通知，見下方 Teleport -->
-
-                            <!-- 優惠券輸入 -->
-                            <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem">
-                                <input
-                                    v-model="couponCode"
-                                    type="text"
-                                    class="input-line font-body"
-                                    style="flex: 1; font-size: 0.85rem"
-                                    placeholder="輸入優惠券代碼"
-                                />
-                                <button
-                                    @click="applyCoupon"
-                                    class="font-label"
-                                    style="
-                                        padding: 0.4rem 0.75rem;
-                                        background: transparent;
-                                        border: 1px solid rgba(227, 199, 107, 0.5);
-                                        color: #e3c76b;
-                                        border-radius: 0.25rem;
-                                        font-size: 0.75rem;
-                                        letter-spacing: 0.1em;
-                                        cursor: pointer;
-                                        white-space: nowrap;
-                                    "
-                                >
-                                    套用
-                                </button>
-                            </div>
-                            <p
-                                v-if="couponMsg"
-                                class="font-label mb-0"
-                                style="font-size: 0.7rem; margin-top: 0.25rem"
-                                :style="{ color: couponOk ? '#a3d977' : '#ffb4ab' }"
-                            >
-                                {{ couponMsg }}
-                            </p>
                         </div>
                         <div
                             style="
@@ -1057,12 +1021,7 @@
         <!-- ── 手機底部列 ── -->
         <div class="mobile-bottom-bar" @click="orderPanelOpen = true">
             <div class="flex items-center gap-3">
-                <span class="bottom-badge">{{ store.totalItems }}</span>
-                <span
-                    class="font-label text-xs tracking-widest uppercase"
-                    style="color: rgba(208, 197, 181, 0.7)"
-                    >查看訂單</span
-                >
+                <span class="bottom-badge font-label">共 {{ store.totalItems }} 項</span>
             </div>
             <div class="flex items-center gap-3">
                 <span
@@ -1122,9 +1081,25 @@
                                 }}」活動，享 {{ toast.ev.discountDescription }} 優惠！
                             </template>
                             <template v-else-if="toast.type === 'eligible-notify'">
-                                恭喜！金額已達門檻，可參加「{{ toast.ev.title }}」活動{{
-                                    toast.ev.summary ? `(${toast.ev.summary})` : ''
-                                }}！（請洽現場服務人員）
+                                <template v-if="!isLoggedIn">
+                                    恭喜！金額已達活動門檻，<span
+                                        @click="openAuthModal"
+                                        style="
+                                            color: #e3c76b;
+                                            font-weight: 700;
+                                            text-decoration: underline;
+                                            cursor: pointer;
+                                        "
+                                        >登入會員</span
+                                    >即可參加「{{ toast.ev.title }}」活動{{
+                                        toast.ev.summary ? `(${toast.ev.summary})` : ''
+                                    }}！
+                                </template>
+                                <template v-else>
+                                    恭喜！金額已達門檻，可參加「{{ toast.ev.title }}」活動{{
+                                        toast.ev.summary ? `(${toast.ev.summary})` : ''
+                                    }}！（請洽現場服務人員）
+                                </template>
                             </template>
                             <template v-else-if="toast.type === 'one-event-note'">
                                 每次用餐能參加一個活動，不得與其他優惠活動合併使用
@@ -1214,13 +1189,19 @@
             "
         >
             <div
-                class="px-5 py-3 shadow-xl flex items-center gap-3"
-                style="background: #362620; border: 1px solid rgba(77, 70, 58, 0.4)"
+                class="px-4 py-3 shadow-xl flex items-center gap-3"
+                style="
+                    background: #362620;
+                    border: 1px solid rgba(77, 70, 58, 0.4);
+                    width: min(340px, 88vw);
+                "
             >
                 <span style="color: #e3c76b">+</span>
-                <span class="font-label text-xs tracking-widest uppercase" style="color: #f9ddd3">{{
-                    toastMsg
-                }}</span>
+                <span
+                    class="font-label text-xs tracking-widest uppercase"
+                    style="color: #f9ddd3; font-size: 1rem"
+                    >{{ toastMsg }}</span
+                >
             </div>
         </div>
     </div>
@@ -1276,7 +1257,7 @@ const tableNameFromUrl = route.query.table || '' // e.g. "B3"
 
 // ── 身份驗證（使用全域 authStore）
 const memberDropdownOpen = ref(false)
-const authModalVisible = ref(true) // 進入頁面一律先顯示（選擇登入 or 訪客）
+const authModalVisible = ref(!authStore.isLoggedIn) // 已登入則直接跳過
 const isLoggedIn = computed(() => authStore.isLoggedIn)
 const memberName = computed(() => authStore.member?.name || '訪客')
 const currentMemberId = computed(() => authStore.member?.id ?? null)
@@ -1307,12 +1288,43 @@ const couponOk = ref(false)
 const couponId = ref(null)
 const couponDiscount = ref(0) // 實際折扣金額
 
+// 已領優惠券下拉選單
+const myCoupons = ref([])
+const selectedCouponCode = ref('')
+
+// 只顯示未使用且未過期的券
+const availableCoupons = computed(() => myCoupons.value.filter((c) => !c.isUsed && !c.isExpired))
+
+async function loadMyCoupons() {
+    try {
+        const res = await apiFetch('/Coupons/My')
+        if (res.ok) myCoupons.value = await res.json()
+    } catch {}
+}
+
+// 下拉選單選擇優惠券時自動套用；選到特殊項目時導頁
+async function onCouponSelect() {
+    if (selectedCouponCode.value === '__coupons__') {
+        // 導到優惠券專區，同時把 select 重設避免殘留
+        selectedCouponCode.value = ''
+        window.location.href = '/coupons'
+        return
+    }
+    if (!selectedCouponCode.value) {
+        resetCoupon()
+        return
+    }
+    couponCode.value = selectedCouponCode.value
+    await applyCoupon()
+}
+
 function resetCoupon() {
     couponCode.value = ''
     couponMsg.value = ''
     couponOk.value = false
     couponId.value = null
     couponDiscount.value = 0
+    selectedCouponCode.value = ''
 }
 
 function clearAll() {
@@ -1366,22 +1378,33 @@ function onGuestOrder() {
 }
 
 // ── 登入狀態變化時，自動載入收藏 / 歷史訂單
-// 不用 immediate：Modal 由 ref(true) 控制一律顯示，登入成功後再關閉
 watch(isLoggedIn, (loggedIn) => {
     if (loggedIn) {
         authModalVisible.value = false // 登入成功 → 關閉選擇 Modal
         loadFavorites()
         loadOrderHistory()
+        loadMyCoupons()
+        // 登入後重新 fetch：清掉訪客 toast、改以會員身分計算活動
+        if (total.value > 0) fetchActiveEvents()
     } else {
         favoriteProducts.value = []
         orderHistory.value = []
-        // 登出後重新顯示選擇 Modal（下次進入頁面）
+        myCoupons.value = []
+        resetCoupon()
     }
 })
 
 // ── 此頁為全螢幕版面，移除全域 body padding（Navbar 已隱藏）──
 onMounted(async () => {
     document.body.style.paddingTop = '0'
+
+    // 路由守衛已 await checkAuth()，此時 isLoggedIn 已確定
+    // watch(isLoggedIn) 不會再次觸發（無值變化），需在此明確呼叫
+    if (isLoggedIn.value) {
+        loadFavorites()
+        loadOrderHistory()
+        loadMyCoupons()
+    }
 
     try {
         const [menuRes, tablesRes] = await Promise.all([
@@ -1446,7 +1469,7 @@ function resolveImage(url) {
 const CATEGORY_ORDER = ['套餐', '主餐', '湯品', '甜點', '附餐', '飲料']
 
 const sidebarCategories = computed(() => {
-    // ── 特殊分類（依資料有無顯示）──
+    // ── 特殊分類（今日推薦/主廚特選依資料有無顯示；會員專區登入即顯示）──
     const specials = [
         {
             key: '今日推薦',
@@ -1458,9 +1481,16 @@ const sidebarCategories = computed(() => {
             label: '主廚特選',
             count: products.value.filter((p) => p.isPopular).length,
         },
-        { key: '我的收藏', label: '我的收藏', count: favoriteProducts.value.length },
-        { key: '歷史訂單', label: '歷史訂單', count: orderHistory.value.length },
     ].filter((s) => s.count > 0)
+
+    // 我的收藏 / 歷史訂單：資料非同步載入，不能用 count > 0 過濾，
+    // 否則第一次計算時 count 為 0 會被永遠過濾掉
+    if (isLoggedIn.value) {
+        specials.push(
+            { key: '我的收藏', label: '我的收藏', count: favoriteProducts.value.length },
+            { key: '歷史訂單', label: '歷史訂單', count: orderHistory.value.length }
+        )
+    }
 
     // ── 一般分類 ──
     const map = new Map()
@@ -1579,6 +1609,7 @@ const _nearToastKeys = new Map() // ev.id → key（差額提示）
 const _eligibleNotifyKeys = new Map() // ev.id → key（IsAutoDiscount=0 達門檻）
 let _oneEventNoteKey = null // 「一個活動限制」提示 key
 let _lastBestEventId = null // 上次 bestAutoEvent 的 id（避免重複推 toast）
+const _guestAutoKeys = new Map() // ev.id → key（訪客 autoEvents 達門檻通知）
 let _appliedEventToastTimer = null // applied-event toast 自動消失計時器
 
 function dismissToast(key) {
@@ -1617,6 +1648,14 @@ async function fetchActiveEvents() {
         const nearAutoIdSet = new Set(nearAutoEvents.value.map((e) => e.id))
         const hasBest = !!bestAutoEvent.value
 
+        // ── 清除失效的訪客 autoEvent toast（已登入 or 事件已失效）──
+        for (const [id, key] of _guestAutoKeys) {
+            if (!autoIdSet.has(id) || isLoggedIn.value) {
+                dismissToast(key)
+                _guestAutoKeys.delete(id)
+            }
+        }
+
         // ── 清除失效的差額 toast（事件已達門檻 or 差額回到>100）──
         for (const [id, key] of _nearToastKeys) {
             const stillNearAuto = nearAutoIdSet.has(id)
@@ -1642,6 +1681,16 @@ async function fetchActiveEvents() {
         if (!hasBest && _oneEventNoteKey !== null) {
             dismissToast(_oneEventNoteKey)
             _oneEventNoteKey = null
+        }
+
+        // ── 0. 訪客：autoEvents 達門檻 → eligible-notify toast（取代 inline 卡片）──
+        if (!isLoggedIn.value) {
+            autoEvents.value.forEach((ev) => {
+                if (!_guestAutoKeys.has(ev.id)) {
+                    const key = pushToast(ev, { persistent: true, type: 'eligible-notify' })
+                    _guestAutoKeys.set(ev.id, key)
+                }
+            })
         }
 
         // ── 1. nearAutoEvents（IsAutoDiscount=1，差額≤100）→ 差額 toast ──
@@ -1698,6 +1747,7 @@ watch(total, (val) => {
         notifyToasts.value = []
         _nearToastKeys.clear()
         _eligibleNotifyKeys.clear()
+        _guestAutoKeys.clear()
         _oneEventNoteKey = null
         giftCartItem.value = null
         _lastBestEventId = null
@@ -1724,7 +1774,7 @@ watch(bestAutoEvent, (newEv) => {
     const newId = newEv?.id ?? null
     if (newId !== _lastBestEventId) {
         _lastBestEventId = newId
-        if (newEv) {
+        if (newEv && isLoggedIn.value) {
             clearTimeout(_appliedEventToastTimer)
             const key = pushToast(newEv, { persistent: false, type: 'applied-event' })
             _appliedEventToastTimer = setTimeout(() => dismissToast(key), 2000)
@@ -1886,7 +1936,7 @@ async function submitOrder() {
                         for (const f of i.setMealData?.fixedItems ?? []) {
                             for (let q = 0; q < (f.quantity || 1); q++) {
                                 result.push({
-                                    productId: 0,
+                                    productId: f.dishId ?? 0,
                                     productName: f.dishName,
                                     qty: 1,
                                     unitPrice: 0,
@@ -1898,7 +1948,7 @@ async function submitOrder() {
                         for (const s of i.setMealData?.selectedOptions ?? []) {
                             for (let q = 0; q < (s.qty || 1); q++) {
                                 result.push({
-                                    productId: 0,
+                                    productId: s.dishId ?? 0,
                                     productName: s.dishName,
                                     qty: 1,
                                     unitPrice: 0,
@@ -1993,16 +2043,14 @@ function reorder(order) {
  * ╔══════════════════════════════════════════════════════════════╗
  * ║                  DineIn.vue  CSS 架構說明                   ║
  * ╠══════════════════════════════════════════════════════════════╣
- * ║  共用（網頁版 + 手機板）                                    ║
- * ║    → 沒有 @media 包裹的普通 CSS class                      ║
- * ║    → 改動此區會同時影響網頁版與手機板                       ║
- * ║                                                              ║
  * ║  ----網頁版----   @media (min-width: 1101px)                ║
- * ║    → 僅桌機 / 平板寬螢幕有效，不影響手機                   ║
+ * ║    → layout、餐點卡片、按鈕尺寸全部在此區                  ║
+ * ║    → 改動僅影響網頁版，不影響手機板                         ║
  * ║                                                              ║
  * ║  ----手機板----   @media (max-width: 1100px)                ║
- * ║    → 僅手機版有效；若要覆寫共用樣式，在此區加 override     ║
- * ║    → 檔案底部有「手機板 — 餐點卡片獨立區」可直接修改       ║
+ * ║    → 獨立完整定義，不依賴任何「共用基底」                   ║
+ * ║    → 第一個 block：版面結構（header / layout / panel）      ║
+ * ║    → 第二個 block（底部）：餐點卡片完整樣式                 ║
  * ╚══════════════════════════════════════════════════════════════╝
  */
 
@@ -2542,7 +2590,7 @@ html:has(.gate-wrap) footer {
     white-space: nowrap;
     padding: 0.3rem 0.85rem;
     font-family: 'Work Sans', sans-serif;
-    font-size: 0.68rem;
+    font-size: 0.9rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: rgba(208, 197, 181, 0.5);
@@ -2590,6 +2638,14 @@ html:has(.gate-wrap) footer {
         height: 100%; /* 撐滿 grid 格 */
         overflow-y: auto;
     }
+    /* 訂單面板：Teleport 到 body 後以 fixed 固定在右側欄 */
+    .order-panel {
+        position: fixed;
+        top: 4rem; /* 與 dine-header 同高 */
+        right: 0;
+        width: 360px; /* 對齊 page-layout 第三欄寬度 */
+        height: calc(100vh - 4rem);
+    }
 }
 .cat-link {
     display: flex;
@@ -2628,7 +2684,7 @@ html:has(.gate-wrap) footer {
 /* 今日推薦 / 主廚特選 特殊分類的分隔線 */
 .cat-link.cat-special {
     color: rgba(227, 199, 107, 0.75);
-    font-size: 1rem;
+    font-size: 1.2rem;
 }
 .cat-link.cat-special.active {
     color: #e3c76b;
@@ -2691,12 +2747,12 @@ html:has(.gate-wrap) footer {
     }
 }
 .menu-sections {
-    padding: 0 1.25rem 7rem;
+    padding: 0 1.25rem;
 }
 /* ----網頁版---- */
 @media (min-width: 1101px) {
     .menu-sections {
-        padding: 0 1.5rem 2.5rem;
+        padding: 0 1.5rem;
     }
 }
 
@@ -2745,8 +2801,10 @@ html:has(.gate-wrap) footer {
     border-left: 1px solid rgba(77, 70, 58, 0.2);
     display: flex;
     flex-direction: column;
-    height: 100%;
     overflow: hidden;
+    /* height 由各平台 @media 定義：
+       網頁版 → calc(100vh - 4rem)（desktop @media）
+       手機板 → inset: 0 隱含 100vh（mobile @media）   */
 }
 .panel-header {
     flex-shrink: 0;
@@ -2841,13 +2899,16 @@ html:has(.gate-wrap) footer {
         height: 100%;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch; /* iOS 慣性捲動 */
-        padding-bottom: 5rem; /* 避免底部列遮住最後一道菜 */
+        padding-bottom: 3rem; /* 避免底部列遮住最後一道菜 */
     }
 
     /* Order panel → full-height bottom sheet */
     .order-panel {
         position: fixed;
-        inset: 0;
+        top: 4.2rem;
+        left: 0;
+        right: 0;
+        bottom: 0;
         z-index: 200 !important;
         transform: translateY(100%);
         transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
@@ -2884,7 +2945,10 @@ html:has(.gate-wrap) footer {
     .mobile-overlay {
         display: block;
         position: fixed;
-        inset: 0;
+        top: 3.8rem;
+        left: 0;
+        right: 0;
+        bottom: 0;
         z-index: 150;
         background: rgba(24, 11, 6, 0.78);
         pointer-events: auto;
@@ -2892,14 +2956,14 @@ html:has(.gate-wrap) footer {
 }
 
 .bottom-badge {
-    min-width: 1.5rem;
+    min-width: 4.5rem;
     height: 1.5rem;
     border-radius: 99px;
     background: linear-gradient(to right, #e3c76b, #c6ab53);
     color: #3b2f00;
     font-family: 'Work Sans', sans-serif;
-    font-size: 0.7rem;
-    font-weight: 700;
+    font-size: 1rem;
+    font-weight: 450;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2912,143 +2976,144 @@ html:has(.gate-wrap) footer {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   共用（網頁版 + 手機板）— 餐點卡片
-   ⚠️  若只想改手機板，請到檔案底部的「----手機板---- 餐點卡片」區覆寫
+   ----網頁版----   ≥ 1101px  餐點卡片
    ════════════════════════════════════════════════════════════════ */
-/* ═══ Dish rows ═══ */
-.dish-row {
-    display: grid;
-    grid-template-columns: 160px 1fr; /* 列表視圖：圖片 + 內容（按鈕已併入內容欄） */
-    align-items: stretch;
-    background: #362620;
-    border-radius: 0.75rem;
-    cursor: pointer;
-    transition:
-        transform 0.45s cubic-bezier(0.4, 0, 0.2, 1),
-        box-shadow 0.45s ease;
-}
-.dish-row:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-}
-.dish-row.dish-row-grid {
-    grid-template-columns: 1fr;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; /* 讓圓角裁切圖片頂部 */
-}
-.dish-img {
-    width: 160px;
-    height: 120px;
-    object-fit: cover;
-    align-self: center;
-    display: block;
-    flex-shrink: 0;
-    transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.dish-row:hover .dish-img {
-    transform: scale(1.05);
-}
-.dish-row-grid .dish-img {
-    width: 100%;
-    height: 140px;
-}
-.dish-img-placeholder {
-    width: 160px;
-    height: 120px;
-    align-self: center;
-    background: #2b1c16;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: rgba(208, 197, 181, 0.15);
-    font-size: 1.8rem;
-}
-.dish-row-grid .dish-img-placeholder {
-    width: 100%;
-    height: 140px;
-}
-/* 列表視圖：內容欄垂直置中，確保上下間距一致 */
-.dish-content {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 0.75rem 0.75rem;
-}
-/* 網格卡片：內容區填滿，靠上對齊 */
-.dish-content-grid {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start; /* 靠上，不留空白 */
-    text-align: center;
-}
-/* Badge 列 */
-.dish-badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-    margin: 0.4rem 0;
-}
-/* 網格視圖：badge 置中 */
-.dish-content-grid .dish-badges {
-    justify-content: center;
-}
-/* 網格底部：價格 + 按鈕，固定在卡片底部，置中 */
-.grid-footer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 0 0.75rem;
-    border-top: 1px solid rgba(77, 70, 58, 0.25);
-}
-.grid-price {
-    color: #d5b478;
-    font-size: 1rem;
-    letter-spacing: 0.08em;
-    text-align: center;
-}
-/* 列表視圖底列：價格左、按鈕右，同一行 */
-.list-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: auto;
-    padding-top: 0.4rem;
-}
-.list-footer p {
-    margin: 0; /* 移除 <p> 預設 margin，讓價格與按鈕垂直對齊 */
-    line-height: 1;
-}
-.qty-col {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 0.4rem;
-}
-.qty-row {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 0.4rem;
-    margin-bottom: 0.8rem;
-    margin-top: auto;
-}
-.qty-num {
-    color: #f9ddd3;
-    width: 40px;
-    text-align: center;
-}
-.qty-num.active {
-    color: #e3c76b;
-}
-.dishes-wrap.grid-view {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 0.75rem;
-}
+@media (min-width: 1101px) {
+    /* ═══ Dish rows ═══ */
+    .dish-row {
+        display: grid;
+        grid-template-columns: 160px 1fr; /* 列表視圖：圖片 + 內容（按鈕已併入內容欄） */
+        align-items: stretch;
+        background: #362620;
+        border-radius: 0.75rem;
+        cursor: pointer;
+        transition:
+            transform 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+            box-shadow 0.45s ease;
+    }
+    .dish-row:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    }
+    .dish-row.dish-row-grid {
+        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden; /* 讓圓角裁切圖片頂部 */
+    }
+    .dish-img {
+        width: 160px;
+        height: 120px;
+        object-fit: cover;
+        align-self: center;
+        display: block;
+        flex-shrink: 0;
+        transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .dish-row:hover .dish-img {
+        transform: scale(1.05);
+    }
+    .dish-row-grid .dish-img {
+        width: 100%;
+        height: 140px;
+    }
+    .dish-img-placeholder {
+        width: 160px;
+        height: 120px;
+        align-self: center;
+        background: #2b1c16;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: rgba(208, 197, 181, 0.15);
+        font-size: 1.8rem;
+    }
+    .dish-row-grid .dish-img-placeholder {
+        width: 100%;
+        height: 140px;
+    }
+    /* 列表視圖：內容欄垂直置中，確保上下間距一致 */
+    .dish-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 0.75rem 0.75rem;
+    }
+    /* 網格卡片：內容區填滿，靠上對齊 */
+    .dish-content-grid {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start; /* 靠上，不留空白 */
+        text-align: center;
+    }
+    /* Badge 列 */
+    .dish-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        margin: 0.4rem 0;
+    }
+    /* 網格視圖：badge 置中 */
+    .dish-content-grid .dish-badges {
+        justify-content: center;
+    }
+    /* 網格底部：價格 + 按鈕，固定在卡片底部，置中 */
+    .grid-footer {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0 0.75rem;
+        border-top: 1px solid rgba(77, 70, 58, 0.25);
+    }
+    .grid-price {
+        color: #d5b478;
+        font-size: 1rem;
+        letter-spacing: 0.08em;
+        text-align: center;
+    }
+    /* 列表視圖底列：價格左、按鈕右，同一行 */
+    .list-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: auto;
+        padding-top: 0.4rem;
+    }
+    .list-footer p {
+        margin: 0; /* 移除 <p> 預設 margin，讓價格與按鈕垂直對齊 */
+        line-height: 1;
+    }
+    .qty-col {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .qty-row {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.4rem;
+        margin-bottom: 0.8rem;
+        margin-top: auto;
+    }
+    .qty-num {
+        color: #f9ddd3;
+        width: 40px;
+        text-align: center;
+    }
+    .qty-num.active {
+        color: #e3c76b;
+    }
+    .dishes-wrap.grid-view {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 0.75rem;
+    }
+} /* end ----網頁版---- 餐點卡片 */
 
 /* ═══ Misc ═══ */
 .candle-glow {
@@ -3074,29 +3139,28 @@ html:has(.gate-wrap) footer {
     background: #1e100b;
     padding: 0 0.65rem;
 }
-/* 餐點名稱字體大小 — 在這裡調整 */
-.dish-name {
-    /* 列表視圖 */
-    font-size: 1.4rem;
-}
-.dish-row-grid .dish-name {
-    /* 網格視圖 */
-    font-size: 1.285rem;
-    text-align: center;
-    width: 100%;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.section-title {
-    font-family: 'Noto Serif TC', serif;
-    font-style: italic;
-    font-size: 2rem;
-    color: #e3c76b;
-    padding-top: 1.5rem;
-    margin-bottom: 0.85rem;
-}
+/* ----網頁版---- 餐點名稱 & 區塊標題 */
+@media (min-width: 1101px) {
+    .dish-name {
+        font-size: 1.4rem;
+    }
+    .dish-row-grid .dish-name {
+        font-size: 1.285rem;
+        text-align: center;
+        width: 100%;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .section-title {
+        font-family: 'Noto Serif TC', serif;
+        font-style: italic;
+        font-size: 2rem;
+        color: #e3c76b;
+        padding-top: 0;
+        margin-bottom: 0.85rem;
+    }
+} /* end ----網頁版---- 餐點名稱 & 區塊標題 */
 .status-msg {
     text-align: center;
     padding: 5rem 1rem;
@@ -3223,29 +3287,31 @@ html:has(.gate-wrap) footer {
 }
 
 /* ═══ Buttons ═══ */
-.qty-btn {
-    pointer-events: auto !important;
-    cursor: pointer !important;
-    width: 30px;
-    height: 30px;
-    border: 1px solid rgba(77, 70, 58, 0.7);
-    background: #2b1c16;
-    color: #f9ddd3;
-    border-radius: 0.125rem;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    line-height: 1;
-    transition:
-        border-color 0.3s,
-        color 0.3s;
-}
-.qty-btn:hover {
-    border-color: #e3c76b;
-    color: #e3c76b;
-}
+@media (min-width: 1101px) {
+    .qty-btn {
+        pointer-events: auto !important;
+        cursor: pointer !important;
+        width: 30px;
+        height: 30px;
+        border: 1px solid rgba(77, 70, 58, 0.7);
+        background: #2b1c16;
+        color: #f9ddd3;
+        border-radius: 0.125rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        line-height: 1;
+        transition:
+            border-color 0.3s,
+            color 0.3s;
+    }
+    .qty-btn:hover {
+        border-color: #e3c76b;
+        color: #e3c76b;
+    }
+} /* end ----網頁版---- qty-btn */
 /* 購物車專用 +/- 按鈕（較小） */
 .qty-btn-order {
     width: 24px;
@@ -3394,6 +3460,60 @@ html:has(.gate-wrap) footer {
 }
 .input-line::placeholder {
     color: rgba(208, 197, 181, 0.3);
+}
+
+/* 優惠券下拉選單 */
+.coupon-select {
+    width: 100%;
+    background: rgba(24, 11, 6, 0.6);
+    border: 1px solid rgba(77, 70, 58, 0.6);
+    border-radius: 0.25rem;
+    color: #f9ddd3;
+    font-family: 'Newsreader', serif;
+    font-size: 0.85rem;
+    padding: 0.45rem 0.65rem;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.25s;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23e3c76b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.65rem center;
+    padding-right: 2rem;
+}
+.coupon-select:focus {
+    border-color: rgba(227, 199, 107, 0.6);
+}
+.coupon-select option {
+    background: #2b1c16;
+    color: #f9ddd3;
+}
+/* 訪客優惠券區：登入會員按鈕 */
+.coupon-login-btn {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: 1px solid rgba(227, 199, 107, 0.45);
+    border-radius: 0.25rem;
+    color: #e3c76b;
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition:
+        background 0.2s,
+        border-color 0.2s;
+    text-align: center;
+}
+.coupon-login-btn:hover {
+    background: rgba(227, 199, 107, 0.08);
+    border-color: rgba(227, 199, 107, 0.7);
+}
+
+/* 下拉選單最底部「查看更多優惠券」特殊項目 */
+.coupon-goto-option {
+    color: #e3c76b;
+    border-top: 1px solid rgba(77, 70, 58, 0.4);
 }
 .table-id-input {
     background: transparent;
@@ -3638,10 +3758,11 @@ html:has(.gate-wrap) footer {
    只在手機板顯示，網頁版 .dine-header 仍保留原樣
    ════════════════════════════════════════════════════════════════ */
 .dine-header-mobile {
-    /* display 由 media query 控制：手機板=grid，網頁版=none */
+    /* display 不在此設定，由下方 media query 各自控制：
+       手機板 @media (max-width: 1100px) → display: grid
+       網頁版 @media (min-width: 1101px) → display: none          */
 
-    /* Grid：左欄固定(logo)，右欄填滿；共兩行 */
-    display: grid;
+    /* Grid 結構定義（display 由 media query 控制） */
     grid-template-columns: auto 1fr;
     grid-template-rows: 1fr 1fr; /* 兩行等高，讓右側各佔一半 */
     column-gap: 0.65rem;
@@ -3757,70 +3878,186 @@ html:has(.gate-wrap) footer {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   ----手機板----   ≤ 1100px  餐點卡片獨立區
-   此區為共用餐點卡片 CSS 的手機板複本，可自由修改不影響網頁版
+   ----手機板----   ≤ 1100px  餐點卡片（完整獨立定義，不依賴共用基底）
    ════════════════════════════════════════════════════════════════ */
 @media (max-width: 1100px) {
     /* ── 列表視圖卡片 ── */
     .dish-row {
-        grid-template-columns: 110px 1fr; /* 手機板：圖片縮窄 */
+        display: grid;
+        grid-template-columns: 110px 1fr;
+        align-items: stretch;
+        background: #362620;
         border-radius: 0.5rem;
+        cursor: pointer;
+        transition:
+            transform 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+            box-shadow 0.45s ease;
+    }
+    .dish-row:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    }
+    .dish-row.dish-row-grid {
+        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
     }
     .dish-img {
         width: 110px;
         height: 90px;
+        object-fit: cover;
+        align-self: center;
+        display: block;
+        flex-shrink: 0;
+        transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .dish-img-placeholder {
-        width: 110px;
-        height: 90px;
-    }
-    .dish-content {
-        padding: 0.5rem 0.6rem;
-    }
-    .dish-name {
-        font-size: 1rem; /* 手機板列表視圖名稱字體 */
-    }
-    .dish-desc {
-        font-size: 0.78rem;
-        -webkit-line-clamp: 2;
-    }
-    .list-price {
-        font-size: 0.8rem;
-        margin: 0.15rem 0 0;
-    }
-    .list-qty {
-        margin-top: 0.25rem;
-        gap: 0.3rem;
-    }
-
-    /* ── 網格視圖卡片 ── */
-    .dishes-wrap.grid-view {
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        gap: 0.5rem;
+    .dish-row:hover .dish-img {
+        transform: scale(1.05);
     }
     .dish-row-grid .dish-img {
         width: 100%;
         height: 110px;
     }
+    .dish-img-placeholder {
+        width: 110px;
+        height: 90px;
+        align-self: center;
+        background: #2b1c16;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: rgba(208, 197, 181, 0.15);
+        font-size: 1.8rem;
+    }
+    .dish-row-grid .dish-img-placeholder {
+        width: 100%;
+        height: 110px;
+    }
+    .dish-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 0.5rem 0.6rem;
+    }
+    .dish-content-grid {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        text-align: center;
+    }
+    .dish-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        margin: 0.4rem 0;
+    }
+    .dish-content-grid .dish-badges {
+        justify-content: center;
+    }
+    .grid-footer {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0 0.75rem;
+        border-top: 1px solid rgba(77, 70, 58, 0.25);
+    }
+    .grid-price {
+        color: #d5b478;
+        font-size: 1rem;
+        letter-spacing: 0.08em;
+        text-align: center;
+    }
+    .list-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: auto;
+        padding-top: 0.4rem;
+    }
+    .list-footer p {
+        margin: 0;
+        line-height: 1;
+    }
+    .qty-col {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .qty-row {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.4rem;
+        margin-bottom: 0.8rem;
+        margin-top: auto;
+    }
+    .qty-num {
+        color: #f9ddd3;
+        width: 30px;
+        text-align: center;
+    }
+    .qty-num.active {
+        color: #e3c76b;
+    }
+
+    /* ── 網格視圖卡片 ── */
+    .dishes-wrap.grid-view {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 0.5rem;
+    }
     .dish-row-grid .dish-name {
-        font-size: 0.95rem; /* 手機板網格視圖名稱字體 */
+        font-size: 0.95rem;
+        text-align: center;
+        width: 100%;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* ── 餐點名稱 ── */
+    .dish-name {
+        font-size: 1rem;
     }
 
     /* ── 區塊標題 ── */
     .section-title {
+        font-family: 'Noto Serif TC', serif;
+        font-style: italic;
         font-size: 1.4rem;
-        padding-top: 1rem;
+        color: #e3c76b;
+        padding-top: 0;
         margin-bottom: 0.6rem;
     }
 
     /* ── 數量按鈕 ── */
     .qty-btn {
+        pointer-events: auto !important;
+        cursor: pointer !important;
         width: 26px;
         height: 26px;
+        border: 1px solid rgba(77, 70, 58, 0.7);
+        background: #2b1c16;
+        color: #f9ddd3;
+        border-radius: 0.125rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         font-size: 1.2rem;
+        line-height: 1;
+        transition:
+            border-color 0.3s,
+            color 0.3s;
     }
-    .qty-num {
-        width: 30px;
+    .qty-btn:hover {
+        border-color: #e3c76b;
+        color: #e3c76b;
     }
 }
 </style>

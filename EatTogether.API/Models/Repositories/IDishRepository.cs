@@ -1,8 +1,8 @@
 ﻿using EatTogether.Models.DTOs;
 
-namespace EatTogether.Models.Repositories
+namespace EatTogether.API.Models.Repositories
 {
-    public interface IDishRepository
+	public interface IDishRepository
     {
         Task<IEnumerable<DishDto>> GetAllAsync();
         Task<IEnumerable<DishDto>> GetAllActiveAsync();

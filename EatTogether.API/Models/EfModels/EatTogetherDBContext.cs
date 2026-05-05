@@ -29,6 +29,8 @@ public partial class EatTogetherDBContext : DbContext
 
     public virtual DbSet<Function> Functions { get; set; }
 
+    public virtual DbSet<LimitedNotification> LimitedNotifications { get; set; }
+
     public virtual DbSet<Member> Members { get; set; }
 
     public virtual DbSet<MemberConfirmToken> MemberConfirmTokens { get; set; }
@@ -231,6 +233,25 @@ public partial class EatTogetherDBContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false);
             entity.Property(e => e.IsOwnerOnly).HasAnnotation("Relational:DefaultConstraintName", "DF_Functions_IsOwnerOnly");
+        });
+
+        modelBuilder.Entity<LimitedNotification>(entity =>
+        {
+            entity.HasIndex(e => new { e.MemberId, e.DishId }, "UQ_LimitedNotif_Mem_Dish").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+
+            entity.HasOne(d => d.Dish).WithMany(p => p.LimitedNotifications)
+                .HasForeignKey(d => d.DishId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_LimitedNotif_Dishes");
+
+            entity.HasOne(d => d.Member).WithMany(p => p.LimitedNotifications)
+                .HasForeignKey(d => d.MemberId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_LimitedNotif_Members");
         });
 
         modelBuilder.Entity<Member>(entity =>
@@ -620,24 +641,6 @@ public partial class EatTogetherDBContext : DbContext
                 .HasConstraintName("FK_Reservations_Members");
         });
 
-        modelBuilder.Entity<Review>(entity =>
-        {
-            entity.Property(e => e.Content)
-                .IsRequired()
-                .HasMaxLength(200);
-            entity.Property(e => e.CreatedAt)
-                .HasPrecision(0)
-                .HasDefaultValueSql("(getdate())");
-            entity.Property(e => e.Nickname)
-                .IsRequired()
-                .HasMaxLength(20);
-
-            entity.HasOne(d => d.Dish).WithMany(p => p.Reviews)
-                .HasForeignKey(d => d.DishId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Reviews_Dishes");
-        });
-
         modelBuilder.Entity<Role>(entity =>
         {
             entity.HasIndex(e => e.RoleName, "IX_Roles_RoleName").IsUnique();
@@ -668,7 +671,7 @@ public partial class EatTogetherDBContext : DbContext
 
         modelBuilder.Entity<SchedulerLog>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Schedule__3214EC07EBAED54A");
+            entity.HasKey(e => e.Id).HasName("PK__Schedule__3214EC0761A5E7AB");
 
             entity.Property(e => e.ExecutedAt)
                 .HasDefaultValueSql("(getdate())")
@@ -789,14 +792,15 @@ public partial class EatTogetherDBContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
                 .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.IsRead).HasAnnotation("Relational:DefaultConstraintName", "DF_Notifications_IsRead");
+            entity.Property(e => e.Message).HasMaxLength(500);
+            entity.Property(e => e.ReferenceType).HasMaxLength(50);
             entity.Property(e => e.Title)
                 .IsRequired()
                 .HasMaxLength(200);
-
-            entity.HasOne(d => d.Article).WithMany(p => p.UserNotifications)
-                .HasForeignKey(d => d.ArticleId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_UserNotifications_Articles");
+            entity.Property(e => e.Type)
+                .IsRequired()
+                .HasMaxLength(50);
 
             entity.HasOne(d => d.Member).WithMany(p => p.UserNotifications)
                 .HasForeignKey(d => d.MemberId)

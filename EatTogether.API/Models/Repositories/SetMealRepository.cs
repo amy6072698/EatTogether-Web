@@ -1,15 +1,16 @@
 ﻿using EatTogether.API.Models.EfModels;
 using EatTogether.Models.DTOs;
 using EatTogether.Models.Extensions;
+using EatTogether.Models.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace EatTogether.Models.Repositories
+namespace EatTogether.API.Models.Repositories
 {
-        public class SetMealRepository : ISetMealRepository
+	public class SetMealRepository : ISetMealRepository
         {
                 private readonly EatTogetherDBContext _context;
 

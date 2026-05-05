@@ -31,7 +31,8 @@ namespace EatTogether.Models.Repositories
         {
             return await _context.Orders
                 .Include(o => o.OrderDetails)
-                .Include(o => o.PreOrder)   // ← 加這行
+                .Include(o => o.PreOrder)
+                    .ThenInclude(po => po.PreOrderDetails)  // 備援：OrderDetails 空時改用 PreOrderDetails
                 .Where(o => o.MemberId == memberId)
                 .OrderByDescending(o => o.OrderAt)
                 .Take(take)

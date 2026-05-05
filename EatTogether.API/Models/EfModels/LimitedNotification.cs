@@ -5,25 +5,17 @@ using System.Collections.Generic;
 
 namespace EatTogether.API.Models.EfModels;
 
-public partial class UserNotification
+public partial class LimitedNotification
 {
     public int Id { get; set; }
 
     public int MemberId { get; set; }
 
-    public string Type { get; set; }
-
-    public string ReferenceType { get; set; }
-
-    public int? ReferenceId { get; set; }
-
-    public string Title { get; set; }
-
-    public string Message { get; set; }
-
-    public bool IsRead { get; set; }
+    public int DishId { get; set; }
 
     public DateTime CreatedAt { get; set; }
+
+    public virtual Dish Dish { get; set; }
 
     public virtual Member Member { get; set; }
 }

@@ -128,7 +128,7 @@ namespace EatTogether.Models.Repositories
                 else if (e.DiscountType == "Percent")
                 {
                     // DiscountValue 以小數儲存（0.88 = 打88折，實付88%）
-                    calculated = (int)Math.Round(amount * (1.0 - (double)e.DiscountValue));
+                    calculated = (int)Math.Floor(amount * (1.0 - (double)e.DiscountValue));
                     desc = $"打 {(int)(e.DiscountValue * 100)} 折";
                 }
                 else
@@ -190,7 +190,7 @@ namespace EatTogether.Models.Repositories
                 {
                     // DiscountValue 以小數儲存（0.88 = 打88折，實付88%，省12%）
                     calculated = eligible
-                        ? (int)Math.Round(amount * (1.0 - (double)e.DiscountValue))
+                        ? (int)Math.Floor(amount * (1.0 - (double)e.DiscountValue))
                         : 0;
                     desc = $"打 {(int)(e.DiscountValue * 100)} 折";
                 }
@@ -386,7 +386,7 @@ namespace EatTogether.Models.Repositories
                 {
                     // DiscountValue 以小數儲存（0.88 = 打88折，實付88%，省12%）
                     calculated = eligible
-                        ? (int)Math.Round(amount * (1.0 - (double)e.DiscountValue))
+                        ? (int)Math.Floor(amount * (1.0 - (double)e.DiscountValue))
                         : 0;
                     desc = $"打 {(int)(e.DiscountValue * 100)} 折";
                 }

@@ -14,12 +14,22 @@ namespace EatTogether.API.Models.Repositories
 
 		public async Task<IEnumerable<UserNotification>> GetByMemberIdAsync(int memberId)
 		{
+			var threeMonthsAgo = DateTime.Now.AddMonths(-3);
+			var now = DateTime.Now;
+
 			return await _context.UserNotifications
-				.Where(n => n.MemberId == memberId)
+				.Where(n => n.MemberId == memberId 
+						&& n.CreatedAt >= threeMonthsAgo
+						&&(
+							n.ReferenceType != "Article"  //非文章類通知直接顯示
+							||
+							_context.Articles
+								.Any(a => a.Id == n.ReferenceId && a.PublishDate <= now)
+
+						))
 				.OrderByDescending(n => n.CreatedAt)
 				.ToListAsync();
 		}
-
 
 		public async Task MarkAsReadAsync(int notificationId, int memberId)
 		{
@@ -30,7 +40,6 @@ namespace EatTogether.API.Models.Repositories
 
 			notification.IsRead = true;
 			await _context.SaveChangesAsync();
-
 		}
 
 		public async Task MarkAllAsReadAsync(int memberId)
@@ -41,7 +50,6 @@ namespace EatTogether.API.Models.Repositories
 
 			unread.ForEach(n => n.IsRead = true);
 			await _context.SaveChangesAsync();
-
 		}
 
 	}

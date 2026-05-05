@@ -4,7 +4,13 @@
             <!-- 叉叉關閉按鈕 -->
             <button class="close-btn" @click="$emit('close')" aria-label="關閉">✕</button>
             <div class="detail-img-wrap">
-                <img :src="dish.imageUrl" :alt="dish.productName" />
+                <img
+                    v-if="imgSrc && !imgBroken"
+                    :src="imgSrc"
+                    :alt="dish.productName"
+                    @error="onImgError"
+                />
+                <div v-else class="detail-img-placeholder">🍽️</div>
             </div>
             <div class="detail-body">
                 <!-- 第一排：餐點名稱（左）+ 標籤（右） -->
@@ -71,12 +77,22 @@ const emit = defineEmits(['close', 'confirm'])
 
 const localQty = ref(props.initialQty)
 const note = ref(props.initialNote)
+const imgSrc = ref('')
+const imgFailed = ref(false)
+const imgBroken = ref(false)
 
 // 每次 dish / initialQty / initialNote 任一改變時同步（含編輯模式帶入備註）
-watch([() => props.dish, () => props.initialQty, () => props.initialNote], ([, qty, initNote]) => {
-    localQty.value = qty || 1
-    note.value = initNote || ''
-})
+watch(
+    [() => props.dish, () => props.initialQty, () => props.initialNote],
+    ([dish, qty, initNote]) => {
+        localQty.value = qty || 1
+        note.value = initNote || ''
+        imgSrc.value = resolveImage(dish?.imageUrl)
+        imgFailed.value = false
+        imgBroken.value = false
+    },
+    { immediate: true }
+)
 
 const tags = computed(() => {
     if (!props.dish) return []
@@ -87,6 +103,23 @@ const tags = computed(() => {
     if (props.dish.spicyLevel > 0) t.push({ key: 'spicy', cls: 'badge-spicy', label: '辣味' })
     return t
 })
+
+function resolveImage(url) {
+    if (!url) return ''
+    let path = url.replace(/\\/g, '/').replace(/^~\//, '')
+    const match = /\/wwwroot\/(.*)/i.exec('/' + path)
+    if (match?.[1]) path = match[1]
+    return `/${path.replace(/^\//, '')}`
+}
+
+function onImgError() {
+    if (!imgFailed.value && imgSrc.value.match(/\.jpg$/i)) {
+        imgFailed.value = true
+        imgSrc.value = imgSrc.value.replace(/\.jpg$/i, '.png')
+    } else {
+        imgBroken.value = true
+    }
+}
 
 function onConfirm() {
     emit('confirm', props.dish, localQty.value, note.value)
@@ -113,66 +146,32 @@ function onConfirm() {
 .modal-box {
     background: #2b1c16;
     width: min(580px, 92vw);
-    max-height: 88vh;
+    max-height: 90vh;
     overflow-y: auto;
     border-radius: 0.75rem;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
     position: relative;
 }
 
-@media (max-width: 600px) {
-    /* 最大高度留出底部空間，讓活動通知 toast 與「加入訂單」按鈕同時可見 */
-    .modal-box {
-        width: min(420px, 88vw);
-        max-height: 68vh; /* 預留 ~32vh 給底部通知 + 操作空間 */
-        border-radius: 0.75rem;
-        overflow-y: auto; /* 內容超出時可捲動，確保按鈕可觸達 */
-    }
-    .detail-img-wrap {
-        height: 100px; /* 圖片更小，讓文字與按鈕有更多空間 */
-        flex-shrink: 0;
-    }
-    .detail-name {
-        font-size: 1.05rem;
-    }
-    .detail-desc {
-        font-size: 0.85rem;
-        margin-bottom: 0.4rem;
-        /* 最多顯示 2 行，避免長描述撐高卡片 */
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-    }
-    .detail-body {
-        padding: 0.6rem 1.25rem 0;
-        gap: 0;
-    }
-    .detail-row-3 {
-        padding: 0.4rem 0;
-        margin-bottom: 0.5rem;
-    }
-    .detail-note-wrap {
-        margin-bottom: 0.4rem;
-    }
-    .detail-note {
-        rows: 1; /* 備註欄縮為 1 行高 */
-        font-size: 0.85rem;
-    }
-    .detail-submit {
-        padding: 0.7rem 0;
-        margin-bottom: 0.75rem;
-    }
-}
 .detail-img-wrap {
     position: relative;
-    height: 240px;
+    height: 350px;
     overflow: hidden;
 }
 .detail-img-wrap img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+.detail-img-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #2b1c16;
+    color: rgba(208, 197, 181, 0.15);
+    font-size: 4rem;
 }
 .detail-img-wrap::after {
     content: '';
@@ -381,5 +380,110 @@ function onConfirm() {
 }
 .font-body {
     font-family: 'Newsreader', serif;
+}
+
+/* ════════════════════════════════════════════
+   手機版專用  (max-width: 600px)
+   完全獨立，不繼承上方任何樣式
+   ════════════════════════════════════════════ */
+@media (max-width: 600px) {
+    .modal-box {
+        background: #2b1c16;
+        width: min(420px, 92vw);
+        max-height: 80vh;
+        overflow-y: auto;
+        border-radius: 0.75rem;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+        position: relative;
+    }
+
+    .detail-img-wrap {
+        position: relative;
+        height: 250px;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .detail-img-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .detail-img-wrap::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to top, #2b1c16 0%, transparent 55%);
+    }
+
+    .detail-body {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        padding: 0.75rem 1.5rem 0.9rem;
+    }
+
+    .detail-row-1 {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 0.35rem;
+    }
+    .detail-name {
+        font-size: 1.3rem;
+        line-height: 1.2;
+        margin: 0;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .detail-desc {
+        font-size: 0.8rem;
+        margin: 0 0 0.3rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .detail-row-3 {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-top: 1px solid rgba(77, 70, 58, 0.3);
+        border-bottom: 1px solid rgba(77, 70, 58, 0.3);
+        padding: 0.35rem 0;
+        margin-bottom: 0.4rem;
+    }
+
+    .detail-note-wrap {
+        margin-bottom: 0.35rem;
+    }
+    .detail-note {
+        width: 100%;
+        background: rgba(24, 11, 6, 0.5);
+        border: 1px solid rgba(77, 70, 58, 0.55);
+        border-radius: 0.25rem;
+        color: #f9ddd3;
+        font-size: 0.8rem;
+        padding: 0.4rem 0.65rem;
+        outline: none;
+        transition: border-color 0.25s;
+        box-sizing: border-box;
+    }
+
+    .detail-submit {
+        width: 100%;
+        display: block;
+        padding: 0.65rem 0;
+        font-size: 0.85rem;
+        letter-spacing: 0.28em;
+        margin-bottom: 0.6rem;
+        border: none;
+        cursor: pointer;
+        transition:
+            filter 0.2s,
+            transform 0.15s;
+    }
 }
 </style>

@@ -1,10 +1,11 @@
+using EatTogether.API.Models.Services;
 using EatTogether.Models.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace EatTogether.Controllers
+namespace EatTogether.API.Controllers
 {
-    [AllowAnonymous]
+	[AllowAnonymous]
     [Route("api/Dishes")]
     [ApiController]
     public class DishRatingsController : ControllerBase

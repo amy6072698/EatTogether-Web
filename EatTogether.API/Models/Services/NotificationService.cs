@@ -21,13 +21,16 @@ namespace EatTogether.API.Models.Services
 
 		public async Task<IEnumerable<NotificationDto>> GetNotificationsAsync(int memberId)
 		{
-			var notification = await _repo.GetByMemberIdAsync(memberId);
+			var notifications = await _repo.GetByMemberIdAsync(memberId);
 
-			return notification.Select(n => new NotificationDto
+			return notifications.Select(n => new NotificationDto
 			{
 				Id = n.Id,
-				ArticleId = n.ArticleId,
+				Type = n.Type,
+				ReferenceType = n.ReferenceType,
+				ReferenceId = n.ReferenceId,
 				Title = n.Title,
+				Message = n.Message,
 				IsRead = n.IsRead,
 				CreatedAt = n.CreatedAt
 			});
@@ -42,6 +45,5 @@ namespace EatTogether.API.Models.Services
 		{
 			await _repo.MarkAllAsReadAsync(memberId);
 		}
-
 	}
 }
