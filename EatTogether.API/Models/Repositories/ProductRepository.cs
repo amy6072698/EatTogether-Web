@@ -90,7 +90,6 @@ namespace EatTogether.Models.Repositories
                 })
                 .ToListAsync();
 
-            //�T�w���ء]IsOptional=0�^�� GroupNo=0
             var result = items
                 .GroupBy(s => s.IsOptional ? s.OptionGroupNo ?? 0 : -1)
                 .OrderBy(g => g.Key)
@@ -101,9 +100,13 @@ namespace EatTogether.Models.Repositories
                     IsOptional = g.First().IsOptional,
                     Options = g.Select(s => new SetMealItemOptionDto
                     {
-                        DishId   = s.DishId,
+                        DishId = s.DishId,
+                        ProductId = _context.Products
+                                        .Where(p => p.DishId == s.DishId && p.ProductType == "Dish")
+                                        .Select(p => p.Id)
+                                        .FirstOrDefault(),
                         DishName = s.DishName ?? "",
-                        Qty      = s.Quantity
+                        Qty = s.Quantity
                     }).ToList()
                 })
                 .ToList();
