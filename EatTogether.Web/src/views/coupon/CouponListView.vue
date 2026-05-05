@@ -13,7 +13,7 @@
             <h1 class="eat-h1 fst-normal mb-2">優惠券專區</h1>
             <p class="eat-body-muted mb-0">精選折扣優惠，享受義式饗宴更多驚喜</p>
           </div>
-          <Button variant="secondary" :to="{ name: 'MyCoupons' }">
+          <Button variant="secondary" @click="goToMyCoupons">
             <i class="bi bi-ticket-perforated me-2"></i>我的優惠券
             <span v-if="authStore.isLoggedIn && myUsableCount > 0" class="ms-1 hero-count">
               {{ myUsableCount }}
@@ -75,19 +75,39 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import CouponCard from '@/components/coupon/CouponCard.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Button from '@/components/common/Button.vue'
 import apiFetch from '@/utils/apiFetch.js'
 import { useAuthStore } from '@/stores/auth.js'
 
-const authStore    = useAuthStore()
+const authStore        = useAuthStore()
+const router           = useRouter()
+const pendingMyCoupons = ref(false)   // 未登入點「我的優惠券」時記錄意圖
 
-// 登入後重新抓券（更新 isClaimed 狀態）
+async function goToMyCoupons() {
+  if (!authStore.isLoggedIn) {
+    pendingMyCoupons.value = true
+    const modalEl = document.querySelector('#authModal')
+    if (modalEl) {
+      const { Modal } = await import('bootstrap')
+      Modal.getOrCreateInstance(modalEl).show()
+    }
+    return
+  }
+  router.push({ name: 'MyCoupons' })
+}
+
+// 登入後：重新抓券；若有待跳轉意圖則導至我的優惠券
 watch(() => authStore.isLoggedIn, (loggedIn) => {
   if (loggedIn) {
     fetchCoupons()
     fetchMyUsableCount()
+    if (pendingMyCoupons.value) {
+      pendingMyCoupons.value = false
+      router.push({ name: 'MyCoupons' })
+    }
   }
 })
 const coupons      = ref([])

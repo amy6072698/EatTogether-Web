@@ -172,8 +172,9 @@ namespace EatTogether.Models.Services
         // ─── 優惠券使用明細 ───────────────────────────────────────────
         public async Task<IEnumerable<MemberCouponDto>> GetUsageHistoryAsync(int memberId)
         {
-            var all = await _memberCouponRepo.GetByMemberAsync(memberId);
-            return all.Where(mc => mc.IsUsed).OrderByDescending(mc => mc.UsedDate);
+            // 直接從 Orders 抓，不依賴 MemberCoupons.IsUsed
+            // 可正確反映所有實際使用過券的訂單（包含 seed data）
+            return await _memberCouponRepo.GetUsageHistoryFromOrdersAsync(memberId);
         }
     }
 }
