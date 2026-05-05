@@ -5,9 +5,11 @@
             <div v-else class="detail-intro-img-placeholder"></div>
         </div>
         <div class="detail-intro-text">
-            <div class="detail-title-row">
+            <div class="detail-pin-row">
                 <i v-if="article.isPinned" class="bi bi-pin-fill detail-pin-icon"></i>
-                <h1 class="detail-title">{{ article.title }}</h1>
+            </div>
+            <div class="detail-title-row">
+                <h1 class="eat-h1 detail-title">{{ article.title }}</h1>
             </div>
             <span class="detail-eyebrow">{{ article.categoryName }}</span>
             <div class="detail-meta-row">
@@ -79,16 +81,16 @@ function formatDate(dateStr) {
     position: relative;
 }
 
+.detail-pin-row {
+    position: relative;
+}
+
 /* ── 標題列 ───────────────────────────────────────── */
 .detail-title-row {
     position: relative;
 }
 .detail-title {
-    font-family: var(--font-headline);
-    font-size: clamp(1.6rem, 3.5vw, 2.6rem);
-    color: var(--eat-on-surface);
-    line-height: 3.5;
-    font-style: italic;
+    /* line-height: 3.5; */
     margin: 0;
 }
 .detail-pin-icon {
@@ -99,6 +101,7 @@ function formatDate(dateStr) {
     color: var(--eat-secondary);
     opacity: 0.8;
     rotate: 45deg;
+    line-height: 1.2;
 }
 
 /* ── 分類 / Meta ──────────────────────────────────── */
@@ -112,6 +115,7 @@ function formatDate(dateStr) {
     margin-left: 0.5rem;
 }
 .detail-meta-row {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -120,6 +124,7 @@ function formatDate(dateStr) {
     color: var(--eat-on-surface-variant);
     opacity: 0.5;
     margin-left: 0.5rem;
+    line-height: 1.2;
 }
 .detail-sep {
     opacity: 0.4;

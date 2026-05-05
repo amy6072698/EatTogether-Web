@@ -36,9 +36,9 @@
             </div>
             <span class="news-card-category">{{ article.categoryName }}</span>
             <RouterLink :to="{ name: 'NewsDetail', params: { id: article.id } }">
-                <h3 class="news-card-title">{{ article.title }}</h3>
+                <h3 class="eat-h3 news-card-title">{{ article.title }}</h3>
             </RouterLink>
-            <p class="news-card-summary">{{ stripTags(article.summary) }}</p>
+            <p class="eat-body news-card-summary">{{ stripTags(article.summary) }}</p>
             <div class="news-card-meta">
                 <i class="bi bi-eye"></i>
                 <span>{{ article.viewCount }}</span>
@@ -203,28 +203,21 @@ function formatDateBg(dateStr) {
     margin-bottom: 1rem;
 }
 .news-card-title {
-    font-family: var(--font-headline);
-    font-size: 1.65rem;
-    color: var(--eat-on-surface);
     line-height: 1.35;
     margin-bottom: 1.25rem;
     text-align: left;
 }
 a .news-card-title {
-    color: var(--eat-on-surface);
+    color: var(--eat-primary);
     text-decoration: none;
     transition: color 0.2s ease;
 }
 a:hover .news-card-title {
-    color: var(--eat-primary);
+    color: var(--eat-on-surface);
     text-decoration: underline;
     text-underline-offset: 4px;
 }
 .news-card-summary {
-    font-family: var(--font-body);
-    font-size: 1rem;
-    line-height: 1.85;
-    color: var(--eat-on-surface);
     opacity: 0.75;
     font-style: italic;
     margin-bottom: 1.25rem;
@@ -233,6 +226,7 @@ a:hover .news-card-title {
     line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    text-align: left;
 }
 
 /* ── Meta（瀏覽數）────────────────────────────────── */
