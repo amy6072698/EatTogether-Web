@@ -42,6 +42,20 @@
                     <span class="detail-tag"># {{ article.categoryName }}</span>
                 </div>
 
+                <div class="detail-share">
+                    <span class="detail-share-label">Share</span>
+                    <a :href="fbShareUrl" target="_blank" rel="noopener" class="detail-share-btn"
+                        >Facebook</a
+                    >
+                    <a
+                        :href="threadsShareUrl"
+                        target="_blank"
+                        rel="noopener"
+                        class="detail-share-btn"
+                        >Threads</a
+                    >
+                </div>
+
                 <NewsArticleNav :prevArticle="prevArticle" :nextArticle="nextArticle" />
 
                 <div class="detail-back-wrap">
@@ -55,7 +69,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import apiFetch from '@/utils/apiFetch.js'
 import NewsIntroHeader from '@/components/news/NewsIntroHeader.vue'
@@ -137,6 +151,16 @@ async function fetchDetail(id) {
         loading.value = false
     }
 }
+
+const fbShareUrl = computed(() => {
+    const url = encodeURIComponent(window.location.href)
+    return `https://www.facebook.com/sharer/sharer.php?u=${url}`
+})
+
+const threadsShareUrl = computed(() => {
+    const text = encodeURIComponent(`${article.value.title} ${window.location.href}`)
+    return `https://www.threads.net/intent/post?text=${text}`
+})
 
 watch(
     () => route.params.id,
@@ -293,6 +317,39 @@ onMounted(() => {
     font-style: italic;
     color: var(--eat-on-surface-variant);
     opacity: 0.45;
+}
+
+/* ── 分享按鈕 ───────────────────────────────────────── */
+.detail-share {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 3rem;
+}
+.detail-share-label {
+    font-family: var(--font-label);
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--eat-on-surface-variant);
+    opacity: 0.5;
+}
+.detail-share-btn {
+    font-family: var(--font-label);
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    padding: 0.3rem 0.9rem;
+    background: var(--eat-surface-high);
+    color: var(--eat-on-surface-variant);
+    border-radius: var(--eat-radius);
+    text-decoration: none;
+    transition:
+        background 0.2s,
+        color 0.2s;
+}
+.detail-share-btn:hover {
+    background: var(--eat-surface-highest);
+    color: var(--eat-secondary);
 }
 
 /* ── RWD ──────────────────────────────────────────── */
