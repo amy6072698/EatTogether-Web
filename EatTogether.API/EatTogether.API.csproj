@@ -4,11 +4,20 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>c75733ba-ecc1-47e1-a214-80186a0c5505</UserSecretsId>  
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove=".claude\**" />
+    <Content Remove=".claude\**" />
+    <EmbeddedResource Remove=".claude\**" />
+    <None Remove=".claude\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
-    <PackageReference Include="MailKit" Version="4.15.1" />
+    <PackageReference Include="Google.Apis.Auth" Version="1.73.0" />
+    <PackageReference Include="MailKit" Version="4.16.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.25" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.11">
@@ -16,16 +25,13 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
   </ItemGroup>
 
+
+
   <ItemGroup>
-    <Folder Include="Controllers\" />
-    <Folder Include="Models\DTOs\" />
-    <Folder Include="Models\Extensions\" />
-    <Folder Include="Models\Infra\" />
-    <Folder Include="Models\ViewModels\" />
-    <Folder Include="Models\Services\" />
-    <Folder Include="Models\Repositories\" />
+    <None Include="efpt.config.json.user" />
   </ItemGroup>
 
 </Project>

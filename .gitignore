@@ -693,3 +693,6 @@ FodyWeavers.xsd
 # EatTogether-Web Custom
 appsettings.Development.json
 appsettings.Production.json
+.claude/
+mydocs/
+CLAUDE.md

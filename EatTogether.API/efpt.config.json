@@ -51,11 +51,31 @@
          "ObjectType": 0
       },
       {
+         "Name": "[dbo].[LimitedNotifications]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[MemberConfirmTokens]",
+         "ObjectType": 0
+      },
+      {
          "Name": "[dbo].[MemberCoupons]",
          "ObjectType": 0
       },
       {
+         "Name": "[dbo].[MemberExternalLogins]",
+         "ObjectType": 0
+      },
+      {
          "Name": "[dbo].[MemberFavorites]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[MemberPasswordResetTokens]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[MemberRefreshTokens]",
          "ObjectType": 0
       },
       {
@@ -95,11 +115,19 @@
          "ObjectType": 0
       },
       {
+         "Name": "[dbo].[Reviews]",
+         "ObjectType": 0
+      },
+      {
          "Name": "[dbo].[RoleFunctions]",
          "ObjectType": 0
       },
       {
          "Name": "[dbo].[Roles]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[SchedulerLogs]",
          "ObjectType": 0
       },
       {
@@ -128,6 +156,10 @@
       },
       {
          "Name": "[dbo].[Users]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[WalkInQueues]",
          "ObjectType": 0
       }
    ],

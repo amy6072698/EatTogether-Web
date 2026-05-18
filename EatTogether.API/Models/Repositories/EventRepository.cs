@@ -1,0 +1,416 @@
+﻿using EatTogether.API.Models.EfModels;
+using EatTogether.Models.DTOs;
+using EatTogether.Models.Extensions;
+using Microsoft.EntityFrameworkCore;
+
+namespace EatTogether.Models.Repositories
+{
+
+	public class EventRepository : IEventRepository
+	{
+		private readonly EatTogetherDBContext _context;
+
+		public EventRepository(EatTogetherDBContext context)
+		{
+			_context = context;
+		}
+
+		public async Task CreateAsync(EventCreateDto dto)
+		{
+			var events = dto.ToEntity();
+
+			_context.Events.Add(events);
+			await _context.SaveChangesAsync();
+		}
+
+
+		public async Task<List<EventDto>> GetAllAsync()
+		{
+			var data = await _context.Events
+				.AsNoTracking()
+				.Select(e => new EventDto
+				{
+					Id = e.Id,
+					Title = e.Title,
+					Summary = e.Summary,
+					MinSpend = e.MinSpend,
+					StartDate = e.StartDate,
+					EndDate = (DateTime)e.EndDate,
+					RewardDishId = e.RewardDishId,
+					RewardDishName = e.RewardDish != null ? e.RewardDish.DishName : null,
+					DiscountType = e.DiscountType,
+					DiscountValue = e.DiscountValue,
+					Status = e.Status
+				})
+				.ToListAsync();
+
+			return data;
+		}
+
+
+		public async Task EditAsync(EventEditDto dto)
+		{
+			var entity = await _context.Events.FindAsync(dto.Id);
+			if (entity == null)
+			{
+				return;
+			}
+
+			entity.Title = dto.Title;
+			entity.Summary = dto.Summary;
+			entity.MinSpend = dto.MinSpend;
+			entity.StartDate = dto.StartDate;
+			entity.EndDate = dto.EndDate;
+			entity.RewardDishId = dto.RewardDishId;
+			entity.DiscountType = dto.DiscountType;
+			entity.DiscountValue = dto.DiscountValue;
+			entity.Status = dto.Status;
+
+			await _context.SaveChangesAsync();		
+		}
+
+		public async Task<EventEditDto> GetEditByIdAsync(int id)
+		{
+			var entity = await _context.Events.FindAsync(id);
+
+			if (entity == null) return null;
+
+			return new EventEditDto
+			{
+				Id = entity.Id,
+				Title = entity.Title,
+				Summary = entity.Summary,
+				MinSpend = entity.MinSpend,
+				StartDate = entity.StartDate,
+				EndDate = (DateTime)entity.EndDate,
+				RewardDishId = entity.RewardDishId,				
+				DiscountType = entity.DiscountType,
+				DiscountValue = entity.DiscountValue,
+				Status = entity.Status
+			};
+		}
+
+        public async Task<List<EventApplicableDto>> GetApplicableEventsAsync(int amount)
+        {
+            var today = DateTime.Today;
+
+            var rows = await _context.Events
+                .AsNoTracking()
+                .Where(e => e.Status == 1
+                         && e.IsAutoDiscount == 1
+                         && e.StartDate <= today
+                         && (e.EndDate == null || e.EndDate >= today)
+                         && e.MinSpend  <= amount)
+                .OrderByDescending(e => e.MinSpend)
+                .Select(e => new
+                {
+                    e.Id, e.Title, e.Summary, e.MinSpend,
+                    e.DiscountType, e.DiscountValue, e.RewardDishId,
+                    DishName = e.RewardDishId != null
+                        ? _context.Dishes.Where(d => d.Id == e.RewardDishId).Select(d => d.DishName).FirstOrDefault()
+                        : null
+                })
+                .ToListAsync();
+
+            var result = new List<EventApplicableDto>();
+
+            foreach (var e in rows)
+            {
+                int calculated = 0;
+                string desc    = string.Empty;
+                var dishName   = e.DishName ?? "";
+
+                if (e.DiscountType == "FixedAmount")
+                {
+                    calculated = (int)e.DiscountValue;
+                    desc = $"折抵 NT${calculated}";
+                }
+                else if (e.DiscountType == "Percent")
+                {
+                    // DiscountValue 以小數儲存（0.88 = 打88折，實付88%）
+                    calculated = (int)Math.Floor(amount * (1.0 - (double)e.DiscountValue));
+                    desc = $"打 {(int)(e.DiscountValue * 100)} 折";
+                }
+                else
+                {
+                    desc = $"贈送：{dishName}";
+                }
+
+                result.Add(new EventApplicableDto
+                {
+                    Id                  = e.Id,
+                    Title               = e.Title,
+                    Summary             = e.Summary ?? string.Empty,
+                    DiscountType        = e.DiscountType,
+                    DiscountValue       = e.DiscountValue,
+                    RewardDishId        = e.RewardDishId,
+                    RewardDishName      = string.IsNullOrEmpty(dishName) ? null : dishName,
+                    MinSpend            = e.MinSpend,
+                    CalculatedDiscount  = calculated,
+                    DiscountDescription = desc
+                });
+            }
+
+            return result;
+        }
+
+        public async Task<List<EventApplicableDto>> GetManualEventsAsync(int amount)
+        {
+            var today = DateTime.Today;
+            var rows = await _context.Events
+                .AsNoTracking()
+                .Where(e => e.StartDate <= today
+                         && (e.EndDate == null || e.EndDate >= today))
+                .OrderByDescending(e => e.MinSpend)
+                .Select(e => new
+                {
+                    e.Id, e.Title, e.Summary, e.MinSpend,
+                    e.DiscountType, e.DiscountValue,
+                    e.RewardDishId,
+                    DishName = e.RewardDishId != null
+                        ? _context.Dishes.Where(d => d.Id == e.RewardDishId).Select(d => d.DishName).FirstOrDefault()
+                        : null
+                })
+                .ToListAsync();
+
+            var result = new List<EventApplicableDto>();
+            foreach (var e in rows)
+            {
+                bool eligible = e.MinSpend <= amount;
+                int calculated = 0;
+                string desc = string.Empty;
+                var dishName = e.DishName ?? "";
+
+                if (e.DiscountType == "FixedAmount")
+                {
+                    calculated = (int)e.DiscountValue;
+                    desc = $"折抵 NT${calculated}";
+                }
+                else if (e.DiscountType == "Percent")
+                {
+                    // DiscountValue 以小數儲存（0.88 = 打88折，實付88%，省12%）
+                    calculated = eligible
+                        ? (int)Math.Floor(amount * (1.0 - (double)e.DiscountValue))
+                        : 0;
+                    desc = $"打 {(int)(e.DiscountValue * 100)} 折";
+                }
+                else
+                {
+                    desc = $"贈送：{dishName}";
+                }
+
+                result.Add(new EventApplicableDto
+                {
+                    Id = e.Id,
+                    Title = e.Title,
+                    Summary = e.Summary ?? string.Empty,
+                    DiscountType = e.DiscountType,
+                    DiscountValue = e.DiscountValue,
+                    RewardDishId = e.RewardDishId,
+                    RewardDishName = string.IsNullOrEmpty(dishName) ? null : dishName,
+                    MinSpend = e.MinSpend,
+                    CalculatedDiscount = calculated,
+                    DiscountDescription = desc,
+                    IsEligible = eligible
+                });
+            }
+            return result;
+        }
+
+
+        public async Task<List<EventApplicableDto>> GetEventsByIdsAsync(IEnumerable<int> ids)
+        {
+            var idSet = ids.ToHashSet();
+            if (idSet.Count == 0) return new List<EventApplicableDto>();
+
+            var rows = await _context.Events
+                .AsNoTracking()
+                .Where(e => idSet.Contains(e.Id))
+                .Select(e => new
+                {
+                    e.Id, e.Title, e.Summary, e.MinSpend,
+                    e.DiscountType, e.DiscountValue, e.RewardDishId,
+                    DishName = e.RewardDishId != null
+                        ? _context.Dishes.Where(d => d.Id == e.RewardDishId).Select(d => d.DishName).FirstOrDefault()
+                        : null
+                })
+                .ToListAsync();
+
+            var result = new List<EventApplicableDto>();
+            foreach (var e in rows)
+            {
+                var dishName = e.DishName ?? "";
+                string desc;
+                int calculated = 0;
+
+                if (e.DiscountType == "FixedAmount")
+                {
+                    calculated = (int)e.DiscountValue;
+                    desc = $"折抵 NT${calculated}";
+                }
+                else if (e.DiscountType == "Percent")
+                {
+                    desc = $"折扣 {e.DiscountValue}%";
+                }
+                else
+                {
+                    desc = $"贈送：{dishName}";
+                }
+
+                result.Add(new EventApplicableDto
+                {
+                    Id                  = e.Id,
+                    Title               = e.Title,
+                    Summary             = e.Summary ?? string.Empty,
+                    DiscountType        = e.DiscountType,
+                    DiscountValue       = e.DiscountValue,
+                    RewardDishId        = e.RewardDishId,
+                    RewardDishName      = string.IsNullOrEmpty(dishName) ? null : dishName,
+                    MinSpend            = e.MinSpend,
+                    CalculatedDiscount  = calculated,
+                    DiscountDescription = desc
+                });
+            }
+            return result;
+        }
+
+        public async Task<(string DiscountType, string? RewardDishName)?> GetEventGiftInfoAsync(int eventId)
+        {
+            var ev = await _context.Events
+                .AsNoTracking()
+                .Include(e => e.RewardDish)
+                .Where(e => e.Id == eventId)
+                .Select(e => new { e.DiscountType, RewardDishName = e.RewardDish != null ? e.RewardDish.DishName : null })
+                .FirstOrDefaultAsync();
+
+            if (ev == null) return null;
+            return (ev.DiscountType, ev.RewardDishName);
+        }
+
+
+        // -----前台點餐頁用-----
+        public async Task<List<EventApplicableDto>> GetNearThresholdAutoEventsAsync(int amount, int nearGap = 100)
+        {
+            var today = DateTime.Today;
+
+            var rows = await _context.Events
+                .AsNoTracking()
+                .Where(e => e.Status == 1
+                         && e.IsAutoDiscount == 1
+                         && e.StartDate <= today
+                         && (e.EndDate == null || e.EndDate >= today)
+                         && e.MinSpend > amount
+                         && e.MinSpend - amount <= nearGap)
+                .OrderBy(e => e.MinSpend)
+                .Select(e => new
+                {
+                    e.Id, e.Title, e.Summary, e.MinSpend,
+                    e.DiscountType, e.DiscountValue, e.RewardDishId,
+                    DishName = e.RewardDishId != null
+                        ? _context.Dishes.Where(d => d.Id == e.RewardDishId).Select(d => d.DishName).FirstOrDefault()
+                        : null
+                })
+                .ToListAsync();
+
+            var result = new List<EventApplicableDto>();
+            foreach (var e in rows)
+            {
+                var dishName = e.DishName ?? "";
+                string desc;
+                if (e.DiscountType == "FixedAmount")
+                    desc = $"折抵 NT${(int)e.DiscountValue}";
+                else if (e.DiscountType == "Percent")
+                    desc = $"打 {(int)(e.DiscountValue * 100)} 折";
+                else
+                    desc = $"贈送：{dishName}";
+
+                result.Add(new EventApplicableDto
+                {
+                    Id                  = e.Id,
+                    Title               = e.Title,
+                    Summary             = e.Summary ?? string.Empty,
+                    DiscountType        = e.DiscountType,
+                    DiscountValue       = e.DiscountValue,
+                    RewardDishId        = e.RewardDishId,
+                    RewardDishName      = string.IsNullOrEmpty(dishName) ? null : dishName,
+                    MinSpend            = e.MinSpend,
+                    CalculatedDiscount  = 0,
+                    DiscountDescription = desc,
+                    IsEligible          = false
+                });
+            }
+            return result;
+        }
+
+        // -----前台點餐頁用-----
+        public async Task<List<EventApplicableDto>> GetNotifyEventsAsync(int amount)
+        {
+            var today = DateTime.Today;
+
+            var rows = await _context.Events
+                .AsNoTracking()
+                .Where(e => e.Status == 1
+                         && e.IsAutoDiscount == 0
+                         && e.StartDate <= today
+                         && (e.EndDate == null || e.EndDate >= today))
+                .OrderByDescending(e => e.MinSpend)
+                .Select(e => new
+                {
+                    e.Id,
+                    e.Title,
+                    e.Summary,
+                    e.MinSpend,
+                    e.DiscountType,
+                    e.DiscountValue,
+                    e.RewardDishId,
+                    DishName = e.RewardDishId != null
+                        ? _context.Dishes.Where(d => d.Id == e.RewardDishId).Select(d => d.DishName).FirstOrDefault()
+                        : null
+                })
+                .ToListAsync();
+
+            var result = new List<EventApplicableDto>();
+            foreach (var e in rows)
+            {
+                bool eligible = e.MinSpend <= amount;
+                int calculated = 0;
+                string desc;
+                var dishName = e.DishName ?? "";
+
+                if (e.DiscountType == "FixedAmount")
+                {
+                    calculated = (int)e.DiscountValue;
+                    desc = $"折抵 NT${calculated}";
+                }
+                else if (e.DiscountType == "Percent")
+                {
+                    // DiscountValue 以小數儲存（0.88 = 打88折，實付88%，省12%）
+                    calculated = eligible
+                        ? (int)Math.Floor(amount * (1.0 - (double)e.DiscountValue))
+                        : 0;
+                    desc = $"打 {(int)(e.DiscountValue * 100)} 折";
+                }
+                else
+                {
+                    desc = $"贈送：{dishName}";
+                }
+
+                result.Add(new EventApplicableDto
+                {
+                    Id = e.Id,
+                    Title = e.Title,
+                    Summary = e.Summary ?? string.Empty,
+                    DiscountType = e.DiscountType,
+                    DiscountValue = e.DiscountValue,
+                    RewardDishId = e.RewardDishId,
+                    RewardDishName = string.IsNullOrEmpty(dishName) ? null : dishName,
+                    MinSpend = e.MinSpend,
+                    CalculatedDiscount = calculated,
+                    DiscountDescription = desc,
+                    IsEligible = eligible
+                });
+            }
+            return result;
+        }
+    }
+}

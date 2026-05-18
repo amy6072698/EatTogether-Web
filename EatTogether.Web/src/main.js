@@ -6,6 +6,7 @@ import router from './router'
 // Bootstrap
 import 'bootstrap'
 import 'bootstrap/dist/css/bootstrap.min.css'
+import 'bootstrap-icons/font/bootstrap-icons.css'  // 加這行
 
 // Vue Datepicker
 import { VueDatePicker } from '@vuepic/vue-datepicker'

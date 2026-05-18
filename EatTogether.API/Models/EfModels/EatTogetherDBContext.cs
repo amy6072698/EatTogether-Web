@@ -29,11 +29,21 @@ public partial class EatTogetherDBContext : DbContext
 
     public virtual DbSet<Function> Functions { get; set; }
 
+    public virtual DbSet<LimitedNotification> LimitedNotifications { get; set; }
+
     public virtual DbSet<Member> Members { get; set; }
+
+    public virtual DbSet<MemberConfirmToken> MemberConfirmTokens { get; set; }
 
     public virtual DbSet<MemberCoupon> MemberCoupons { get; set; }
 
+    public virtual DbSet<MemberExternalLogin> MemberExternalLogins { get; set; }
+
     public virtual DbSet<MemberFavorite> MemberFavorites { get; set; }
+
+    public virtual DbSet<MemberPasswordResetToken> MemberPasswordResetTokens { get; set; }
+
+    public virtual DbSet<MemberRefreshToken> MemberRefreshTokens { get; set; }
 
     public virtual DbSet<Order> Orders { get; set; }
 
@@ -51,9 +61,13 @@ public partial class EatTogetherDBContext : DbContext
 
     public virtual DbSet<Reservation> Reservations { get; set; }
 
+    public virtual DbSet<Review> Reviews { get; set; }
+
     public virtual DbSet<Role> Roles { get; set; }
 
     public virtual DbSet<RoleFunction> RoleFunctions { get; set; }
+
+    public virtual DbSet<SchedulerLog> SchedulerLogs { get; set; }
 
     public virtual DbSet<SetMeal> SetMeals { get; set; }
 
@@ -68,6 +82,8 @@ public partial class EatTogetherDBContext : DbContext
     public virtual DbSet<UserNotification> UserNotifications { get; set; }
 
     public virtual DbSet<UserRole> UserRoles { get; set; }
+
+    public virtual DbSet<WalkInQueue> WalkInQueues { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -188,7 +204,6 @@ public partial class EatTogetherDBContext : DbContext
                 .HasMaxLength(20);
             entity.Property(e => e.DiscountValue).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.EndDate).HasPrecision(0);
-            entity.Property(e => e.IsAutoDiscount).HasDefaultValue(1);
             entity.Property(e => e.StartDate).HasPrecision(0);
             entity.Property(e => e.Summary)
                 .IsRequired()
@@ -218,6 +233,25 @@ public partial class EatTogetherDBContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false);
             entity.Property(e => e.IsOwnerOnly).HasAnnotation("Relational:DefaultConstraintName", "DF_Functions_IsOwnerOnly");
+        });
+
+        modelBuilder.Entity<LimitedNotification>(entity =>
+        {
+            entity.HasIndex(e => new { e.MemberId, e.DishId }, "UQ_LimitedNotif_Mem_Dish").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+
+            entity.HasOne(d => d.Dish).WithMany(p => p.LimitedNotifications)
+                .HasForeignKey(d => d.DishId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_LimitedNotif_Dishes");
+
+            entity.HasOne(d => d.Member).WithMany(p => p.LimitedNotifications)
+                .HasForeignKey(d => d.MemberId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_LimitedNotif_Members");
         });
 
         modelBuilder.Entity<Member>(entity =>
@@ -265,6 +299,30 @@ public partial class EatTogetherDBContext : DbContext
                 .IsUnicode(false);
         });
 
+        modelBuilder.Entity<MemberConfirmToken>(entity =>
+        {
+            entity.HasIndex(e => e.MemberId, "IX_MemberConfirmTokens_MemberId");
+
+            entity.HasIndex(e => e.Token, "IX_MemberConfirmTokens_Token").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.ExpiresAt).HasPrecision(0);
+            entity.Property(e => e.NewEmail)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.Token)
+                .IsRequired()
+                .HasMaxLength(32)
+                .IsUnicode(false);
+
+            entity.HasOne(d => d.Member).WithMany(p => p.MemberConfirmTokens)
+                .HasForeignKey(d => d.MemberId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_MemberConfirmTokens_Members");
+        });
+
         modelBuilder.Entity<MemberCoupon>(entity =>
         {
             entity.Property(e => e.ClaimedAt).HasPrecision(0);
@@ -279,6 +337,34 @@ public partial class EatTogetherDBContext : DbContext
                 .HasForeignKey(d => d.MemberId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_MemberCoupons_Members");
+        });
+
+        modelBuilder.Entity<MemberExternalLogin>(entity =>
+        {
+            entity.HasIndex(e => new { e.MemberId, e.Provider }, "IX_MemberExternalLogins_MemberId_Provider").IsUnique();
+
+            entity.HasIndex(e => new { e.Provider, e.ProviderUserId }, "IX_MemberExternalLogins_Provider_ProviderUserId").IsUnique();
+
+            entity.Property(e => e.AvatarUrl).HasMaxLength(500);
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.Provider)
+                .IsRequired()
+                .HasMaxLength(20)
+                .IsUnicode(false);
+            entity.Property(e => e.ProviderEmail)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.ProviderUserId)
+                .IsRequired()
+                .HasMaxLength(100)
+                .IsUnicode(false);
+
+            entity.HasOne(d => d.Member).WithMany(p => p.MemberExternalLogins)
+                .HasForeignKey(d => d.MemberId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_MemberExternalLogins_Members");
         });
 
         modelBuilder.Entity<MemberFavorite>(entity =>
@@ -300,13 +386,54 @@ public partial class EatTogetherDBContext : DbContext
                 .HasConstraintName("FK_MemberFavorites_Products");
         });
 
+        modelBuilder.Entity<MemberPasswordResetToken>(entity =>
+        {
+            entity.HasIndex(e => e.MemberId, "IX_MemberPasswordResetTokens_MemberId");
+
+            entity.HasIndex(e => e.Token, "IX_MemberPasswordResetTokens_Token").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.ExpiresAt).HasPrecision(0);
+            entity.Property(e => e.Token)
+                .IsRequired()
+                .HasMaxLength(32)
+                .IsUnicode(false);
+
+            entity.HasOne(d => d.Member).WithMany(p => p.MemberPasswordResetTokens)
+                .HasForeignKey(d => d.MemberId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_MemberPasswordResetTokens_Members");
+        });
+
+        modelBuilder.Entity<MemberRefreshToken>(entity =>
+        {
+            entity.HasIndex(e => e.MemberId, "IX_MemberRefreshTokens_MemberId");
+
+            entity.HasIndex(e => e.Token, "IX_MemberRefreshTokens_Token").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.ExpiresAt).HasPrecision(0);
+            entity.Property(e => e.Token)
+                .IsRequired()
+                .HasMaxLength(64)
+                .IsUnicode(false);
+
+            entity.HasOne(d => d.Member).WithMany(p => p.MemberRefreshTokens)
+                .HasForeignKey(d => d.MemberId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_MemberRefreshTokens_Members");
+        });
+
         modelBuilder.Entity<Order>(entity =>
         {
             entity.HasIndex(e => e.OrderAt, "IX_Orders_OrderAt");
 
             entity.HasIndex(e => e.OrderNumber, "IX_Orders_OrderNumber").IsUnique();
 
-            entity.Property(e => e.Note).HasMaxLength(200);
             entity.Property(e => e.OrderAt)
                 .HasPrecision(0)
                 .HasDefaultValueSql("(getdate())");
@@ -320,6 +447,10 @@ public partial class EatTogetherDBContext : DbContext
             entity.HasOne(d => d.Coupon).WithMany(p => p.Orders)
                 .HasForeignKey(d => d.CouponId)
                 .HasConstraintName("FK_Orders_Coupons");
+
+            entity.HasOne(d => d.Event).WithMany(p => p.Orders)
+                .HasForeignKey(d => d.EventId)
+                .HasConstraintName("FK_Orders_Events");
 
             entity.HasOne(d => d.Member).WithMany(p => p.Orders)
                 .HasForeignKey(d => d.MemberId)
@@ -355,6 +486,10 @@ public partial class EatTogetherDBContext : DbContext
                 .HasForeignKey(d => d.OrderId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_OrderDetails_Orders");
+
+            entity.HasOne(d => d.ParentDetail).WithMany(p => p.InverseParentDetail)
+                .HasForeignKey(d => d.ParentDetailId)
+                .HasConstraintName("FK_OrderDetails_ParentDetail");
 
             entity.HasOne(d => d.Product).WithMany(p => p.OrderDetails)
                 .HasForeignKey(d => d.ProductId)
@@ -411,7 +546,6 @@ public partial class EatTogetherDBContext : DbContext
             entity.HasIndex(e => e.OrderNumber, "IX_PreOrders_OrderNumber").IsUnique();
 
             entity.Property(e => e.CancelledAt).HasPrecision(0);
-            entity.Property(e => e.Note).HasMaxLength(200);
             entity.Property(e => e.OrderAt)
                 .HasPrecision(0)
                 .HasDefaultValueSql("(getdate())");
@@ -495,6 +629,7 @@ public partial class EatTogetherDBContext : DbContext
                 .IsRequired()
                 .HasMaxLength(10)
                 .IsUnicode(false);
+            entity.Property(e => e.CancelledAt).HasPrecision(0);
             entity.Property(e => e.Email)
                 .IsRequired()
                 .HasMaxLength(100)
@@ -511,6 +646,32 @@ public partial class EatTogetherDBContext : DbContext
             entity.Property(e => e.ReservedAt)
                 .HasPrecision(0)
                 .HasDefaultValueSql("(getdate())");
+
+            entity.HasOne(d => d.Member).WithMany(p => p.Reservations)
+                .HasForeignKey(d => d.MemberId)
+                .HasConstraintName("FK_Reservations_Members");
+
+            entity.HasOne(d => d.Table).WithMany(p => p.Reservations)
+                .HasForeignKey(d => d.TableId)
+                .HasConstraintName("FK_Reservations_Tables");
+        });
+
+        modelBuilder.Entity<Review>(entity =>
+        {
+            entity.Property(e => e.Content)
+                .IsRequired()
+                .HasMaxLength(200);
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.Nickname)
+                .IsRequired()
+                .HasMaxLength(20);
+
+            entity.HasOne(d => d.Dish).WithMany(p => p.Reviews)
+                .HasForeignKey(d => d.DishId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Reviews_Dishes");
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -539,6 +700,19 @@ public partial class EatTogetherDBContext : DbContext
                 .HasForeignKey(d => d.RoleId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_RoleFunctions_Roles");
+        });
+
+        modelBuilder.Entity<SchedulerLog>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Schedule__3214EC0706C880FF");
+
+            entity.Property(e => e.ExecutedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.TriggerType)
+                .IsRequired()
+                .HasMaxLength(10)
+                .HasDefaultValue("自動");
         });
 
         modelBuilder.Entity<SetMeal>(entity =>
@@ -651,14 +825,15 @@ public partial class EatTogetherDBContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(0)
                 .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.IsRead).HasAnnotation("Relational:DefaultConstraintName", "DF_Notifications_IsRead");
+            entity.Property(e => e.Message).HasMaxLength(500);
+            entity.Property(e => e.ReferenceType).HasMaxLength(50);
             entity.Property(e => e.Title)
                 .IsRequired()
                 .HasMaxLength(200);
-
-            entity.HasOne(d => d.Article).WithMany(p => p.UserNotifications)
-                .HasForeignKey(d => d.ArticleId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_UserNotifications_Articles");
+            entity.Property(e => e.Type)
+                .IsRequired()
+                .HasMaxLength(50);
 
             entity.HasOne(d => d.Member).WithMany(p => p.UserNotifications)
                 .HasForeignKey(d => d.MemberId)
@@ -679,6 +854,41 @@ public partial class EatTogetherDBContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_UserRoles_Users");
+        });
+
+        modelBuilder.Entity<WalkInQueue>(entity =>
+        {
+            entity.HasIndex(e => e.RegisteredAt, "IX_WalkInQueues_RegisteredAt");
+
+            entity.HasIndex(e => e.Status, "IX_WalkInQueues_Status");
+
+            entity.Property(e => e.AdultsCount).HasDefaultValue(1);
+            entity.Property(e => e.CalledAt).HasPrecision(0);
+            entity.Property(e => e.LeftAt).HasPrecision(0);
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(50);
+            entity.Property(e => e.Phone)
+                .IsRequired()
+                .HasMaxLength(20)
+                .IsUnicode(false);
+            entity.Property(e => e.QueueNumber)
+                .IsRequired()
+                .HasMaxLength(10)
+                .IsUnicode(false);
+            entity.Property(e => e.RegisteredAt)
+                .HasPrecision(0)
+                .HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.Remark).HasMaxLength(200);
+            entity.Property(e => e.SeatedAt).HasPrecision(0);
+
+            entity.HasOne(d => d.Member).WithMany(p => p.WalkInQueues)
+                .HasForeignKey(d => d.MemberId)
+                .HasConstraintName("FK_WalkInQueues_Members");
+
+            entity.HasOne(d => d.Table).WithMany(p => p.WalkInQueues)
+                .HasForeignKey(d => d.TableId)
+                .HasConstraintName("FK_WalkInQueues_Tables");
         });
 
         OnModelCreatingPartial(modelBuilder);

@@ -41,11 +41,23 @@ public partial class Dish
 
     public DateTime? UpdatedAt { get; set; }
 
+    public string IngredientsJson { get; set; }
+
+    public double AverageScore { get; set; }
+
+    public int RatingCount { get; set; }
+
+    public int StockStatus { get; set; }
+
     public virtual Category Category { get; set; }
 
     public virtual ICollection<Event> Events { get; set; } = new List<Event>();
 
+    public virtual ICollection<LimitedNotification> LimitedNotifications { get; set; } = new List<LimitedNotification>();
+
     public virtual ICollection<Product> Products { get; set; } = new List<Product>();
+
+    public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
 
     public virtual ICollection<SetMealItem> SetMealItems { get; set; } = new List<SetMealItem>();
 }

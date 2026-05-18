@@ -21,7 +21,15 @@ public partial class OrderDetail
 
     public int SubTotal { get; set; }
 
+    public int? ParentDetailId { get; set; }
+
+    public int? PreOrderDetailId { get; set; }
+
+    public virtual ICollection<OrderDetail> InverseParentDetail { get; set; } = new List<OrderDetail>();
+
     public virtual Order Order { get; set; }
+
+    public virtual OrderDetail ParentDetail { get; set; }
 
     public virtual Product Product { get; set; }
 }
